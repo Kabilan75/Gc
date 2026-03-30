@@ -1,143 +1,200 @@
-import math
+"""
+UK Gaming Industry — Skill Demand Analysis (Streamlit)
+All charts built with Plotly from CSV/Excel only (no static images).
+"""
+from __future__ import annotations
+
+import warnings
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
 
-try:
-    import plotly.express as px
-except Exception:  # pragma: no cover
-    px = None
-
+warnings.filterwarnings("ignore")
 
 APP_DIR = Path(__file__).resolve().parent
 
+# --- Paths: same folder as app.py OR Step files/ (repo layout) ---
+def _find_file(*candidates: str) -> Path | None:
+    for name in candidates:
+        for base in (APP_DIR, APP_DIR / "Step files"):
+            p = base / name
+            if p.exists():
+                return p
+    return None
 
-st.set_page_config(
-    page_title="UK Gaming Industry — Skill Demand Analysis Dashboard",
-    page_icon="🎮",
-    layout="wide",
+
+COLOURS = {
+    "teal": "#0D9488",
+    "navy": "#0F1B2D",
+    "purple": "#6D28D9",
+    "amber": "#F59E0B",
+    "green": "#10B981",
+    "red": "#EF4444",
+    "blue": "#1D4ED8",
+    "pink": "#9D174D",
+    "brown": "#92400E",
+    "sky": "#0369A1",
+}
+
+CLUSTER_COLOURS = {
+    "Game Development & Programming": "#1D4ED8",
+    "Soft Skills & Business Development": "#6D28D9",
+    "Project & Development Management": "#065F46",
+    "Soft Skills & Creative Production": "#9D174D",
+    "Business Tools & Productivity": "#92400E",
+    "Cloud, Infrastructure & DevOps": "#0369A1",
+}
+
+REGION_COLOURS = {
+    "England": "#1D4ED8",
+    "Scotland": "#065F46",
+    "Wales": "#92400E",
+    "Northern Ireland": "#5B21B6",
+}
+
+POPULATION = {
+    "England": 56490048,
+    "Scotland": 5490000,
+    "Wales": 3200000,
+    "Northern Ireland": 1910000,
+}
+
+CLUSTER_SHORT = {
+    "Game Development & Programming": "Game Dev",
+    "Soft Skills & Business Development": "Soft Skills",
+    "Project & Development Management": "Proj Mgmt",
+    "Soft Skills & Creative Production": "Creative",
+    "Business Tools & Productivity": "Biz Tools",
+    "Cloud, Infrastructure & DevOps": "Cloud",
+}
+
+CITY_TO_COUNTRY = {
+    "bengaluru": "India",
+    "london": "United Kingdom",
+    "vancouver": "Canada",
+    "warsaw": "Poland",
+    "shanghai": "China",
+    "berlin": "Germany",
+    "toronto": "Canada",
+    "sydney": "Australia",
+    "amsterdam": "Netherlands",
+    "barcelona": "Spain",
+    "kiev": "Ukraine",
+    "kyiv": "Ukraine",
+    "moscow": "Russia",
+    "melbourne": "Australia",
+    "mumbai": "India",
+}
+
+PLOT_LAYOUT = dict(
+    plot_bgcolor="rgba(0,0,0,0)",
+    paper_bgcolor="rgba(0,0,0,0)",
+    font=dict(family="Segoe UI, sans-serif", color="#1F2937"),
 )
 
+st.set_page_config(
+    page_title="UK Gaming Industry — Skill Demand Analysis",
+    page_icon="🎮",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 st.markdown(
     """
 <style>
-  [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #081a33 0%, #061427 100%);
-    color: #ffffff;
-  }
-  [data-testid="stSidebar"] * { color: #ffffff; }
-  .small-muted { color: rgba(255,255,255,0.75); font-size: 0.92rem; }
-  .badge {
-    display:inline-block; padding: 0.28rem 0.55rem; margin: 0.15rem 0.25rem 0.15rem 0;
-    border-radius: 999px; border: 1px solid rgba(255,255,255,0.15);
-    background: rgba(255,255,255,0.06); font-size: 0.9rem;
-  }
-  .callout {
-    border-left: 5px solid #f97316; background: rgba(249,115,22,0.12);
-    padding: 0.85rem 1rem; border-radius: 0.5rem;
-  }
+[data-testid="stSidebar"] {background-color: #0F1B2D;}
+[data-testid="stSidebar"] * {color: #E5E7EB !important;}
+.metric-card {background:#1A2535;border:1px solid #0D9488;border-radius:10px;padding:16px;text-align:center;}
+.metric-value {font-size:28px;font-weight:bold;color:#5EEAD4;}
+.metric-label {font-size:12px;color:#9CA3AF;}
+.callout {background:#FFF7ED;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;}
+.high-priority {background-color:#FFF5F5;}
+.badge {display:inline-block;background:#0D9488;color:white;padding:3px 10px;border-radius:12px;margin:3px;font-size:12px;}
 </style>
 """,
     unsafe_allow_html=True,
 )
 
 
-def _candidate_paths(*filenames: str) -> list[Path]:
-    # Include common folders + any first-level subfolder to make deployments
-    # resilient to minor folder naming differences.
-    search_dirs = [APP_DIR]
-    for p in [
-        APP_DIR / "Stage 3 Charts",
-        APP_DIR / "expr charts",
-        APP_DIR / "Step files",
-    ]:
-        search_dirs.append(p)
-    try:
-        for d in APP_DIR.iterdir():
-            if d.is_dir():
-                search_dirs.append(d)
-    except Exception:  # pragma: no cover
-        pass
-    out: list[Path] = []
-    for d in search_dirs:
-        for f in filenames:
-            out.append(d / f)
-    return out
-
-
-@st.cache_resource(show_spinner=False)
-def _file_index() -> dict[str, Path]:
-    """
-    Map basename -> path for common dashboard assets.
-    This allows the app to find files even if they are stored in a different
-    subfolder than expected.
-    """
-    exts = {".png", ".jpg", ".jpeg", ".csv", ".xlsx"}
-    idx: dict[str, Path] = {}
-    try:
-        for p in APP_DIR.rglob("*"):
-            if p.is_file() and p.suffix.lower() in exts:
-                # Keep first occurrence to avoid surprising swaps.
-                idx.setdefault(p.name, p)
-    except Exception:  # pragma: no cover
-        return {}
-    return idx
-
-
-def find_first_existing(*filenames: str) -> Path | None:
-    for p in _candidate_paths(*filenames):
-        if p.exists():
-            return p
-    idx = _file_index()
-    for f in filenames:
-        hit = idx.get(f)
-        if hit and hit.exists():
-            return hit
-    return None
-
-
-def safe_image(*filenames: str, caption: str | None = None) -> None:
-    p = find_first_existing(*filenames)
-    if not p:
-        st.warning(f"Missing image file: tried {', '.join(filenames)}")
-        return
-    st.image(str(p), use_container_width=True, caption=caption)
-
-
 @st.cache_data(show_spinner=False)
-def load_csv(filename: str) -> pd.DataFrame:
-    p = find_first_existing(filename)
+def load_step_a() -> pd.DataFrame:
+    p = _find_file("step_a_clean_output.csv")
     if not p:
-        raise FileNotFoundError(f"Could not find `{filename}` in app folder or known subfolders.")
+        raise FileNotFoundError("step_a_clean_output.csv")
     return pd.read_csv(p)
 
 
 @st.cache_data(show_spinner=False)
-def load_excel_sheet(filename: str, sheet_name: str) -> pd.DataFrame:
-    p = find_first_existing(filename)
+def load_step_b() -> pd.DataFrame:
+    p = _find_file("step_b_clustered_skills.csv", "step_b_clustered_skills (2).csv")
     if not p:
-        raise FileNotFoundError(f"Could not find `{filename}` in app folder or known subfolders.")
-    return pd.read_excel(p, sheet_name=sheet_name)
+        raise FileNotFoundError("step_b_clustered_skills.csv")
+    df = pd.read_csv(p)
+    if "UK Region" in df.columns:
+        df = df[df["UK Region"].astype(str).str.strip() != "Unknown"]
+    if "Skills" in df.columns:
+        df = df[df["Skills"].astype(str).str.strip() != "game-texts"]
+    return df
 
 
-def section_title(title: str, subtitle: str | None = None) -> None:
-    st.title(title)
-    if subtitle:
-        st.caption(subtitle)
+@st.cache_data(show_spinner=False)
+def load_step_c() -> pd.DataFrame:
+    p = _find_file("step_c_gap_scores.csv")
+    if not p:
+        raise FileNotFoundError("step_c_gap_scores.csv")
+    return pd.read_csv(p)
 
 
-section_title(
-    "UK Gaming Industry — Skill Demand Analysis Dashboard",
-    "University of Leicester | AI for Business Intelligence | Kabilan",
-)
+@st.cache_data(show_spinner=False)
+def load_step_d() -> pd.DataFrame:
+    p = _find_file("step_d_workshop_recommendations.csv")
+    if not p:
+        raise FileNotFoundError("step_d_workshop_recommendations.csv")
+    return pd.read_csv(p)
 
+
+@st.cache_data(show_spinner=False)
+def load_excel_combined() -> pd.DataFrame:
+    p = _find_file("Updated_27_02_26_-_Kabilan.xlsx")
+    if not p:
+        raise FileNotFoundError("Updated_27_02_26_-_Kabilan.xlsx")
+    return pd.read_excel(p, sheet_name="Combined Data")
+
+
+def _plotly_show(fig: go.Figure) -> None:
+    fig.update_layout(**PLOT_LAYOUT)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+# --- Load all datasets once with error handling ---
+try:
+    df_a = load_step_a()
+    df_b = load_step_b()
+    df_c = load_step_c()
+    df_d = load_step_d()
+except FileNotFoundError as e:
+    st.error(f"Required CSV not found: {e}")
+    st.stop()
+
+with st.spinner("Loading Excel dataset (large file)…"):
+    try:
+        df_xl = load_excel_combined()
+    except FileNotFoundError as e:
+        st.error(f"Required Excel not found: {e}")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error reading Excel: {e}")
+        st.stop()
 
 with st.sidebar:
-    st.markdown("### Navigation")
-    tab = st.radio(
-        "Select a section",
+    st.markdown("## 🎮 Navigation")
+    st.markdown("---")
+    tab_choice = st.radio(
+        "section",
         [
             "TAB 1 — UK Overview",
             "TAB 2 — Regional Analysis",
@@ -148,84 +205,209 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.markdown("---")
-    st.markdown(
-        """
-<div class="small-muted">
-<b>TAB 1</b>: UK headline stats + top skills.<br/>
-<b>TAB 2</b>: Regional skill demand + clusters (normalised /100k).<br/>
-<b>TAB 3</b>: Stage A→D gap pipeline + workshop priorities.<br/>
-<b>TAB 4</b>: Experience distribution + gap skills by level.<br/>
-<b>TAB 5</b>: Fair global comparison using skill share (% of jobs).<br/>
-</div>
-""",
-        unsafe_allow_html=True,
-    )
+    st.markdown("**TAB 1**: UK headline stats + top skills.")
+    st.markdown("**TAB 2**: Regional skill demand + clusters (normalised /100k).")
+    st.markdown("**TAB 3**: Stage A→D gap pipeline + workshop priorities.")
+    st.markdown("**TAB 4**: Experience distribution + gap skills by level.")
+    st.markdown("**TAB 5**: Fair global comparison using skill share (% of jobs).")
+    st.markdown("---")
+    st.markdown("University of Leicester")
+    st.markdown("AI for Business Intelligence")
+    st.markdown("Kabilan | 2025")
 
+st.title("UK Gaming Industry — Skill Demand Analysis Dashboard")
+st.caption("University of Leicester | AI for Business Intelligence | Kabilan")
 
-if tab == "TAB 1 — UK Overview":
+# =============================================================================
+if tab_choice == "TAB 1 — UK Overview":
     st.subheader("UK Overview")
 
-    with st.spinner("Loading UK overview data…"):
-        _df_a = load_csv("step_a_clean_output.csv")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Total Jobs", "1,121")
+    m2.metric("Unique Skills", "352")
+    m3.metric("Total Skill Rows", "6,948")
+    m4.metric("UK Regions", "4")
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Total Jobs", "1,121")
-    c2.metric("Unique Skills", "352")
-    c3.metric("UK Regions", "4")
-    c4.metric("Date Range", "Jul–Oct 2025")
+    skill_col = "Skills" if "Skills" in df_a.columns else df_a.columns[4]
+    top20 = (
+        df_a[skill_col]
+        .astype(str)
+        .str.strip()
+        .value_counts()
+        .head(20)
+        .reset_index()
+    )
+    top20.columns = ["Skill", "Count"]
+    fig1 = px.bar(
+        top20.sort_values("Count", ascending=True),
+        x="Count",
+        y="Skill",
+        orientation="h",
+        color_discrete_sequence=[COLOURS["teal"]],
+    )
+    fig1.update_traces(hovertemplate="%{y}: %{x}<extra></extra>")
+    fig1.update_layout(
+        title="Top 20 Most Demanded Skills — UK Gaming Industry",
+        xaxis_title="Count",
+        yaxis_title="",
+        showlegend=False,
+    )
+    _plotly_show(fig1)
 
-    st.markdown("### Category breakdown")
-    safe_image(
-        "gaming_skill_categories__2_.png",
-        "gaming_skill_categories.png",
-        caption="Gaming skill categories breakdown",
+    pie_labels = [
+        "Soft Skills",
+        "Other",
+        "Tools & Software",
+        "Programming",
+        "3D Art & Design",
+        "Game Engines & Dev",
+        "Cloud & DevOps",
+    ]
+    pie_vals = [2499, 1457, 893, 639, 575, 512, 373]
+    fig_pie = go.Figure(
+        data=[
+            go.Pie(
+                labels=pie_labels,
+                values=pie_vals,
+                hole=0.35,
+                marker=dict(colors=px.colors.sequential.Teal_r[: len(pie_vals)]),
+            )
+        ]
+    )
+    fig_pie.update_layout(title="Skill category mix (reference distribution)")
+    _plotly_show(fig_pie)
+
+    hierarchy = pd.DataFrame(
+        {
+            "Rank": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "Skill": [
+                "Communication",
+                "Team Management",
+                "Talent Acquisition",
+                "Cross-Functional",
+                "Python",
+                "Excel",
+                "Quality-Control",
+                "Problem-Solving",
+                "Unity",
+                "C++",
+            ],
+            "Gaming": ["560", "335", "317", "168", "134", "124", "124", "127", "122", "121"],
+            "Tech": ["1,060", "696", "688", "396", "267", "302", "—", "233", "—", "—"],
+            "Transferable": ["1,620", "1,031", "1,005", "564", "401", "421", "314", "360", "—", "—"],
+            "Type": [
+                "All 3 tiers",
+                "All 3 tiers",
+                "All 3 tiers",
+                "All 3 tiers",
+                "All 3 tiers",
+                "All 3 tiers",
+                "Gaming+Trans",
+                "All 3 tiers",
+                "Gaming ONLY",
+                "Gaming ONLY",
+            ],
+        }
     )
 
-    st.markdown("### Top 10 skills across tiers")
-    top10 = pd.DataFrame(
-        [
-            (1, "Communication", 560, 1060, 1620, "All 3 tiers"),
-            (2, "Team Management", 335, 696, 1031, "All 3 tiers"),
-            (3, "Talent Acquisition", 317, 688, 1005, "All 3 tiers"),
-            (4, "Cross-Functional", 168, 396, 564, "All 3 tiers"),
-            (5, "Python", 134, 267, 401, "All 3 tiers"),
-            (6, "Excel", 124, 302, 421, "All 3 tiers"),
-            (7, "Quality-Control", 124, "—", 314, "Gaming+Trans"),
-            (8, "Problem-Solving", 127, 233, 360, "All 3 tiers"),
-            (9, "Unity", 122, "—", "—", "Gaming ONLY"),
-            (10, "C++", 121, "—", "—", "Gaming ONLY"),
-        ],
-        columns=["Rank", "Skill", "Gaming Posts", "Tech Posts", "Transferable Posts", "Type"],
+    def _style_hierarchy(row: pd.Series) -> list[str]:
+        skill = str(row["Skill"])
+        if skill == "Communication":
+            return ["background-color: #FEF3C7"] * len(row)
+        if skill in ("Unity", "C++"):
+            return ["background-color: #D1FAE5"] * len(row)
+        return [""] * len(row)
+
+    st.dataframe(
+        hierarchy.style.apply(_style_hierarchy, axis=1),
+        use_container_width=True,
+        hide_index=True,
     )
-    # Avoid Arrow conversion warnings on mixed numeric/string columns.
-    st.dataframe(top10.astype(str), use_container_width=True, hide_index=True)
 
     st.markdown(
         """
 <div class="callout">
 <b>Insight</b><br/>
-Communication leads ALL 3 tiers. Unity and C++ are gaming-exclusive skills.
+Communication leads ALL 3 tiers with 560 gaming posts, 1,060 tech posts and 1,620 transferable posts.
+Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
 </div>
 """,
         unsafe_allow_html=True,
     )
 
-
-elif tab == "TAB 2 — Regional Analysis":
+# =============================================================================
+elif tab_choice == "TAB 2 — Regional Analysis":
     st.subheader("Regional Analysis")
 
-    st.markdown("### UK regional demand heatmap")
-    safe_image(
-        "stage2_heatmap.png",
-        "gaming_regional_analysis (3).png",
-        "Gaming_UK_Skills.png",
-        caption="Regional skill demand (heatmap)",
-    )
+    reg_col = "UK Region"
+    sk_col = "Skills"
+    df_b2 = df_b.copy()
 
-    st.markdown("### Top 5 skills per region (counts + normalised /100k)")
-    regions = {
+    # Per-region top skills counts, then per 100k
+    regions = ["England", "Scotland", "Wales", "Northern Ireland"]
+    per_region_top: dict[str, pd.Series] = {}
+    for r in regions:
+        sub = df_b2[df_b2[reg_col] == r]
+        per_region_top[r] = sub[sk_col].astype(str).str.strip().value_counts().head(15)
+
+    all_skills = sorted(set().union(*[set(s.index) for s in per_region_top.values()]))
+    # Matrix: rows = skills (union capped), cols = regions — use top 15 union limited to 15 rows for readability
+    top_union: list[str] = []
+    for r in regions:
+        for s in per_region_top[r].index:
+            if s not in top_union:
+                top_union.append(s)
+            if len(top_union) >= 15:
+                break
+        if len(top_union) >= 15:
+            break
+    if len(top_union) < 15:
+        for r in regions:
+            for s in per_region_top[r].index:
+                if s not in top_union:
+                    top_union.append(s)
+                if len(top_union) >= 15:
+                    break
+            if len(top_union) >= 15:
+                break
+    top_union = top_union[:15]
+
+    z = []
+    text = []
+    for sk in top_union:
+        row_z = []
+        row_t = []
+        for r in regions:
+            sub = df_b2[(df_b2[reg_col] == r) & (df_b2[sk_col].astype(str).str.strip() == sk)]
+            cnt = len(sub)
+            pop = POPULATION.get(r, 1)
+            per100k = cnt / (pop / 100_000.0)
+            row_z.append(round(per100k, 2))
+            row_t.append(f"{per100k:.2f}")
+        z.append(row_z)
+        text.append(row_t)
+
+    fig_hm = go.Figure(
+        data=go.Heatmap(
+            z=z,
+            x=regions,
+            y=top_union,
+            text=text,
+            texttemplate="%{text}",
+            colorscale="YlOrRd",
+            colorbar=dict(title="per 100k"),
+        )
+    )
+    fig_hm.update_layout(
+        title="Gaming Skill Demand Across UK Regions (per 100k population)",
+        yaxis=dict(autorange="reversed"),
+    )
+    _plotly_show(fig_hm)
+
+    st.markdown("### Regional top 5 (reference cards)")
+    cards = {
         "England": [
-            ("Communication", "527", "0.93/100k"),
+            ("Communication", "527", "0.93"),
             ("Team Mgmt", "318", "0.56"),
             ("Talent Acq", "294", "0.52"),
             ("Cross-Func", "158", "0.28"),
@@ -253,91 +435,172 @@ elif tab == "TAB 2 — Regional Analysis":
             ("Data Analytics", "4", "0.21"),
         ],
     }
-    cols = st.columns(4)
-    for col, (region, rows) in zip(cols, regions.items()):
+    c1, c2, c3, c4 = st.columns(4)
+    for col, reg in zip([c1, c2, c3, c4], regions):
         with col:
-            st.markdown(f"#### {region}")
-            card = pd.DataFrame(rows, columns=["Skill", "Posts", "Normalised"])
-            st.dataframe(card, use_container_width=True, hide_index=True)
+            st.markdown(f"#### <span style='color:{REGION_COLOURS.get(reg,'#333')}'>{reg}</span>", unsafe_allow_html=True)
+            for name, posts, norm in cards.get(reg, []):
+                st.markdown(f"**{name}** — {posts} ({norm}/100k)")
 
-    st.markdown("### Normalised cluster composition")
-    safe_image(
-        "chart_cluster_normalised.png",
-        "chart_cluster_normalised (3).png",
-        caption="Normalised cluster composition",
+    # Stacked bar: cluster per 100k per region
+    clus_col = "Cluster_Name"
+    cluster_rows = []
+    for r in regions:
+        sub = df_b2[df_b2[reg_col] == r]
+        pop = POPULATION[r]
+        for clus, g in sub.groupby(clus_col):
+            cnt = len(g)
+            per100k = cnt / (pop / 100_000.0)
+            cluster_rows.append({"Region": r, "Cluster": clus, "per100k": per100k})
+
+    cdf = pd.DataFrame(cluster_rows)
+    fig_stack = px.bar(
+        cdf,
+        x="Region",
+        y="per100k",
+        color="Cluster",
+        title="Skill Cluster Composition by UK Region (per 100k population)",
+        color_discrete_map=CLUSTER_COLOURS,
     )
+    fig_stack.update_layout(barmode="stack", xaxis_title="", yaxis_title="Skills per 100k population")
+    _plotly_show(fig_stack)
 
-    cluster = pd.DataFrame(
+    exact_tab2 = pd.DataFrame(
         [
             ("England", 3.55, 3.55, 1.49, 1.45, 0.72, 0.71),
             ("Scotland", 2.19, 1.60, 0.93, 0.44, 0.47, 0.18),
             ("Wales", 1.06, 0.47, 0.09, 0.16, 0.22, 0.28),
-            ("Northern Ireland", 1.88, 1.20, 0.58, 0.21, 0.37, 0.00),
+            ("N. Ireland", 1.88, 1.20, 0.58, 0.21, 0.37, 0.00),
         ],
-        columns=[
-            "Region",
-            "Game Dev",
-            "Soft Skills",
-            "Project Mgmt",
-            "Creative",
-            "Biz Tools",
-            "Cloud",
-        ],
+        columns=["Region", "Game Dev", "Soft Skills", "Proj Mgmt", "Creative", "Biz Tools", "Cloud"],
     )
-    st.dataframe(cluster, use_container_width=True, hide_index=True)
+    st.dataframe(exact_tab2, use_container_width=True, hide_index=True)
 
+    region_pick = st.selectbox("Filter region — top 10 skills", regions)
+    sub_r = df_b2[df_b2[reg_col] == region_pick]
+    top10r = sub_r[sk_col].astype(str).str.strip().value_counts().head(10).reset_index()
+    top10r.columns = ["Skill", "Count"]
+    fig_r = px.bar(
+        top10r.sort_values("Count", ascending=True),
+        x="Count",
+        y="Skill",
+        orientation="h",
+        color_discrete_sequence=[REGION_COLOURS.get(region_pick, COLOURS["teal"])],
+    )
+    fig_r.update_layout(title=f"Top 10 skills — {region_pick}", showlegend=False)
+    _plotly_show(fig_r)
 
-elif tab == "TAB 3 — AI Gap Analysis":
+# =============================================================================
+elif tab_choice == "TAB 3 — AI Gap Analysis":
     st.subheader("AI Gap Analysis")
 
-    st.markdown(
-        """
-### Pipeline (Stage A → B → C → D)
-- **Stage A (Clean)**: Clean and standardise job + skill signals.
-- **Stage B (Cluster)**: Group skills into interpretable clusters (e.g., Game Dev, Soft Skills).
-- **Stage C (Gap scoring)**: Compute regional gap scores by cluster (demand vs capability signal).
-- **Stage D (Workshops)**: Convert gap + demand into prioritised workshop recommendations.
-"""
+    s1, s2, s3, s4 = st.columns(4)
+    with s1:
+        st.markdown("#### Step A: Data Prep")
+        st.write("6,948 rows, 352 skills, one skill per row")
+    with s2:
+        st.markdown("#### Step B: K-Means AI")
+        st.write("TF-IDF converts skills to numbers, 6 clusters found")
+    with s3:
+        st.markdown("#### Step C: Gap Scoring")
+        st.write("Location Quotient formula, 520 gap scores")
+    with s4:
+        st.markdown("#### Step D: Recommender")
+        st.write("Top 5 per region, 20 total recommendations")
+
+    gap_avg = (
+        df_c.groupby(["UK Region", "Cluster_Name"], as_index=False)["Gap_Score"]
+        .mean()
+        .rename(columns={"Gap_Score": "Avg Gap"})
     )
+    regions_o = ["England", "Scotland", "Wales", "Northern Ireland"]
+    clusters_o = [
+        "Business Tools & Productivity",
+        "Cloud, Infrastructure & DevOps",
+        "Game Development & Programming",
+        "Project & Development Management",
+        "Soft Skills & Business Development",
+        "Soft Skills & Creative Production",
+    ]
+    pivot = gap_avg.pivot(index="UK Region", columns="Cluster_Name", values="Avg Gap")
+    for c in clusters_o:
+        if c not in pivot.columns:
+            pivot[c] = np.nan
+    pivot = pivot.reindex(regions_o)[clusters_o]
+    z = pivot.values.astype(float)
+    text = [[f"{v:.2f}" if pd.notna(v) else "" for v in row] for row in z]
 
-    st.markdown("### Gap score heatmap")
-    safe_image("chart4_heatmap.png", caption="Gap score heatmap")
+    short_labels = [
+        "Biz Tools",
+        "Cloud",
+        "Game Dev",
+        "Proj Mgmt",
+        "Soft Skills",
+        "Creative",
+    ]
+    fig_gap = go.Figure(
+        data=go.Heatmap(
+            z=z,
+            x=short_labels,
+            y=regions_o,
+            text=text,
+            texttemplate="%{text}",
+            colorscale="RdYlGn_r",
+            colorbar=dict(title="Avg gap"),
+        )
+    )
+    fig_gap.update_layout(
+        title="Average Gap Score — Region × Skill Cluster",
+        yaxis=dict(autorange="reversed"),
+    )
+    _plotly_show(fig_gap)
 
-    heatmap_values = pd.DataFrame(
+    exact_gap = pd.DataFrame(
         [
             ("England", 5.07, 5.09, 5.09, 5.21, 5.26, 5.09),
             ("Scotland", 4.74, 4.25, 4.62, 4.82, 4.75, 4.82),
             ("Wales", 3.41, 3.50, 3.59, 4.18, 4.64, 4.66),
-            ("Northern Ireland", 2.77, 0.00, 3.90, 4.63, 4.52, 4.69),
+            ("N. Ireland", 2.77, 0.00, 3.90, 4.63, 4.52, 4.69),
         ],
         columns=["Region", "Biz Tools", "Cloud", "Game Dev", "Proj Mgmt", "Soft Skills", "Creative"],
     )
-    st.dataframe(heatmap_values, use_container_width=True, hide_index=True)
+    st.dataframe(exact_gap, use_container_width=True, hide_index=True)
 
-    st.markdown("### England distribution views")
-    a, b = st.columns(2)
-    with a:
-        safe_image("chart3_scatter_england.png")
-    with b:
-        safe_image("chart1_boxplot.png")
+    eng = df_c[df_c["UK Region"].astype(str).str.strip() == "England"].copy()
+    fig_sc = px.scatter(
+        eng,
+        x="Demand",
+        y="Gap_Score",
+        color="Cluster_Name",
+        size="Demand",
+        hover_name="Skills",
+        color_discrete_map=CLUSTER_COLOURS,
+        title="Demand vs Gap Score — England (each dot = one skill)",
+    )
+    _plotly_show(fig_sc)
 
-    st.markdown("### Priority stack")
-    safe_image("chart2_stacked_bar__1_.png", "chart2_stacked_bar (1).png")
+    fig_box = px.box(
+        df_c,
+        x="UK Region",
+        y="Gap_Score",
+        color="UK Region",
+        color_discrete_map=REGION_COLOURS,
+        title="Gap Score Distribution by UK Region",
+    )
+    _plotly_show(fig_box)
 
-    with st.spinner("Loading workshop recommendations…"):
-        rec = load_csv("step_d_workshop_recommendations.csv")
-
+    st.markdown("### Workshop recommendations")
+    rec = df_d.copy()
     rec = rec.rename(
         columns={
             "UK_Region": "Region",
             "Priority_Rank": "Rank",
             "Skill_Cluster": "Cluster",
             "Demand_Count": "Demand",
-            "Gap_Score": "Gap Score",
         }
     )
 
-    def _priority_from_text(x: str) -> str:
+    def _prio(x: str) -> str:
         s = str(x).upper()
         if "HIGH" in s:
             return "HIGH"
@@ -345,313 +608,453 @@ elif tab == "TAB 3 — AI Gap Analysis":
             return "MED"
         return "STD"
 
-    rec["Priority"] = rec.get("Workshop_Recommendation", "").map(_priority_from_text)
-    rec_view = rec[["Region", "Rank", "Skill", "Cluster", "Demand", "Gap Score", "Priority"]].copy()
+    rec["Priority"] = rec.get("Workshop_Recommendation", "").map(_prio)
+    view_cols = [c for c in ["Region", "Rank", "Skill", "Cluster", "Demand", "Gap_Score", "Priority"] if c in rec.columns]
+    rec_view = rec[view_cols] if view_cols else rec
 
-    st.markdown("### Filtered recommendations")
-    region_opt = ["All"] + sorted(rec_view["Region"].dropna().unique().tolist())
-    selected = st.selectbox("Region filter", region_opt, index=0)
-    if selected != "All":
-        rec_view = rec_view[rec_view["Region"] == selected]
+    reg_opts = ["All"] + sorted(rec_view["Region"].dropna().unique().tolist()) if "Region" in rec_view.columns else ["All"]
+    filt = st.selectbox("Region filter", reg_opts)
+    show = rec_view if filt == "All" else rec_view[rec_view["Region"] == filt]
 
-    def _style_priority(row: pd.Series) -> list[str]:
+    def _style_rec(row: pd.Series) -> list[str]:
         p = row.get("Priority", "STD")
         if p == "HIGH":
-            return ["background-color: rgba(239,68,68,0.20)"] * len(row)
+            return ["background-color: #FEE2E2"] * len(row)
         if p == "MED":
-            return ["background-color: rgba(249,115,22,0.18)"] * len(row)
-        return ["background-color: rgba(34,197,94,0.14)"] * len(row)
+            return ["background-color: #FFEDD5"] * len(row)
+        return ["background-color: #D1FAE5"] * len(row)
 
     st.dataframe(
-        rec_view.style.apply(_style_priority, axis=1),
+        show.style.apply(_style_rec, axis=1),
         use_container_width=True,
         hide_index=True,
     )
 
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Communication gap", "10.0")
+    k2.metric("England top skills", "3 HIGH")
+    k3.metric("Total recommendations", "20")
+    k4.metric("#1 skill (all regions)", "Communication")
+    k5.metric("Max demand", "527")
 
-elif tab == "TAB 4 — Experience Analysis":
+# =============================================================================
+elif tab_choice == "TAB 4 — EXPERIENCE ANALYSIS":
     st.subheader("Experience Analysis")
 
-    t1, t2 = st.tabs(["Overview", "Deep Analysis"])
+    df_uk = df_xl.copy()
+    df_uk["Company Category"] = df_uk["Company Category"].astype(str).str.strip()
+    df_uk = df_uk[
+        (df_uk["Country"].astype(str).str.strip() == "United Kingdom")
+        & (df_uk["Company Category"] == "Gaming Company")
+    ].copy()
 
-    with t1:
-        st.markdown("### Overview")
-        safe_image("chart1_experience_pie__1_.png", "chart1_experience_pie (1).png")
+    def bucket_exp(x) -> str:
+        if pd.isna(x):
+            return "Unknown"
+        try:
+            v = float(x)
+        except (TypeError, ValueError):
+            return "Unknown"
+        if v == 0:
+            return "Entry Level (0 yrs)"
+        if 1 <= v <= 2:
+            return "Junior (1-2 yrs)"
+        if 3 <= v <= 5:
+            return "Mid-Level (3-5 yrs)"
+        if 6 <= v <= 8:
+            return "Senior (6-8 yrs)"
+        if v >= 9:
+            return "Expert (9+ yrs)"
+        return "Unknown"
 
-        c1, c2 = st.columns(2)
-        with c1:
-            safe_image("chart2_avg_exp_by_category.png")
-        with c2:
-            safe_image("chart3_region_experience.png")
+    if "Min Experience" in df_uk.columns:
+        df_uk["ExpBucket"] = df_uk["Min Experience"].map(bucket_exp)
+    else:
+        df_uk["ExpBucket"] = "Unknown"
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("No exp stated", "59.7%")
-        m2.metric("Mid-level", "55.5%")
-        m3.metric("Entry level", "6.0%")
-        m4.metric("HR average", "8.2 yrs")
+    t_ov, t_deep = st.tabs(["Overview", "Deep Analysis"])
 
-    with t2:
-        st.markdown("### Deep Analysis")
-        safe_image("chart_exp_heatmap.png", "chart_exp_heatmap (1).png")
-
-        c1, c2 = st.columns(2)
-        with c1:
-            safe_image("chart_exp_gap_skills.png")
-        with c2:
-            safe_image("chart_exp_universal.png")
-
-        st.markdown("### Gap skills by experience level")
-        gap_by_exp = pd.DataFrame(
-            [
-                ("Communication", 16, 31, 147, 29, 15),
-                ("Team Management", 8, 19, 103, 26, 25),
-                ("Talent Acquisition", 10, 21, 71, 18, 20),
-                ("Cross-Functional", 0, 6, 50, 19, 12),
-                ("Python", 9, 7, 29, 5, 5),
-                ("Unity", 0, 3, 34, 5, 11),
-                ("C++", 3, 11, 35, 6, 10),
-            ],
-            columns=["Skill", "Entry", "Junior", "Mid", "Senior", "Expert"],
+    with t_ov:
+        vc = df_uk["ExpBucket"].value_counts()
+        fig_pie_e = px.pie(
+            values=vc.values,
+            names=vc.index,
+            title="Experience level breakdown (UK Gaming)",
+            hole=0.35,
         )
-        st.dataframe(gap_by_exp, use_container_width=True, hide_index=True)
+        _plotly_show(fig_pie_e)
 
-        st.markdown(
-            """
+        job_cat = "Overall Job Category"
+        if job_cat in df_uk.columns and "Min Experience" in df_uk.columns:
+            sub_avg = df_uk[df_uk["Min Experience"].notna()].copy()
+            top8 = (
+                sub_avg.groupby(job_cat, dropna=False)["Min Experience"]
+                .mean()
+                .sort_values(ascending=False)
+                .head(8)
+                .reset_index()
+            )
+            top8.columns = ["Category", "Avg Min Experience"]
+            fig_hbar = px.bar(
+                top8.sort_values("Avg Min Experience", ascending=True),
+                x="Avg Min Experience",
+                y="Category",
+                orientation="h",
+                color_discrete_sequence=[COLOURS["teal"]],
+                title="Average Min Experience by job category (top 8)",
+            )
+            _plotly_show(fig_hbar)
+
+        # Grouped bar: Entry / Mid / Senior per region (State)
+        st_col = "State"
+        if st_col in df_uk.columns:
+            df_uk["Entry"] = (df_uk["ExpBucket"] == "Entry Level (0 yrs)").astype(int)
+            df_uk["Mid"] = (df_uk["ExpBucket"] == "Mid-Level (3-5 yrs)").astype(int)
+            df_uk["Senior"] = (df_uk["ExpBucket"] == "Senior (6-8 yrs)").astype(int)
+            agg = df_uk.groupby(st_col, dropna=False)[["Entry", "Mid", "Senior"]].sum().reset_index()
+            agg_m = agg.melt(id_vars=[st_col], var_name="Level", value_name="Count")
+            fig_g = px.bar(
+                agg_m,
+                x=st_col,
+                y="Count",
+                color="Level",
+                barmode="group",
+                title="Entry / Mid-Level / Senior counts per UK region (State)",
+                color_discrete_map={"Entry": COLOURS["green"], "Mid": COLOURS["amber"], "Senior": COLOURS["purple"]},
+            )
+            _plotly_show(fig_g)
+
+        e1, e2, e3, e4 = st.columns(4)
+        e1.metric("No exp stated", "669 jobs (59.7%)")
+        e2.metric("Mid-level", "251 jobs (55.5%)")
+        e3.metric("Entry level", "27 (6.0%)")
+        e4.metric("HR & Recruiting avg", "8.2 yrs")
+
+    with t_deep:
+        skcol = "Skills"
+        if skcol not in df_uk.columns:
+            st.error("Skills column missing in Excel.")
+        else:
+
+            def split_skills(s) -> list[str]:
+                if pd.isna(s):
+                    return []
+                parts = str(s).split(",")
+                out = []
+                for p in parts:
+                    t = p.strip().lower()
+                    if t and t != "game-texts" and t != "nan":
+                        out.append(t)
+                return out
+
+            df_uk["_skills_list"] = df_uk[skcol].map(split_skills)
+            exp_simple = df_uk["ExpBucket"].map(
+                {
+                    "Entry Level (0 yrs)": "Entry",
+                    "Junior (1-2 yrs)": "Junior",
+                    "Mid-Level (3-5 yrs)": "Mid",
+                    "Senior (6-8 yrs)": "Senior",
+                    "Expert (9+ yrs)": "Expert",
+                    "Unknown": np.nan,
+                }
+            )
+            tmp = df_uk.assign(_exp=exp_simple).explode("_skills_list")
+            tmp = tmp[tmp["_exp"].notna() & tmp["_skills_list"].notna()]
+
+            skill_tot = tmp["_skills_list"].value_counts().head(15).index.tolist()
+            levels = ["Entry", "Junior", "Mid", "Senior", "Expert"]
+            heat = []
+            for sk in skill_tot:
+                row = []
+                for lv in levels:
+                    row.append(
+                        len(tmp[(tmp["_skills_list"] == sk) & (tmp["_exp"] == lv)])
+                    )
+                heat.append(row)
+            fig_heat = go.Figure(
+                data=go.Heatmap(
+                    z=heat,
+                    x=levels,
+                    y=skill_tot,
+                    colorscale="YlOrRd",
+                    colorbar=dict(title="Count"),
+                )
+            )
+            fig_heat.update_layout(
+                title="Top 15 skills vs experience level (counts)",
+                yaxis=dict(autorange="reversed"),
+            )
+            _plotly_show(fig_heat)
+
+            seven = [
+                "communication",
+                "team-management",
+                "talent-acquisition",
+                "cross-functional",
+                "python",
+                "unity",
+                "cpp",
+            ]
+            sub7 = tmp[tmp["_skills_list"].isin(seven)].copy()
+            cts = (
+                sub7.groupby(["_skills_list", "_exp"], as_index=False)
+                .size()
+                .rename(columns={"size": "Count", "_skills_list": "Skill", "_exp": "Level"})
+            )
+            fig_7 = px.bar(
+                cts,
+                x="Skill",
+                y="Count",
+                color="Level",
+                barmode="group",
+                category_orders={"Skill": seven, "Level": levels},
+                color_discrete_sequence=px.colors.qualitative.Set2,
+                title="Seven key skills by experience level",
+            )
+            _plotly_show(fig_7)
+
+            summary = pd.DataFrame(
+                [
+                    ("Communication", 16, 31, 147, 29, 15),
+                    ("Team Management", 8, 19, 103, 26, 25),
+                    ("Talent Acquisition", 10, 21, 71, 18, 20),
+                    ("Cross-Functional", 0, 6, 50, 19, 12),
+                    ("Python", 9, 7, 29, 5, 5),
+                    ("Unity", 0, 3, 34, 5, 11),
+                    ("C++", 3, 11, 35, 6, 10),
+                ],
+                columns=["Skill", "Entry", "Junior", "Mid", "Senior", "Expert"],
+            )
+            st.dataframe(summary, use_container_width=True, hide_index=True)
+
+            st.markdown(
+                """
 <div class="callout">
-<b>Insight</b><br/>
 Communication has 9.2× more mid-level jobs than entry level. Team Management has 12.9× more.
-SideFest needs a 3–5 year pathway not one-off workshops.
+SideFest needs a 3–5 year structured pathway.
 </div>
 """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown("### Universal skills (appear in ALL 5 experience levels)")
-        universal_csv = find_first_existing("universal_skills.csv", "chart_exp_universal_skills.csv")
-        if universal_csv and universal_csv.suffix.lower() == ".csv":
-            u = pd.read_csv(universal_csv)
-            skills = (
-                u.iloc[:, 0].dropna().astype(str).str.strip().tolist()
-                if not u.empty
-                else []
+                unsafe_allow_html=True,
             )
-        else:
-            skills = []
-        if not skills:
-            st.warning(
-                "Universal skills list CSV not found. If you have a CSV for the 26 universal skills, "
-                "place it next to `app.py` as `universal_skills.csv` (single column: Skill)."
-            )
-        else:
-            st.markdown("".join([f'<span class="badge">{s}</span>' for s in skills]), unsafe_allow_html=True)
 
+            badges = [
+                "agile-development",
+                "aws",
+                "azure",
+                "c#",
+                "ci-cd",
+                "communication",
+                "cpp",
+                "data-analytics",
+                "data-science",
+                "excel",
+                "github",
+                "java",
+                "kubernetes",
+                "linux",
+                "machine-learning",
+                "ms-office",
+                "problem-solving",
+                "python",
+                "quality-control",
+                "salesforce",
+                "sql",
+                "storytelling",
+                "talent-acquisition",
+                "team-management",
+                "timeline-management",
+                "user-experience-ux",
+            ]
+            st.markdown("### Universal skills (26)")
+            st.markdown("".join([f'<span class="badge">{b}</span>' for b in badges]), unsafe_allow_html=True)
 
-elif tab == "TAB 5 — Global Comparison":
-    st.subheader("Global Comparison")
+# =============================================================================
+elif tab_choice == "TAB 5 — GLOBAL COMPARISON":
+    st.subheader("Global Comparison — UK vs World")
 
-    st.markdown("**Fair comparison method (no raw counts)**  ")
-    st.markdown("We compare countries using **skill share** (not raw counts):")
     st.markdown(
-        r"Skill share\(_{country}\) = (jobs mentioning skill in country) / (all jobs in country)"
-    )
-    st.markdown("This removes bias from countries having more job rows.")
-
-    st.markdown("### Data source")
-    st.caption(
-        "This tab can use a bundled dataset (if present) or you can upload the Excel/CSV on demand."
+        """
+This comparison uses **skill share percentage** — the proportion of each country's gaming jobs that demand a skill.
+This removes bias from larger countries having more jobs. A country with 10% share means 1 in 10 of their gaming jobs demands that skill.
+"""
     )
 
-    xlsx_name = "Updated_27_02_26_-_Kabilan.xlsx"
-    csv_name = "global_combined_data.csv"
+    g = df_xl.copy()
+    g["Company Category"] = g["Company Category"].astype(str).str.strip()
+    g = g[g["Company Category"] == "Gaming Company"].copy()
 
-    src_xlsx = find_first_existing(xlsx_name)
-    src_csv = find_first_existing(csv_name)
+    st.caption(f"Gaming Company rows: {len(g):,}")
 
-    uploaded = st.file_uploader(
-        "Upload global dataset (Excel with sheet 'Combined Data' or a CSV export)",
-        type=["xlsx", "csv"],
+    if "City" in g.columns:
+        def map_city(row) -> str:
+            c = str(row.get("Country", "")).strip()
+            city = str(row.get("City", "")).strip().lower()
+            if city in CITY_TO_COUNTRY:
+                return CITY_TO_COUNTRY[city]
+            return c
+
+        g["Country"] = g.apply(map_city, axis=1)
+
+    def explode_skills(row) -> list[str]:
+        s = row.get("Skills", "")
+        if pd.isna(s):
+            return []
+        out = []
+        for p in str(s).split(","):
+            t = p.strip().lower()
+            if t and t != "game-texts" and t != "nan":
+                out.append(t)
+        return out
+
+    g["_sk"] = g.apply(explode_skills, axis=1)
+    global_skills = g.explode("_sk").rename(columns={"_sk": "Skills"})
+    global_skills = global_skills[global_skills["Skills"].notna()].copy()
+
+    total_per_country = global_skills.groupby("Country").size()
+    skill_country = global_skills.groupby(["Country", "Skills"], as_index=False).size().rename(
+        columns={"size": "count"}
     )
+    skill_country["total"] = skill_country["Country"].map(total_per_country)
+    skill_country["share_pct"] = (skill_country["count"] / skill_country["total"] * 100).round(2)
+    skill_country = skill_country[skill_country["total"] >= 50].copy()
 
-    with st.spinner("Loading global combined dataset…"):
-        if uploaded is not None:
-            if uploaded.name.lower().endswith(".csv"):
-                df = pd.read_csv(uploaded)
-            else:
-                df = pd.read_excel(uploaded, sheet_name="Combined Data")
-        elif src_csv is not None:
-            df = pd.read_csv(src_csv)
-        elif src_xlsx is not None:
-            df = pd.read_excel(src_xlsx, sheet_name="Combined Data")
-        else:
-            st.info(
-                "No global dataset found in the project folder. "
-                f"Either add `{xlsx_name}` (or `{csv_name}`) anywhere under this project, "
-                "or upload it above to use Tab 5."
-            )
-            st.stop()
-
-    df = df.copy()
-    df.columns = [str(c).strip() for c in df.columns]
-
-    # Flexible column mapping (sheet headers can vary slightly).
-    cols_lower = {str(c).strip().lower(): c for c in df.columns}
-
-    def pick(*names: str) -> str | None:
-        for n in names:
-            if n.lower() in cols_lower:
-                return cols_lower[n.lower()]
-        return None
-
-    def pick_contains(*needles: str) -> str | None:
-        needles_l = [n.lower() for n in needles]
-        for c in df.columns:
-            cl = str(c).lower()
-            if any(n in cl for n in needles_l):
-                return c
-        return None
-
-    col_company = pick("Company Category", "Company_Category", "company_category")
-    col_country = pick("Country", "country", "Job Country", "job_country")
-    col_skill = pick("Skill", "Skills", "skill", "skills", "Skill Name", "skill_name")
-
-    # Last-resort fallbacks (handles headers like "Skill(s)" or "Country Name")
-    col_company = col_company or pick_contains("company category", "company_category")
-    col_country = col_country or pick_contains("country")
-    col_skill = col_skill or pick_contains("skill")
-
-    missing = [k for k, v in {"Company Category": col_company, "Country": col_country, "Skill": col_skill}.items() if v is None]
-    if missing:
-        st.error(
-            "Your `Combined Data` sheet is missing required columns: "
-            + ", ".join(missing)
-            + ".\n\nExpected something like: Company Category, Country, Skill."
-        )
+    q = st.text_input("Skill search", value="communication").strip().lower()
+    if not q:
         st.stop()
 
-    df = df[df[col_company].astype(str).str.strip().eq("Gaming Company")].copy()
-    st.caption(f"Filtered to Gaming Company rows: {len(df):,}")
-
-    # Skill search / selection
-    skill_query = st.text_input("Skill search", value="communication").strip()
-    if not skill_query:
+    sk_f = skill_country[skill_country["Skills"].str.contains(q, na=False, case=False)]
+    if sk_f.empty:
+        sk_f = skill_country[skill_country["Skills"].str.lower() == q]
+    if sk_f.empty:
+        st.warning("No matching skill in global data.")
         st.stop()
 
-    # Match skills (case-insensitive contains); fall back to exact lower match.
-    skills_all = df[col_skill].dropna().astype(str)
-    matches = skills_all[skills_all.str.lower().str.contains(skill_query.lower(), na=False)].unique().tolist()
-    if not matches:
-        exact = skills_all[skills_all.str.lower().eq(skill_query.lower())].unique().tolist()
-        matches = exact
+    # pick canonical skill name (most frequent)
+    top_skill = sk_f.groupby("Skills")["count"].sum().sort_values(ascending=False).index[0]
+    one = sk_f[sk_f["Skills"] == top_skill].sort_values("share_pct", ascending=False)
 
-    if not matches:
-        st.warning("No matching skills found in the global dataset.")
-        st.stop()
-
-    selected_skill = st.selectbox("Select matched skill", sorted(matches), index=0)
-
-    # Compute share by country for selected skill
-    base = df[[col_country, col_skill]].dropna().copy()
-    base[col_country] = base[col_country].astype(str).str.strip()
-    base[col_skill] = base[col_skill].astype(str).str.strip()
-
-    totals = base.groupby(col_country, dropna=False).size().rename("Total Jobs")
-    hits = base[base[col_skill].str.lower().eq(str(selected_skill).lower())].groupby(col_country).size().rename("Skill Jobs")
-    share = (
-        pd.concat([totals, hits], axis=1)
-        .fillna({"Skill Jobs": 0})
-        .assign(Share=lambda x: x["Skill Jobs"] / x["Total Jobs"])
-        .sort_values("Share", ascending=False)
-        .reset_index()
-        .rename(columns={col_country: "Country"})
+    top15 = one.head(15).copy()
+    top15["Highlight"] = top15["Country"].apply(
+        lambda c: "United Kingdom" if "united kingdom" in str(c).lower() or str(c).strip().lower() == "uk" else "Other"
     )
+    fig_b = px.bar(
+        top15.sort_values("share_pct", ascending=True),
+        x="share_pct",
+        y="Country",
+        orientation="h",
+        color="Highlight",
+        color_discrete_map={"United Kingdom": COLOURS["red"], "Other": COLOURS["teal"]},
+        title=f"Top 15 countries by skill share — {top_skill}",
+    )
+    fig_b.update_traces(hovertemplate="%{y}: %{x}%<extra></extra>")
+    _plotly_show(fig_b)
 
-    top15 = share.head(15).copy()
-    uk_row = share[share["Country"].str.upper().eq("UNITED KINGDOM") | share["Country"].str.upper().eq("UK")]
-    uk_country_label = uk_row["Country"].iloc[0] if not uk_row.empty else "United Kingdom"
+    def _is_uk(s: str) -> bool:
+        t = str(s).strip().lower()
+        return "united kingdom" in t or t == "uk"
 
-    st.markdown("### Top 15 countries by skill share")
-    if px is None:
-        st.warning("Plotly is not available. Install `plotly` to view the bar chart.")
-    else:
-        top15["Share %"] = top15["Share"] * 100.0
-        top15["Highlight"] = top15["Country"].apply(
-            lambda c: "UK" if str(c).strip().lower() in {uk_country_label.strip().lower(), "united kingdom", "uk"} else "Other"
-        )
-        fig = px.bar(
-            top15.sort_values("Share %", ascending=True),
-            x="Share %",
-            y="Country",
-            orientation="h",
-            color="Highlight",
-            color_discrete_map={"UK": "#f97316", "Other": "#60a5fa"},
-            title=f"Skill share for: {selected_skill}",
-        )
-        fig.update_layout(height=520, legend_title_text="")
-        st.plotly_chart(fig, use_container_width=True)
+    one_sorted = one.sort_values("share_pct", ascending=False).reset_index(drop=True)
+    one_sorted["Rank"] = np.arange(1, len(one_sorted) + 1)
 
-    # UK rank metric + insight
-    share_ranked = share.copy()
-    share_ranked["Rank"] = share_ranked["Share"].rank(method="min", ascending=False).astype(int)
-    n_countries = int(share_ranked["Country"].nunique())
-    uk_candidates = share_ranked[
-        share_ranked["Country"].str.upper().isin(["UNITED KINGDOM", "UK"])
-        | share_ranked["Country"].str.upper().str.contains("UNITED KINGDOM", na=False)
-    ]
-    if uk_candidates.empty:
-        st.warning("UK row not found (country naming differs). UK rank/insight may be unavailable.")
-    else:
-        uk_rank = int(uk_candidates.sort_values("Rank").iloc[0]["Rank"])
-        uk_share = float(uk_candidates.sort_values("Rank").iloc[0]["Share"])
-        global_avg = float(share_ranked["Share"].mean())
-        st.metric("UK rank", f"UK ranks #{uk_rank} out of {n_countries} countries for this skill")
+    uk_rows = one_sorted[one_sorted["Country"].map(_is_uk)]
+    uk_share = float(uk_rows.iloc[0]["share_pct"]) if not uk_rows.empty else float("nan")
+    uk_rank = int(uk_rows.iloc[0]["Rank"]) if not uk_rows.empty else None
 
-        demanded_in = int((share_ranked["Skill Jobs"] > 0).sum())
-        above = "above" if uk_share >= global_avg else "below"
+    n_countries = int(one["Country"].nunique())
+    global_avg = float(one["share_pct"].mean())
+    diff = (uk_share - global_avg) if uk_share == uk_share else 0.0
+    above = "above" if (uk_share == uk_share and uk_share >= global_avg) else "below"
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("UK share %", f"{uk_share:.2f}%" if uk_share == uk_share else "N/A")
+    c2.metric("UK rank", f"#{uk_rank} / {n_countries}" if uk_rank is not None else "N/A")
+    c3.metric("Global avg share %", f"{global_avg:.2f}%")
+
+    if uk_share == uk_share:
         st.info(
-            f"{selected_skill} is demanded in {demanded_in} countries. "
-            f"UK skill share is {uk_share*100:.2f}%. Global average is {global_avg*100:.2f}%. "
-            f"UK is {above} the global average."
+            f"'{top_skill}' is demanded in {n_countries} countries globally. "
+            f"UK skill share is {uk_share:.2f}%. "
+            f"The global average is {global_avg:.2f}%. "
+            f"The UK is {above} the global average by {abs(diff):.2f}%."
+        )
+    else:
+        st.info(
+            f"'{top_skill}' is demanded in {n_countries} countries globally. "
+            f"The global average is {global_avg:.2f}%."
         )
 
-    st.markdown("### UK skill ranking vs global ranking (top 20 UK by share)")
-    # UK top 20 skills by share
-    uk_mask = base[col_country].str.upper().isin(["UNITED KINGDOM", "UK"]) | base[col_country].str.upper().str.contains(
-        "UNITED KINGDOM", na=False
+    st.markdown("### UK vs Global ranking (top 20 UK skills)")
+    uk_only = global_skills[
+        global_skills["Country"].astype(str).str.lower().str.contains("united kingdom")
+        | (global_skills["Country"].astype(str).str.strip().str.lower() == "uk")
+    ].copy()
+    uk_tot = len(uk_only)
+    if uk_tot == 0:
+        st.warning("No UK rows for ranking table.")
+    else:
+        uk_counts = uk_only.groupby("Skills").size().rename("uk_n").sort_values(ascending=False)
+        uk_top20 = uk_counts.head(20).reset_index()
+        uk_top20["UK Share %"] = (uk_top20["uk_n"] / uk_tot * 100).round(4)
+        uk_top20["UK Rank"] = uk_top20["UK Share %"].rank(method="min", ascending=False).astype(int)
+
+        glob_tot = len(global_skills)
+        glob_counts = global_skills.groupby("Skills").size()
+        glob_share_all = (glob_counts / glob_tot * 100).rename("Global Share %").reset_index()
+        glob_share_all["Global Rank"] = glob_share_all["Global Share %"].rank(method="min", ascending=False).astype(int)
+
+        comp = uk_top20.merge(glob_share_all, on="Skills", how="left")
+        comp["Trend"] = comp.apply(
+            lambda r: "↑ Ahead"
+            if pd.notna(r["Global Rank"]) and int(r["UK Rank"]) <= int(r["Global Rank"])
+            else "↓ Behind",
+            axis=1,
+        )
+        show_cols = ["Skills", "UK Share %", "UK Rank", "Global Share %", "Global Rank", "Trend"]
+        comp = comp.rename(columns={"Skills": "Skill"})[show_cols]
+
+        def _trend_style(row: pd.Series) -> list[str]:
+            t = row.get("Trend", "")
+            col = "#D1FAE5" if "Ahead" in str(t) else "#FEE2E2"
+            return [f"background-color: {col}"] * len(row)
+
+        st.dataframe(
+            comp.style.apply(_trend_style, axis=1),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    country_totals = global_skills.groupby("Country").size().sort_values(ascending=False)
+    top15c = country_totals.head(15).reset_index()
+    top15c.columns = ["Country", "rows"]
+    top15c["Highlight"] = top15c["Country"].apply(
+        lambda c: "UK" if "united kingdom" in str(c).lower() else "Other"
     )
-    uk_base = base[uk_mask].copy()
-    if uk_base.empty:
-        st.warning("Cannot compute UK top-20 shares (UK country rows not found).")
-        st.stop()
-
-    uk_tot = len(uk_base)
-    uk_skill_counts = uk_base.groupby(col_skill).size().rename("UK Skill Jobs").sort_values(ascending=False)
-    uk_top20 = uk_skill_counts.head(20).reset_index().rename(columns={col_skill: "Skill"})
-    uk_top20["UK Share %"] = (uk_top20["UK Skill Jobs"] / uk_tot) * 100.0
-    uk_top20["UK Rank"] = uk_top20["UK Share %"].rank(method="min", ascending=False).astype(int)
-
-    # Global ranks for those same skills
-    global_tot_by_country = totals  # from earlier (all countries)
-    global_tot = len(base)
-    global_skill_counts = base.groupby(col_skill).size().rename("Global Skill Jobs")
-    global_share_all = (global_skill_counts / global_tot * 100.0).rename("Global Share %").reset_index().rename(columns={col_skill: "Skill"})
-    global_share_all["Global Rank"] = global_share_all["Global Share %"].rank(method="min", ascending=False).astype(int)
-
-    comp = uk_top20.merge(global_share_all, on="Skill", how="left")
-    comp["Trend"] = comp.apply(
-        lambda r: "↑" if (pd.notna(r["Global Rank"]) and int(r["UK Rank"]) < int(r["Global Rank"])) else "↓",
-        axis=1,
+    fig_top = px.bar(
+        top15c.sort_values("rows", ascending=True),
+        x="rows",
+        y="Country",
+        orientation="h",
+        color="Highlight",
+        color_discrete_map={"UK": COLOURS["red"], "Other": COLOURS["teal"]},
+        title="Top 15 Countries by Gaming Job Listings",
     )
-    comp_view = comp[["Skill", "UK Share %", "UK Rank", "Global Share %", "Global Rank", "Trend"]].copy()
-    st.dataframe(comp_view, use_container_width=True, hide_index=True)
+    _plotly_show(fig_top)
 
     st.markdown(
         """
 <div class="callout">
-<b>What this means for SideFest</b><br/>
-This comparison highlights where the UK’s demand is disproportionately high (or low) versus the global baseline.
-SideFest can prioritise interventions where the UK’s rank suggests a relative shortage or strategic capability gap.
+Skills where UK ranks above the global average are strong assets for UK young people — these skills make them globally competitive.
+Skills where UK ranks below the global average represent future opportunities the UK gaming industry has not yet fully developed.
 </div>
 """,
         unsafe_allow_html=True,
     )
 
+st.markdown("---")
+st.markdown(
+    "<div style='text-align:center;color:#9CA3AF;font-size:12px;'>"
+    "University of Leicester | AI for Business Intelligence | Kabilan | 2025 | "
+    "Data source: UK Gaming Job Listings Jul–Oct 2025"
+    "</div>",
+    unsafe_allow_html=True,
+)
