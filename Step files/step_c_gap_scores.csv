@@ -1,0 +1,521 @@
+UK Region,Skills,Cluster_Name,Demand,Supply,Gap_Score
+England,communication,Soft Skills & Business Development,527,0.1759,10.0
+England,team-management,Project & Development Management,318,0.1778,7.9947
+England,talent-acquisition,Soft Skills & Business Development,294,0.1729,7.7671
+England,cross-functional,Soft Skills & Business Development,158,0.1758,6.4613
+England,python,Soft Skills & Business Development,127,0.1774,6.1632
+England,quality-control,Game Development & Programming,123,0.1874,6.1198
+England,storytelling,Soft Skills & Creative Production,118,0.1855,6.0728
+England,problem-solving,Soft Skills & Creative Production,115,0.1679,6.053
+England,excel,Game Development & Programming,113,0.1692,6.0331
+England,unity,Game Development & Programming,110,0.167,6.0054
+England,unreal,Soft Skills & Business Development,110,0.1757,6.001
+England,cpp,Game Development & Programming,107,0.1631,5.9787
+England,budget-management,Project & Development Management,102,0.1849,5.9197
+England,agile-development,Project & Development Management,98,0.1478,5.9001
+England,maya,Game Development & Programming,85,0.1866,5.7558
+England,real-time-vfx,Soft Skills & Business Development,84,0.1866,5.7462
+England,ms-office,Business Tools & Productivity,82,0.1738,5.7335
+England,timeline-management,Project & Development Management,74,0.1777,5.6548
+England,c#,Game Development & Programming,68,0.1506,5.6109
+England,sql,Game Development & Programming,68,0.1681,5.6021
+England,data-analytics,Soft Skills & Business Development,68,0.1681,5.6021
+England,team-player,Game Development & Programming,65,0.1793,5.5677
+England,user-experience-ux,Soft Skills & Business Development,60,0.1719,5.5235
+England,jira,Game Development & Programming,60,0.182,5.5184
+England,forecasting-budgeting,Soft Skills & Creative Production,59,0.1893,5.5051
+England,prototyping,Soft Skills & Creative Production,58,0.1781,5.5011
+England,saas-business-models,"Cloud, Infrastructure & DevOps",58,0.1893,5.4955
+England,photoshop,Game Development & Programming,56,0.1707,5.4857
+England,github,Game Development & Programming,54,0.1601,5.4719
+England,monday,Game Development & Programming,51,0.1807,5.4327
+England,lighting-shading,Soft Skills & Creative Production,51,0.1893,5.4284
+England,ci-cd,Game Development & Programming,48,0.1535,5.4177
+England,rendering,Soft Skills & Creative Production,49,0.1804,5.4137
+England,aws,"Cloud, Infrastructure & DevOps",48,0.1719,5.4084
+England,oops,"Cloud, Infrastructure & DevOps",47,0.1893,5.39
+England,houdini,Business Tools & Productivity,46,0.1893,5.3805
+England,market-research,Game Development & Programming,44,0.1748,5.3686
+England,linux,Game Development & Programming,43,0.1792,5.3568
+England,git,Business Tools & Productivity,41,0.1604,5.3471
+England,composition,Soft Skills & Business Development,39,0.1782,5.3189
+England,azure,Soft Skills & Business Development,38,0.1677,5.3146
+England,risk-management,Project & Development Management,38,0.1835,5.3067
+England,machine-learning,Soft Skills & Creative Production,38,0.1893,5.3037
+England,multiplayer,Game Development & Programming,35,0.1714,5.284
+England,accounting,Soft Skills & Creative Production,35,0.177,5.2811
+England,account-management,Project & Development Management,35,0.1893,5.275
+England,blender,Game Development & Programming,34,0.1767,5.2717
+England,microsoft-office,Business Tools & Productivity,33,0.1595,5.2708
+England,nuke,"Cloud, Infrastructure & DevOps",33,0.1893,5.2558
+England,networking,Soft Skills & Creative Production,32,0.176,5.2529
+England,character-design,Game Development & Programming,32,0.1824,5.2496
+England,revenue-growth,Soft Skills & Business Development,31,0.1893,5.2366
+England,performance-analysis,"Cloud, Infrastructure & DevOps",30,0.1893,5.227
+England,artistic-vision,Soft Skills & Business Development,29,0.1893,5.2174
+England,power-bi,Game Development & Programming,28,0.1742,5.2154
+England,concept-art,Soft Skills & Business Development,28,0.1815,5.2118
+England,rigging,Soft Skills & Creative Production,27,0.1812,5.2023
+England,kubernetes,"Cloud, Infrastructure & DevOps",27,0.1812,5.2023
+England,level-design,Project & Development Management,27,0.1812,5.2023
+England,salesforce,Soft Skills & Business Development,27,0.1893,5.1982
+England,docker,Game Development & Programming,26,0.1731,5.1968
+England,microsoft-excel,Business Tools & Productivity,26,0.1809,5.1929
+England,java,Game Development & Programming,24,0.144,5.1923
+England,data-science,Soft Skills & Business Development,25,0.1893,5.1791
+Scotland,communication,Soft Skills & Business Development,23,0.1516,5.1789
+England,tableau,Game Development & Programming,23,0.1557,5.1768
+England,confluence,Soft Skills & Business Development,24,0.1802,5.174
+England,cross-functional-collaboration,Soft Skills & Business Development,24,0.1893,5.1695
+England,perforce,Soft Skills & Business Development,23,0.1798,5.1646
+England,graphics-design,Project & Development Management,21,0.1457,5.1627
+England,user-interface,Game Development & Programming,22,0.1704,5.1598
+England,texturing,Soft Skills & Creative Production,22,0.1794,5.1553
+England,javascript,Business Tools & Productivity,20,0.1516,5.1501
+England,zbrush,Game Development & Programming,21,0.179,5.1459
+England,jenkins,Business Tools & Productivity,20,0.1687,5.1415
+England,oracle,Game Development & Programming,21,0.1893,5.1407
+England,blueprints,"Cloud, Infrastructure & DevOps",21,0.1893,5.1407
+England,design-patterns,Project & Development Management,16,0.1078,5.1338
+England,react,Soft Skills & Business Development,18,0.1481,5.1327
+England,lighthouse,Game Development & Programming,20,0.1893,5.1311
+England,terraform,Game Development & Programming,18,0.1569,5.1282
+England,figma,Game Development & Programming,18,0.1569,5.1282
+England,financial-data-analysis,"Cloud, Infrastructure & DevOps",19,0.1893,5.1215
+England,motion-graphics,Soft Skills & Business Development,16,0.144,5.1156
+England,shotgrid,Game Development & Programming,18,0.1893,5.1119
+England,motion-capture,Soft Skills & Business Development,17,0.1767,5.1087
+England,css,"Cloud, Infrastructure & DevOps",16,0.1641,5.1054
+England,3ds-max,Game Development & Programming,17,0.1893,5.1023
+England,data-structures,Soft Skills & Business Development,16,0.176,5.0995
+England,sound-editing,Soft Skills & Creative Production,16,0.176,5.0995
+Scotland,talent-acquisition,Soft Skills & Business Development,20,0.2528,5.0991
+England,front-end,Game Development & Programming,14,0.139,5.0989
+Scotland,team-management,Project & Development Management,15,0.1686,5.0936
+England,looker,Game Development & Programming,16,0.1893,5.0927
+England,lqa,Game Development & Programming,16,0.1893,5.0927
+England,prospecting,Soft Skills & Creative Production,16,0.1893,5.0927
+England,mongodb,Game Development & Programming,12,0.1138,5.0924
+England,strategic-financial-management,Project & Development Management,15,0.1751,5.0903
+England,mean,Game Development & Programming,14,0.161,5.0878
+England,lead-generation,Soft Skills & Business Development,15,0.1893,5.0832
+England,computer-vision,Soft Skills & Business Development,13,0.1591,5.0792
+England,html,Business Tools & Productivity,12,0.144,5.0772
+England,node.js,"Cloud, Infrastructure & DevOps",12,0.144,5.0772
+England,nosql,"Cloud, Infrastructure & DevOps",11,0.1289,5.0752
+England,visual-storytelling,Soft Skills & Creative Production,14,0.1893,5.0736
+England,powershell,Game Development & Programming,14,0.1893,5.0736
+England,algorithms,"Cloud, Infrastructure & DevOps",14,0.1893,5.0736
+England,testing,Soft Skills & Creative Production,14,0.1893,5.0736
+England,test-coverage,Game Development & Programming,14,0.1893,5.0736
+England,leadership,Game Development & Programming,14,0.1893,5.0736
+England,live-operations,Soft Skills & Business Development,14,0.1893,5.0736
+England,incident-response,Game Development & Programming,14,0.1893,5.0736
+England,3d-animation,Soft Skills & Business Development,14,0.1893,5.0736
+England,mysql,Game Development & Programming,8,0.0923,5.065
+England,ftrack,Business Tools & Productivity,13,0.1893,5.064
+England,resource-allocation,Soft Skills & Business Development,13,0.1893,5.064
+England,resource-planning,Soft Skills & Creative Production,13,0.1893,5.064
+England,content-strategy,Project & Development Management,13,0.1893,5.064
+England,business-analysis,"Cloud, Infrastructure & DevOps",13,0.1893,5.064
+England,typescript,Business Tools & Productivity,11,0.1545,5.0624
+England,back-end,Game Development & Programming,9,0.1196,5.0607
+England,creature,Soft Skills & Business Development,12,0.1893,5.0544
+England,construct,Business Tools & Productivity,12,0.1893,5.0544
+England,automated-testing,Soft Skills & Creative Production,12,0.1893,5.0544
+England,hlsl,Business Tools & Productivity,11,0.1704,5.0543
+England,kotlin,Game Development & Programming,9,0.1327,5.0542
+England,3d-math,Game Development & Programming,9,0.1327,5.0542
+England,microservices,Business Tools & Productivity,7,0.095,5.054
+England,3d-modeling,Soft Skills & Creative Production,8,0.1275,5.0472
+England,graphql,Game Development & Programming,9,0.1481,5.0464
+England,visual-development,Project & Development Management,11,0.1893,5.0448
+England,adobe-creative-suite,Soft Skills & Business Development,11,0.1893,5.0448
+England,business-planning,Soft Skills & Creative Production,11,0.1893,5.0448
+England,shell,Game Development & Programming,11,0.1893,5.0448
+England,substance-painter,Game Development & Programming,11,0.1893,5.0448
+England,spark,Game Development & Programming,11,0.1893,5.0448
+England,grafana,Game Development & Programming,11,0.1893,5.0448
+Scotland,quality-control,Game Development & Programming,1,0.0,5.0444
+England,xml,Game Development & Programming,8,0.144,5.0389
+England,anatomy,Game Development & Programming,9,0.1666,5.037
+Scotland,maya,Game Development & Programming,1,0.0164,5.0361
+Scotland,real-time-vfx,Soft Skills & Business Development,1,0.017,5.0358
+Northern Ireland,team-management,Project & Development Management,1,0.017,5.0358
+England,ansible,Business Tools & Productivity,10,0.1893,5.0352
+England,alphabeta-testing,Soft Skills & Creative Production,10,0.1893,5.0352
+England,lua,Game Development & Programming,10,0.1893,5.0352
+England,particle-systems,Game Development & Programming,10,0.1893,5.0352
+England,macos,"Cloud, Infrastructure & DevOps",10,0.1893,5.0352
+England,adobe-premiere,Soft Skills & Business Development,6,0.1138,5.0349
+England,postgresql,Game Development & Programming,4,0.0761,5.0348
+England,django,Business Tools & Productivity,1,0.0195,5.0345
+Scotland,storytelling,Soft Skills & Creative Production,2,0.0395,5.034
+England,multithreading,Soft Skills & Creative Production,3,0.0599,5.0333
+Wales,team-management,Project & Development Management,1,0.0229,5.0328
+England,bash,Game Development & Programming,7,0.139,5.0318
+Wales,talent-acquisition,Soft Skills & Business Development,1,0.0263,5.0311
+England,github-actions,Soft Skills & Business Development,8,0.1641,5.0287
+England,pro-tools,"Cloud, Infrastructure & DevOps",8,0.1641,5.0287
+Scotland,cross-functional,Soft Skills & Business Development,6,0.127,5.0283
+Wales,communication,Soft Skills & Business Development,3,0.0705,5.028
+England,davinci-resolve,Soft Skills & Business Development,4,0.0923,5.0266
+England,system-design,Project & Development Management,9,0.1893,5.0256
+England,mel,Game Development & Programming,9,0.1893,5.0256
+England,trello,Game Development & Programming,9,0.1893,5.0256
+England,video-editing,Soft Skills & Creative Production,9,0.1893,5.0256
+England,teamcity,Game Development & Programming,9,0.1893,5.0256
+England,unix,Game Development & Programming,9,0.1893,5.0256
+England,google-sheets,Game Development & Programming,9,0.1893,5.0256
+England,gitlab,Game Development & Programming,9,0.1893,5.0256
+England,data-visualization,Soft Skills & Business Development,9,0.1893,5.0256
+England,motion-builder,Soft Skills & Business Development,9,0.1893,5.0256
+England,linear-algebra,Game Development & Programming,9,0.1893,5.0256
+England,seo,Game Development & Programming,6,0.1327,5.0254
+Scotland,python,Soft Skills & Business Development,4,0.1001,5.0227
+England,internal-audit,Game Development & Programming,5,0.1246,5.0199
+Scotland,monday,Game Development & Programming,1,0.0496,5.0193
+England,kanban,Business Tools & Productivity,8,0.1893,5.016
+England,windows-server,Game Development & Programming,8,0.1893,5.016
+England,slack,Game Development & Programming,8,0.1893,5.016
+England,retention-strategies,Soft Skills & Business Development,8,0.1893,5.016
+England,adobe-after-effects,Game Development & Programming,8,0.1893,5.016
+England,-sap,Game Development & Programming,8,0.1893,5.016
+England,rabbitmq,Game Development & Programming,4,0.1138,5.0157
+England,perl,Game Development & Programming,2,0.0761,5.0156
+England,software-development-lifecycle-sdlc,Project & Development Management,2,0.0761,5.0156
+Northern Ireland,talent-acquisition,Soft Skills & Business Development,2,0.0771,5.0151
+Scotland,market-research,Game Development & Programming,1,0.0607,5.0138
+England,elasticsearch,Soft Skills & Business Development,3,0.0987,5.0137
+England,miro-,Game Development & Programming,6,0.1569,5.0132
+England,php,Game Development & Programming,6,0.1569,5.0132
+Scotland,sql,Game Development & Programming,2,0.0855,5.0109
+Northern Ireland,communication,Soft Skills & Business Development,7,0.1891,5.0065
+England,wwise,"Cloud, Infrastructure & DevOps",7,0.1893,5.0064
+England,business-intelligence,Project & Development Management,7,0.1893,5.0064
+England,influencer-marketing,Soft Skills & Creative Production,7,0.1893,5.0064
+England,hr-operations,Soft Skills & Business Development,7,0.1893,5.0064
+England,logo-development,Project & Development Management,7,0.1893,5.0064
+England,dns,Business Tools & Productivity,7,0.1893,5.0064
+England,prometheus,Game Development & Programming,7,0.1893,5.0064
+England,bug-tracking,Soft Skills & Creative Production,7,0.1893,5.0064
+England,risk-assessment,Project & Development Management,7,0.1893,5.0064
+England,angular,Game Development & Programming,5,0.1516,5.0063
+England,sass,"Cloud, Infrastructure & DevOps",1,0.0761,5.006
+England,cryptography,Game Development & Programming,1,0.0761,5.006
+England,jwt,Business Tools & Productivity,1,0.0761,5.006
+England,oauth,Game Development & Programming,1,0.0761,5.006
+Scotland,risk-management,Project & Development Management,1,0.0807,5.0036
+Wales,cross-functional,Soft Skills & Business Development,1,0.0824,5.0028
+England,direct-x,Game Development & Programming,4,0.144,5.0005
+England,swift,Business Tools & Productivity,4,0.144,5.0005
+England,webpack,Game Development & Programming,4,0.144,5.0005
+Scotland,jira,Game Development & Programming,2,0.1111,4.9979
+England,microsoft-azure,Business Tools & Productivity,6,0.1893,4.9968
+England,event-management,Project & Development Management,6,0.1893,4.9968
+England,growth-strategies,Soft Skills & Creative Production,6,0.1893,4.9968
+England,rust,Business Tools & Productivity,6,0.1893,4.9968
+England,cold-calling,Soft Skills & Creative Production,6,0.1893,4.9968
+England,mathematical,Soft Skills & Business Development,6,0.1893,4.9968
+England,usability-testing,Soft Skills & Creative Production,6,0.1893,4.9968
+England,user-testing,Soft Skills & Creative Production,6,0.1893,4.9968
+England,code-architecture,Soft Skills & Business Development,6,0.1893,4.9968
+England,redis,"Cloud, Infrastructure & DevOps",6,0.1893,4.9968
+Scotland,prototyping,Soft Skills & Creative Production,2,0.1136,4.9967
+England,shader-development,Project & Development Management,3,0.1327,4.9966
+England,reaper,Soft Skills & Business Development,3,0.1327,4.9966
+England,vue.js,"Cloud, Infrastructure & DevOps",3,0.1327,4.9966
+England,flask,Game Development & Programming,3,0.1327,4.9966
+England,laravel,Game Development & Programming,2,0.1138,4.9965
+England,adobe-photoshop,Game Development & Programming,2,0.1138,4.9965
+Northern Ireland,python,Soft Skills & Business Development,1,0.098,4.995
+Scotland,problem-solving,Soft Skills & Creative Production,7,0.2162,4.9929
+Scotland,character-design,Game Development & Programming,1,0.1022,4.9928
+Scotland,unreal,Soft Skills & Business Development,6,0.1985,4.9922
+Scotland,ci-cd,Game Development & Programming,2,0.1241,4.9913
+Scotland,data-analytics,Soft Skills & Business Development,3,0.1467,4.9896
+England,autodesk,Game Development & Programming,5,0.1893,4.9873
+England,autodesk-maya,Game Development & Programming,5,0.1893,4.9873
+England,gradle,Game Development & Programming,5,0.1893,4.9873
+England,game-development-lifecycle,Project & Development Management,5,0.1893,4.9873
+England,hris-human-resource-information-systems,Soft Skills & Business Development,5,0.1893,4.9873
+England,creative-writing,Soft Skills & Creative Production,5,0.1893,4.9873
+England,dhcp,Game Development & Programming,5,0.1893,4.9873
+England,business-strategy,Soft Skills & Creative Production,5,0.1893,4.9873
+England,pytorch,Soft Skills & Business Development,5,0.1893,4.9873
+England,product-vision,Soft Skills & Business Development,5,0.1893,4.9873
+England,pandas,Business Tools & Productivity,5,0.1893,4.9873
+England,bitbucket,Game Development & Programming,5,0.1893,4.9873
+Northern Ireland,unreal,Soft Skills & Business Development,1,0.1176,4.9851
+Scotland,aws,"Cloud, Infrastructure & DevOps",2,0.1396,4.9835
+Scotland,rendering,Soft Skills & Creative Production,2,0.1431,4.9818
+Scotland,level-design,Project & Development Management,1,0.127,4.9803
+Scotland,rigging,Soft Skills & Creative Production,1,0.127,4.9803
+Scotland,team-player,Game Development & Programming,3,0.1656,4.98
+Wales,agile-development,Project & Development Management,1,0.1302,4.9787
+England,material-design,Project & Development Management,4,0.1893,4.9777
+England,3d-studio-max,Game Development & Programming,4,0.1893,4.9777
+England,reinforcement-learning,Project & Development Management,4,0.1893,4.9777
+England,json,Soft Skills & Business Development,4,0.1893,4.9777
+England,data-entry,Soft Skills & Business Development,4,0.1893,4.9777
+England,microsoft-teams,Business Tools & Productivity,4,0.1893,4.9777
+England,environmental-design,Project & Development Management,4,0.1893,4.9777
+England,lumberyard,Game Development & Programming,4,0.1893,4.9777
+England,deep-learning,Soft Skills & Creative Production,4,0.1893,4.9777
+England,invision,Soft Skills & Business Development,4,0.1893,4.9777
+England,domo,Game Development & Programming,4,0.1893,4.9777
+England,environment-design,Project & Development Management,4,0.1893,4.9777
+England,azure-devops,Game Development & Programming,4,0.1893,4.9777
+England,vulkan,Business Tools & Productivity,4,0.1893,4.9777
+England,svn,Game Development & Programming,4,0.1893,4.9777
+England,splunk,Game Development & Programming,4,0.1893,4.9777
+England,vmware,Game Development & Programming,4,0.1893,4.9777
+England,color-theory,Game Development & Programming,4,0.1893,4.9777
+England,public-speaking,Soft Skills & Creative Production,4,0.1893,4.9777
+England,concept-development,Project & Development Management,4,0.1893,4.9777
+England,task-prioritization,Soft Skills & Business Development,4,0.1893,4.9777
+Scotland,microsoft-excel,Business Tools & Productivity,1,0.1331,4.9772
+Scotland,user-experience-ux,Soft Skills & Business Development,3,0.175,4.9753
+Scotland,timeline-management,Project & Development Management,4,0.1985,4.973
+Scotland,confluence,Soft Skills & Business Development,1,0.1467,4.9704
+England,google-cloud-platform,Soft Skills & Business Development,3,0.1893,4.9681
+England,google-analytics,Soft Skills & Business Development,3,0.1893,4.9681
+England,lighting-techniques,Soft Skills & Creative Production,3,0.1893,4.9681
+England,canva,Game Development & Programming,3,0.1893,4.9681
+England,cinema-4d,Game Development & Programming,3,0.1893,4.9681
+England,2d-animation,Soft Skills & Business Development,3,0.1893,4.9681
+England,2d-art,Game Development & Programming,3,0.1893,4.9681
+England,test-suites,"Cloud, Infrastructure & DevOps",3,0.1893,4.9681
+England,threat-intelligence,Project & Development Management,3,0.1893,4.9681
+England,risk-mitigation,Soft Skills & Business Development,3,0.1893,4.9681
+England,ruby,Game Development & Programming,3,0.1893,4.9681
+England,c-make,Game Development & Programming,3,0.1893,4.9681
+England,cuda,Game Development & Programming,3,0.1893,4.9681
+England,new-relic,"Cloud, Infrastructure & DevOps",3,0.1893,4.9681
+England,material-creation,Soft Skills & Business Development,3,0.1893,4.9681
+England,ios-development,Project & Development Management,3,0.1893,4.9681
+England,android-studio,Game Development & Programming,3,0.1893,4.9681
+England,chef,Game Development & Programming,3,0.1893,4.9681
+England,proofreading,Soft Skills & Creative Production,3,0.1893,4.9681
+Scotland,user-interface,Game Development & Programming,1,0.1544,4.9665
+Scotland,perforce,Soft Skills & Business Development,1,0.1544,4.9665
+Scotland,texturing,Soft Skills & Creative Production,1,0.1627,4.9623
+Scotland,composition,Soft Skills & Business Development,2,0.187,4.9596
+England,functional-testing,Soft Skills & Creative Production,2,0.1893,4.9585
+England,havok,Business Tools & Productivity,2,0.1893,4.9585
+England,helm,Business Tools & Productivity,2,0.1893,4.9585
+England,hansoft,Business Tools & Productivity,2,0.1893,4.9585
+England,jquery,Game Development & Programming,2,0.1893,4.9585
+England,growth-strategy,Soft Skills & Creative Production,2,0.1893,4.9585
+England,gulp,Game Development & Programming,2,0.1893,4.9585
+England,appium,Game Development & Programming,2,0.1893,4.9585
+England,asp.net,Game Development & Programming,2,0.1893,4.9585
+England,airtable,Game Development & Programming,2,0.1893,4.9585
+England,fastapi,Game Development & Programming,2,0.1893,4.9585
+England,dynamic-effects,Game Development & Programming,2,0.1893,4.9585
+England,contract-negotiation,Soft Skills & Business Development,2,0.1893,4.9585
+England,model-serving,Soft Skills & Creative Production,2,0.1893,4.9585
+England,marketing-automation,Soft Skills & Creative Production,2,0.1893,4.9585
+England,negotiation,Soft Skills & Business Development,2,0.1893,4.9585
+England,noesis,"Cloud, Infrastructure & DevOps",2,0.1893,4.9585
+England,numpy,"Cloud, Infrastructure & DevOps",2,0.1893,4.9585
+England,matplotlib,Game Development & Programming,2,0.1893,4.9585
+England,marvel,Game Development & Programming,2,0.1893,4.9585
+England,android-sdk,Game Development & Programming,2,0.1893,4.9585
+England,asana,Business Tools & Productivity,2,0.1893,4.9585
+England,art-pipeline,Game Development & Programming,2,0.1893,4.9585
+England,product-launch,Game Development & Programming,2,0.1893,4.9585
+England,puppet,Game Development & Programming,2,0.1893,4.9585
+England,react-native,Soft Skills & Business Development,2,0.1893,4.9585
+England,compliance-reporting,Soft Skills & Creative Production,2,0.1893,4.9585
+England,circleci,Game Development & Programming,2,0.1893,4.9585
+England,spring-boot,Soft Skills & Creative Production,2,0.1893,4.9585
+England,renderdoc,Soft Skills & Business Development,2,0.1893,4.9585
+England,service-mesh,Game Development & Programming,2,0.1893,4.9585
+England,scikit-learn,Game Development & Programming,2,0.1893,4.9585
+England,platform-certification,Soft Skills & Business Development,2,0.1893,4.9585
+England,cloud-security,Game Development & Programming,2,0.1893,4.9585
+England,clickup,Game Development & Programming,2,0.1893,4.9585
+England,tensorflow,Business Tools & Productivity,2,0.1893,4.9585
+England,visual-studio,"Cloud, Infrastructure & DevOps",2,0.1893,4.9585
+England,web-api,Game Development & Programming,2,0.1893,4.9585
+England,web-security,Game Development & Programming,2,0.1893,4.9585
+England,swing,Soft Skills & Creative Production,2,0.1893,4.9585
+England,wireframing,Soft Skills & Creative Production,2,0.1893,4.9585
+England,visual-effects-vfx,Game Development & Programming,2,0.1893,4.9585
+England,uv-mapping,Soft Skills & Creative Production,2,0.1893,4.9585
+England,adobe-xd,Game Development & Programming,2,0.1893,4.9585
+Scotland,zbrush,Game Development & Programming,1,0.1718,4.9577
+Scotland,excel,Game Development & Programming,11,0.3705,4.9534
+Scotland,ms-office,Business Tools & Productivity,6,0.2762,4.953
+Northern Ireland,c#,Game Development & Programming,1,0.1836,4.9518
+England,affiliate-marketing,Soft Skills & Creative Production,1,0.1893,4.9489
+England,budget-adherence,Soft Skills & Business Development,1,0.1893,4.9489
+England,testrail,Game Development & Programming,1,0.1893,4.9489
+England,regression-testing,Soft Skills & Creative Production,1,0.1893,4.9489
+England,firebase,Game Development & Programming,1,0.1893,4.9489
+England,digital-painting,Soft Skills & Creative Production,1,0.1893,4.9489
+England,color-grading,Soft Skills & Creative Production,1,0.1893,4.9489
+England,steamworks,Game Development & Programming,1,0.1893,4.9489
+England,bloomberg,Game Development & Programming,1,0.1893,4.9489
+England,scala,Game Development & Programming,1,0.1893,4.9489
+England,playwright,Business Tools & Productivity,1,0.1893,4.9489
+England,opencv,Project & Development Management,1,0.1893,4.9489
+England,digital-matte-painting,Soft Skills & Creative Production,1,0.1893,4.9489
+England,oracle-database,Soft Skills & Business Development,1,0.1893,4.9489
+England,open-cv,Project & Development Management,1,0.1893,4.9489
+England,open-gl,Project & Development Management,1,0.1893,4.9489
+England,kibana,Business Tools & Productivity,1,0.1893,4.9489
+England,cost-management,Project & Development Management,1,0.1893,4.9489
+England,junit,Business Tools & Productivity,1,0.1893,4.9489
+England,employer-branding,Game Development & Programming,1,0.1893,4.9489
+England,digital-sculpting,Soft Skills & Creative Production,1,0.1893,4.9489
+England,cypress,Soft Skills & Business Development,1,0.1893,4.9489
+England,cad-computer-aided-design,Game Development & Programming,1,0.1893,4.9489
+England,principle,Game Development & Programming,1,0.1893,4.9489
+England,redmine,Soft Skills & Business Development,1,0.1893,4.9489
+England,candidate-sourcing,Soft Skills & Creative Production,1,0.1893,4.9489
+England,websockets,Game Development & Programming,1,0.1893,4.9489
+England,spine,Game Development & Programming,1,0.1893,4.9489
+England,script-writing,Soft Skills & Creative Production,1,0.1893,4.9489
+England,toon-boom-harmony,Business Tools & Productivity,1,0.1893,4.9489
+England,manual-testing,Soft Skills & Creative Production,1,0.1893,4.9489
+England,npm,"Cloud, Infrastructure & DevOps",1,0.1893,4.9489
+England,nginx,"Cloud, Infrastructure & DevOps",1,0.1893,4.9489
+England,legal-compliance,Game Development & Programming,1,0.1893,4.9489
+England,visual-consistency,"Cloud, Infrastructure & DevOps",1,0.1893,4.9489
+Scotland,accounting,Soft Skills & Creative Production,2,0.2113,4.9474
+Scotland,blender,Game Development & Programming,2,0.2182,4.9439
+Scotland,unity,Game Development & Programming,12,0.4148,4.9406
+Scotland,photoshop,Game Development & Programming,4,0.2642,4.9399
+Scotland,motion-capture,Soft Skills & Business Development,1,0.2182,4.9343
+Scotland,css,"Cloud, Infrastructure & DevOps",1,0.2182,4.9343
+Northern Ireland,problem-solving,Soft Skills & Creative Production,2,0.2479,4.9289
+Wales,sql,Game Development & Programming,1,0.2306,4.928
+Scotland,sound-editing,Soft Skills & Creative Production,1,0.2332,4.9268
+Scotland,data-structures,Soft Skills & Business Development,1,0.2332,4.9268
+Northern Ireland,user-experience-ux,Soft Skills & Business Development,1,0.2413,4.9227
+Wales,python,Soft Skills & Business Development,2,0.2626,4.9215
+Scotland,cpp,Game Development & Programming,14,0.4945,4.9196
+Northern Ireland,cross-functional,Soft Skills & Business Development,3,0.286,4.9193
+Scotland,power-bi,Game Development & Programming,2,0.2692,4.9182
+Scotland,strategic-financial-management,Project & Development Management,1,0.2501,4.9182
+Scotland,github,Game Development & Programming,5,0.3334,4.9145
+Northern Ireland,prototyping,Soft Skills & Creative Production,1,0.2595,4.9135
+Northern Ireland,photoshop,Game Development & Programming,1,0.2595,4.9135
+Wales,user-experience-ux,Soft Skills & Business Development,1,0.2718,4.9073
+Scotland,tableau,Game Development & Programming,2,0.3032,4.901
+Scotland,multiplayer,Game Development & Programming,3,0.3256,4.8993
+Northern Ireland,budget-management,Project & Development Management,2,0.3109,4.8972
+Scotland,git,Business Tools & Productivity,4,0.3539,4.8946
+Northern Ireland,monday,Game Development & Programming,1,0.3043,4.8909
+Scotland,back-end,Game Development & Programming,1,0.3163,4.8848
+Scotland,typescript,Business Tools & Productivity,1,0.3163,4.8848
+Scotland,agile-development,Project & Development Management,18,0.652,4.8785
+Scotland,hlsl,Business Tools & Productivity,1,0.3458,4.87
+Scotland,react,Soft Skills & Business Development,2,0.3806,4.862
+Northern Ireland,agile-development,Project & Development Management,3,0.4152,4.8541
+Scotland,figma,Game Development & Programming,2,0.4005,4.852
+Scotland,c#,Game Development & Programming,11,0.5792,4.8481
+Wales,problem-solving,Soft Skills & Creative Production,3,0.4371,4.843
+Scotland,anatomy,Game Development & Programming,1,0.4223,4.8313
+Wales,c#,Game Development & Programming,2,0.4526,4.8257
+Scotland,mongodb,Game Development & Programming,2,0.4734,4.8152
+Scotland,front-end,Game Development & Programming,2,0.4734,4.8152
+Scotland,pro-tools,"Cloud, Infrastructure & DevOps",1,0.4734,4.8056
+Scotland,microsoft-office,Business Tools & Productivity,5,0.5674,4.7965
+Scotland,javascript,Business Tools & Productivity,3,0.5372,4.7926
+Scotland,mean,Game Development & Programming,2,0.5372,4.783
+Scotland,nosql,"Cloud, Infrastructure & DevOps",2,0.5755,4.7637
+Scotland,computer-vision,Soft Skills & Business Development,2,0.5755,4.7637
+Scotland,html,Business Tools & Productivity,2,0.5755,4.7637
+Scotland,node.js,"Cloud, Infrastructure & DevOps",2,0.5755,4.7637
+Northern Ireland,concept-art,Soft Skills & Business Development,1,0.5868,4.7484
+Scotland,mysql,Game Development & Programming,2,0.6192,4.7416
+Scotland,graphics-design,Project & Development Management,4,0.6697,4.7353
+Scotland,motion-graphics,Soft Skills & Business Development,3,0.652,4.7347
+Scotland,miro-,Game Development & Programming,1,0.6192,4.732
+Scotland,php,Game Development & Programming,1,0.6192,4.732
+Wales,java,Game Development & Programming,1,0.6321,4.7255
+Northern Ireland,graphics-design,Project & Development Management,1,0.6588,4.7121
+Wales,kubernetes,"Cloud, Infrastructure & DevOps",1,0.6799,4.7014
+Northern Ireland,market-research,Game Development & Programming,2,0.7328,4.6843
+Wales,aws,"Cloud, Infrastructure & DevOps",2,0.735,4.6832
+Scotland,3d-modeling,Soft Skills & Creative Production,2,0.7982,4.6513
+Scotland,graphql,Game Development & Programming,2,0.7982,4.6513
+Wales,git,Business Tools & Productivity,2,0.8172,4.6418
+Wales,javascript,Business Tools & Productivity,1,0.7994,4.6411
+Wales,user-interface,Game Development & Programming,1,0.7994,4.6411
+Scotland,design-patterns,Project & Development Management,5,0.8817,4.638
+Northern Ireland,figma,Game Development & Programming,1,0.8245,4.6285
+Wales,linux,Game Development & Programming,2,0.8551,4.6226
+Scotland,xml,Game Development & Programming,2,0.8817,4.6092
+Northern Ireland,motion-graphics,Soft Skills & Business Development,1,0.8675,4.6068
+Northern Ireland,data-analytics,Soft Skills & Business Development,4,0.9278,4.6051
+Northern Ireland,sql,Game Development & Programming,4,0.9278,4.6051
+Scotland,swift,Business Tools & Productivity,1,0.8817,4.5996
+Scotland,direct-x,Game Development & Programming,1,0.8817,4.5996
+Wales,github,Game Development & Programming,3,0.9343,4.5923
+Wales,terraform,Game Development & Programming,1,0.9189,4.5809
+Wales,ci-cd,Game Development & Programming,3,1.0195,4.5493
+Scotland,3d-math,Game Development & Programming,3,1.1114,4.5029
+Wales,css,"Cloud, Infrastructure & DevOps",1,1.0782,4.5005
+Scotland,seo,Game Development & Programming,2,1.1114,4.4933
+Scotland,postgresql,Game Development & Programming,2,1.1114,4.4933
+Scotland,reaper,Soft Skills & Business Development,1,1.1114,4.4837
+Scotland,shader-development,Project & Development Management,1,1.1114,4.4837
+Scotland,software-development-lifecycle-sdlc,Project & Development Management,1,1.1114,4.4837
+Wales,networking,Soft Skills & Creative Production,2,1.1438,4.477
+Northern Ireland,ci-cd,Game Development & Programming,4,1.2325,4.4514
+Northern Ireland,tableau,Game Development & Programming,2,1.3031,4.3967
+Wales,html,Business Tools & Productivity,1,1.3012,4.388
+Wales,node.js,"Cloud, Infrastructure & DevOps",1,1.3012,4.388
+Wales,docker,Game Development & Programming,2,1.3968,4.3494
+Scotland,adobe-premiere,Soft Skills & Business Development,3,1.4942,4.3098
+Scotland,laravel,Game Development & Programming,1,1.4942,4.2906
+Wales,typescript,Business Tools & Productivity,1,1.5071,4.2841
+Northern Ireland,jenkins,Business Tools & Productivity,2,1.6076,4.243
+Northern Ireland,3d-modeling,Soft Skills & Creative Production,1,1.6076,4.2334
+Wales,kotlin,Game Development & Programming,1,1.6358,4.2192
+Northern Ireland,terraform,Game Development & Programming,2,1.686,4.2035
+Wales,react,Soft Skills & Business Development,2,1.7879,4.1521
+Wales,azure,Soft Skills & Business Development,4,1.8748,4.1274
+Scotland,davinci-resolve,Soft Skills & Business Development,3,1.9317,4.0891
+Northern Ireland,mongodb,Game Development & Programming,2,1.9731,4.0587
+Wales,front-end,Game Development & Programming,2,2.1934,3.9475
+Wales,mongodb,Game Development & Programming,2,2.1934,3.9475
+Wales,github-actions,Soft Skills & Business Development,1,2.1934,3.9379
+Scotland,django,Business Tools & Productivity,2,2.2598,3.914
+Scotland,cryptography,Game Development & Programming,1,2.2598,3.9044
+Northern Ireland,mysql,Game Development & Programming,2,2.5474,3.7689
+Scotland,multithreading,Soft Skills & Creative Production,4,2.588,3.7677
+Wales,nosql,"Cloud, Infrastructure & DevOps",2,2.6395,3.7225
+Northern Ireland,design-patterns,Project & Development Management,4,2.8576,3.6317
+Wales,mysql,Game Development & Programming,2,2.8307,3.6261
+Northern Ireland,java,Game Development & Programming,5,2.9782,3.5804
+Northern Ireland,kotlin,Game Development & Programming,2,2.9782,3.5516
+Wales,angular,Game Development & Programming,1,3.3086,3.3754
+Northern Ireland,bash,Game Development & Programming,2,3.9833,3.0446
+Wales,webpack,Game Development & Programming,1,3.9778,3.0378
+Scotland,fullstack,Game Development & Programming,3,4.5567,2.765
+Scotland,cryengine,Game Development & Programming,3,4.5567,2.765
+Scotland,serverless-architecture,Soft Skills & Business Development,2,4.5567,2.7554
+Scotland,final-cut-pro,Game Development & Programming,2,4.5567,2.7554
+Scotland,bootstrap,Game Development & Programming,2,4.5567,2.7554
+Scotland,photorealism,"Cloud, Infrastructure & DevOps",1,4.5567,2.7458
+Scotland,next.js,"Cloud, Infrastructure & DevOps",1,4.5567,2.7458
+Wales,back-end,Game Development & Programming,3,4.5954,2.7454
+Wales,postgresql,Game Development & Programming,2,4.9815,2.5411
+Wales,vue.js,"Cloud, Infrastructure & DevOps",1,4.9815,2.5315
+Wales,flask,Game Development & Programming,1,4.9815,2.5315
+Wales,django,Business Tools & Productivity,1,4.9815,2.5315
+Wales,software-development-lifecycle-sdlc,Project & Development Management,1,4.9815,2.5315
+Northern Ireland,internal-audit,Game Development & Programming,2,5.1319,2.4652
+Northern Ireland,rabbitmq,Game Development & Programming,2,5.9934,2.0306
+Northern Ireland,adobe-photoshop,Game Development & Programming,1,5.9934,2.0211
+Northern Ireland,elasticsearch,Soft Skills & Business Development,2,7.1995,1.4222
+Northern Ireland,microservices,Business Tools & Productivity,5,7.5011,1.2989
+Wales,perl,Game Development & Programming,2,10.0,0.0096
+Wales,jwt,Business Tools & Productivity,1,10.0,0.0
+Wales,sass,"Cloud, Infrastructure & DevOps",1,10.0,0.0
+Wales,oauth,Game Development & Programming,1,10.0,0.0
