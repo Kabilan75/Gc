@@ -915,14 +915,13 @@ This removes bias from larger countries having more jobs. A country with 10% sha
         return out
 
     g["_sk"] = g.apply(explode_skills, axis=1)
-    # explode duplicates index labels; reset so boolean row filtering works on all pandas versions
-    global_skills = (
-        g.explode("_sk").rename(columns={"_sk": "Skills"}).reset_index(drop=True)
-    )
-    global_skills = global_skills[global_skills["Skills"].notna()].copy()
+    # Use "Skill" (singular) for exploded tokens — renaming to "Skills" would duplicate Excel's
+    # existing "Skills" column and break boolean indexing / groupby on Streamlit Cloud.
+    global_skills = g.explode("_sk").rename(columns={"_sk": "Skill"}).reset_index(drop=True)
+    global_skills = global_skills.dropna(subset=["Skill"]).copy()
 
     total_per_country = global_skills.groupby("Country").size()
-    skill_country = global_skills.groupby(["Country", "Skills"], as_index=False).size().rename(
+    skill_country = global_skills.groupby(["Country", "Skill"], as_index=False).size().rename(
         columns={"size": "count"}
     )
     skill_country["total"] = skill_country["Country"].map(total_per_country)
@@ -933,15 +932,15 @@ This removes bias from larger countries having more jobs. A country with 10% sha
     if not q:
         st.stop()
 
-    sk_f = skill_country[skill_country["Skills"].str.contains(q, na=False, case=False)]
+    sk_f = skill_country[skill_country["Skill"].str.contains(q, na=False, case=False)]
     if sk_f.empty:
-        sk_f = skill_country[skill_country["Skills"].str.lower() == q]
+        sk_f = skill_country[skill_country["Skill"].str.lower() == q]
     if sk_f.empty:
         st.warning("No matching skill in global data.")
         st.stop()
 
-    top_skill = sk_f.groupby("Skills")["count"].sum().sort_values(ascending=False).index[0]
-    one = sk_f[sk_f["Skills"] == top_skill].sort_values("share_pct", ascending=False)
+    top_skill = sk_f.groupby("Skill")["count"].sum().sort_values(ascending=False).index[0]
+    one = sk_f[sk_f["Skill"] == top_skill].sort_values("share_pct", ascending=False)
 
     top15 = one.head(15).copy()
     top15["Highlight"] = top15["Country"].apply(
@@ -1002,25 +1001,25 @@ This removes bias from larger countries having more jobs. A country with 10% sha
     if uk_tot == 0:
         st.warning("No UK rows for ranking table.")
     else:
-        uk_counts = uk_only.groupby("Skills").size().rename("uk_n").sort_values(ascending=False)
+        uk_counts = uk_only.groupby("Skill").size().rename("uk_n").sort_values(ascending=False)
         uk_top20 = uk_counts.head(20).reset_index()
         uk_top20["UK Share %"] = (uk_top20["uk_n"] / uk_tot * 100).round(4)
         uk_top20["UK Rank"] = uk_top20["UK Share %"].rank(method="min", ascending=False).astype(int)
 
         glob_tot = len(global_skills)
-        glob_counts = global_skills.groupby("Skills").size()
+        glob_counts = global_skills.groupby("Skill").size()
         glob_share_all = (glob_counts / glob_tot * 100).rename("Global Share %").reset_index()
         glob_share_all["Global Rank"] = glob_share_all["Global Share %"].rank(method="min", ascending=False).astype(int)
 
-        comp = uk_top20.merge(glob_share_all, on="Skills", how="left")
+        comp = uk_top20.merge(glob_share_all, on="Skill", how="left")
         comp["Trend"] = comp.apply(
             lambda r: "↑ Ahead"
             if pd.notna(r["Global Rank"]) and int(r["UK Rank"]) <= int(r["Global Rank"])
             else "↓ Behind",
             axis=1,
         )
-        show_cols = ["Skills", "UK Share %", "UK Rank", "Global Share %", "Global Rank", "Trend"]
-        comp = comp.rename(columns={"Skills": "Skill"})[show_cols]
+        show_cols = ["Skill", "UK Share %", "UK Rank", "Global Share %", "Global Rank", "Trend"]
+        comp = comp[show_cols]
 
         def _trend_style(row: pd.Series) -> list[str]:
             t = row.get("Trend", "")
