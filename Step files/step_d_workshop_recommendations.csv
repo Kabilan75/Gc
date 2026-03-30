@@ -1,0 +1,21 @@
+UK_Region,Priority_Rank,Skill,Skill_Cluster,Demand_Count,Gap_Score,Workshop_Recommendation
+England,1,Communication,Soft Skills & Business Development,527,10.0,🔴 HIGH PRIORITY — Run a 'Communication' workshop in England. Employer demand: 527 postings. Gap score: 10.00.
+England,2,Team Management,Project & Development Management,318,7.9947,🔴 HIGH PRIORITY — Run a 'Team Management' workshop in England. Employer demand: 318 postings. Gap score: 7.99.
+England,3,Talent Acquisition,Soft Skills & Business Development,294,7.7671,🔴 HIGH PRIORITY — Run a 'Talent Acquisition' workshop in England. Employer demand: 294 postings. Gap score: 7.77.
+England,4,Cross Functional,Soft Skills & Business Development,158,6.4613,🟠 MEDIUM PRIORITY — Run a 'Cross Functional' workshop in England. Employer demand: 158 postings. Gap score: 6.46.
+England,5,Python,Soft Skills & Business Development,127,6.1632,🟠 MEDIUM PRIORITY — Run a 'Python' workshop in England. Employer demand: 127 postings. Gap score: 6.16.
+Northern Ireland,1,Team Management,Project & Development Management,1,5.0358,🟡 STANDARD — Run a 'Team Management' workshop in Northern Ireland. Employer demand: 1 postings. Gap score: 5.04.
+Northern Ireland,2,Talent Acquisition,Soft Skills & Business Development,2,5.0151,🟡 STANDARD — Run a 'Talent Acquisition' workshop in Northern Ireland. Employer demand: 2 postings. Gap score: 5.02.
+Northern Ireland,3,Communication,Soft Skills & Business Development,7,5.0065,🟡 STANDARD — Run a 'Communication' workshop in Northern Ireland. Employer demand: 7 postings. Gap score: 5.01.
+Northern Ireland,4,Python,Soft Skills & Business Development,1,4.995,🟡 STANDARD — Run a 'Python' workshop in Northern Ireland. Employer demand: 1 postings. Gap score: 5.00.
+Northern Ireland,5,Unreal,Soft Skills & Business Development,1,4.9851,🟡 STANDARD — Run a 'Unreal' workshop in Northern Ireland. Employer demand: 1 postings. Gap score: 4.99.
+Scotland,1,Communication,Soft Skills & Business Development,23,5.1789,🟡 STANDARD — Run a 'Communication' workshop in Scotland. Employer demand: 23 postings. Gap score: 5.18.
+Scotland,2,Talent Acquisition,Soft Skills & Business Development,20,5.0991,🟡 STANDARD — Run a 'Talent Acquisition' workshop in Scotland. Employer demand: 20 postings. Gap score: 5.10.
+Scotland,3,Team Management,Project & Development Management,15,5.0936,🟡 STANDARD — Run a 'Team Management' workshop in Scotland. Employer demand: 15 postings. Gap score: 5.09.
+Scotland,4,Quality Control,Game Development & Programming,1,5.0444,🟡 STANDARD — Run a 'Quality Control' workshop in Scotland. Employer demand: 1 postings. Gap score: 5.04.
+Scotland,5,Maya,Game Development & Programming,1,5.0361,🟡 STANDARD — Run a 'Maya' workshop in Scotland. Employer demand: 1 postings. Gap score: 5.04.
+Wales,1,Team Management,Project & Development Management,1,5.0328,🟡 STANDARD — Run a 'Team Management' workshop in Wales. Employer demand: 1 postings. Gap score: 5.03.
+Wales,2,Talent Acquisition,Soft Skills & Business Development,1,5.0311,🟡 STANDARD — Run a 'Talent Acquisition' workshop in Wales. Employer demand: 1 postings. Gap score: 5.03.
+Wales,3,Communication,Soft Skills & Business Development,3,5.028,🟡 STANDARD — Run a 'Communication' workshop in Wales. Employer demand: 3 postings. Gap score: 5.03.
+Wales,4,Cross Functional,Soft Skills & Business Development,1,5.0028,🟡 STANDARD — Run a 'Cross Functional' workshop in Wales. Employer demand: 1 postings. Gap score: 5.00.
+Wales,5,Agile Development,Project & Development Management,1,4.9787,🟡 STANDARD — Run a 'Agile Development' workshop in Wales. Employer demand: 1 postings. Gap score: 4.98.

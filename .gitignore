@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.streamlit/
+.venv/
+venv/
+env/
+.env
+.DS_Store
+
+# Optional: exclude large/private datasets if needed
+*.xlsx
