@@ -17,7 +17,7 @@ warnings.filterwarnings("ignore")
 
 APP_DIR = Path(__file__).resolve().parent
 
-# --- Paths: same folder as app.py OR Step files/ (repo layout) ---
+
 def _find_file(*candidates: str) -> Path | None:
     for name in candidates:
         for base in (APP_DIR, APP_DIR / "Step files"):
@@ -63,15 +63,6 @@ POPULATION = {
     "Northern Ireland": 1910000,
 }
 
-CLUSTER_SHORT = {
-    "Game Development & Programming": "Game Dev",
-    "Soft Skills & Business Development": "Soft Skills",
-    "Project & Development Management": "Proj Mgmt",
-    "Soft Skills & Creative Production": "Creative",
-    "Business Tools & Productivity": "Biz Tools",
-    "Cloud, Infrastructure & DevOps": "Cloud",
-}
-
 CITY_TO_COUNTRY = {
     "bengaluru": "India",
     "london": "United Kingdom",
@@ -90,34 +81,27 @@ CITY_TO_COUNTRY = {
     "mumbai": "India",
 }
 
-PLOT_LAYOUT = dict(
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Segoe UI, sans-serif", color="#1F2937"),
-)
 
-st.set_page_config(
-    page_title="UK Gaming Industry — Skill Demand Analysis",
-    page_icon="🎮",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+def apply_plotly_style(fig: go.Figure) -> go.Figure:
+    fig.update_layout(
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Arial", size=12, color="#1E293B"),
+        margin=dict(l=20, r=20, t=40, b=20),
+        hoverlabel=dict(bgcolor="white", font_size=12),
+    )
+    return fig
 
-st.markdown(
-    """
-<style>
-[data-testid="stSidebar"] {background-color: #0F1B2D;}
-[data-testid="stSidebar"] * {color: #E5E7EB !important;}
-.metric-card {background:#1A2535;border:1px solid #0D9488;border-radius:10px;padding:16px;text-align:center;}
-.metric-value {font-size:28px;font-weight:bold;color:#5EEAD4;}
-.metric-label {font-size:12px;color:#9CA3AF;}
-.callout {background:#FFF7ED;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;}
-.high-priority {background-color:#FFF5F5;}
-.badge {display:inline-block;background:#0D9488;color:white;padding:3px 10px;border-radius:12px;margin:3px;font-size:12px;}
-</style>
-""",
-    unsafe_allow_html=True,
-)
+
+def plotly_show(fig: go.Figure) -> None:
+    apply_plotly_style(fig)
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def tab_header() -> None:
+    st.markdown("## 🎮 UK Gaming Industry — Skill Demand Analysis")
+    st.markdown("*University of Leicester | AI for Business Intelligence | Kabilan*")
+    st.markdown("---")
 
 
 @st.cache_data(show_spinner=False)
@@ -158,19 +142,36 @@ def load_step_d() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_excel_combined() -> pd.DataFrame:
+def load_excel() -> pd.DataFrame:
     p = _find_file("Updated_27_02_26_-_Kabilan.xlsx")
     if not p:
         raise FileNotFoundError("Updated_27_02_26_-_Kabilan.xlsx")
     return pd.read_excel(p, sheet_name="Combined Data")
 
 
-def _plotly_show(fig: go.Figure) -> None:
-    fig.update_layout(**PLOT_LAYOUT)
-    st.plotly_chart(fig, use_container_width=True)
+st.set_page_config(
+    page_title="UK Gaming Industry — Skill Demand Analysis",
+    page_icon="🎮",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
+st.markdown(
+    """
+<style>
+[data-testid="stSidebar"] {background-color: #0F1B2D;}
+[data-testid="stSidebar"] * {color: #E5E7EB !important;}
+.metric-card {background:#1A2535;border:1px solid #0D9488;border-radius:10px;padding:16px;text-align:center;}
+.metric-value {font-size:28px;font-weight:bold;color:#5EEAD4;}
+.metric-label {font-size:12px;color:#9CA3AF;}
+.callout {background:#FFF7ED;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;}
+.high-priority {background-color:#FFF5F5;}
+.badge {display:inline-block;background:#0D9488;color:white;padding:3px 10px;border-radius:12px;margin:3px;font-size:12px;}
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
-# --- Load all datasets once with error handling ---
 try:
     df_a = load_step_a()
     df_b = load_step_b()
@@ -180,9 +181,9 @@ except FileNotFoundError as e:
     st.error(f"Required CSV not found: {e}")
     st.stop()
 
-with st.spinner("Loading Excel dataset (large file)…"):
+with st.spinner("Loading global dataset — 27,898 rows..."):
     try:
-        df_xl = load_excel_combined()
+        df_excel = load_excel()
     except FileNotFoundError as e:
         st.error(f"Required Excel not found: {e}")
         st.stop()
@@ -215,11 +216,9 @@ with st.sidebar:
     st.markdown("AI for Business Intelligence")
     st.markdown("Kabilan | 2025")
 
-st.title("UK Gaming Industry — Skill Demand Analysis Dashboard")
-st.caption("University of Leicester | AI for Business Intelligence | Kabilan")
 
-# =============================================================================
-if tab_choice == "TAB 1 — UK Overview":
+def show_tab1(df_a: pd.DataFrame) -> None:
+    tab_header()
     st.subheader("UK Overview")
 
     m1, m2, m3, m4 = st.columns(4)
@@ -252,7 +251,7 @@ if tab_choice == "TAB 1 — UK Overview":
         yaxis_title="",
         showlegend=False,
     )
-    _plotly_show(fig1)
+    plotly_show(fig1)
 
     pie_labels = [
         "Soft Skills",
@@ -275,7 +274,7 @@ if tab_choice == "TAB 1 — UK Overview":
         ]
     )
     fig_pie.update_layout(title="Skill category mix (reference distribution)")
-    _plotly_show(fig_pie)
+    plotly_show(fig_pie)
 
     hierarchy = pd.DataFrame(
         {
@@ -335,23 +334,21 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         unsafe_allow_html=True,
     )
 
-# =============================================================================
-elif tab_choice == "TAB 2 — Regional Analysis":
+
+def show_tab2(df_b: pd.DataFrame) -> None:
+    tab_header()
     st.subheader("Regional Analysis")
 
     reg_col = "UK Region"
     sk_col = "Skills"
     df_b2 = df_b.copy()
 
-    # Per-region top skills counts, then per 100k
     regions = ["England", "Scotland", "Wales", "Northern Ireland"]
     per_region_top: dict[str, pd.Series] = {}
     for r in regions:
         sub = df_b2[df_b2[reg_col] == r]
         per_region_top[r] = sub[sk_col].astype(str).str.strip().value_counts().head(15)
 
-    all_skills = sorted(set().union(*[set(s.index) for s in per_region_top.values()]))
-    # Matrix: rows = skills (union capped), cols = regions — use top 15 union limited to 15 rows for readability
     top_union: list[str] = []
     for r in regions:
         for s in per_region_top[r].index:
@@ -402,7 +399,7 @@ elif tab_choice == "TAB 2 — Regional Analysis":
         title="Gaming Skill Demand Across UK Regions (per 100k population)",
         yaxis=dict(autorange="reversed"),
     )
-    _plotly_show(fig_hm)
+    plotly_show(fig_hm)
 
     st.markdown("### Regional top 5 (reference cards)")
     cards = {
@@ -438,11 +435,13 @@ elif tab_choice == "TAB 2 — Regional Analysis":
     c1, c2, c3, c4 = st.columns(4)
     for col, reg in zip([c1, c2, c3, c4], regions):
         with col:
-            st.markdown(f"#### <span style='color:{REGION_COLOURS.get(reg,'#333')}'>{reg}</span>", unsafe_allow_html=True)
+            st.markdown(
+                f"#### <span style='color:{REGION_COLOURS.get(reg,'#333')}'>{reg}</span>",
+                unsafe_allow_html=True,
+            )
             for name, posts, norm in cards.get(reg, []):
                 st.markdown(f"**{name}** — {posts} ({norm}/100k)")
 
-    # Stacked bar: cluster per 100k per region
     clus_col = "Cluster_Name"
     cluster_rows = []
     for r in regions:
@@ -463,7 +462,7 @@ elif tab_choice == "TAB 2 — Regional Analysis":
         color_discrete_map=CLUSTER_COLOURS,
     )
     fig_stack.update_layout(barmode="stack", xaxis_title="", yaxis_title="Skills per 100k population")
-    _plotly_show(fig_stack)
+    plotly_show(fig_stack)
 
     exact_tab2 = pd.DataFrame(
         [
@@ -488,10 +487,11 @@ elif tab_choice == "TAB 2 — Regional Analysis":
         color_discrete_sequence=[REGION_COLOURS.get(region_pick, COLOURS["teal"])],
     )
     fig_r.update_layout(title=f"Top 10 skills — {region_pick}", showlegend=False)
-    _plotly_show(fig_r)
+    plotly_show(fig_r)
 
-# =============================================================================
-elif tab_choice == "TAB 3 — AI Gap Analysis":
+
+def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
+    tab_header()
     st.subheader("AI Gap Analysis")
 
     s1, s2, s3, s4 = st.columns(4)
@@ -553,7 +553,7 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
         title="Average Gap Score — Region × Skill Cluster",
         yaxis=dict(autorange="reversed"),
     )
-    _plotly_show(fig_gap)
+    plotly_show(fig_gap)
 
     exact_gap = pd.DataFrame(
         [
@@ -577,7 +577,7 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
         color_discrete_map=CLUSTER_COLOURS,
         title="Demand vs Gap Score — England (each dot = one skill)",
     )
-    _plotly_show(fig_sc)
+    plotly_show(fig_sc)
 
     fig_box = px.box(
         df_c,
@@ -587,7 +587,7 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
         color_discrete_map=REGION_COLOURS,
         title="Gap Score Distribution by UK Region",
     )
-    _plotly_show(fig_box)
+    plotly_show(fig_box)
 
     st.markdown("### Workshop recommendations")
     rec = df_d.copy()
@@ -608,24 +608,26 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
             return "MED"
         return "STD"
 
-    rec["Priority"] = rec.get("Workshop_Recommendation", "").map(_prio)
-    view_cols = [c for c in ["Region", "Rank", "Skill", "Cluster", "Demand", "Gap_Score", "Priority"] if c in rec.columns]
-    rec_view = rec[view_cols] if view_cols else rec
+    if "Workshop_Recommendation" in rec.columns:
+        rec["Priority"] = rec["Workshop_Recommendation"].map(_prio)
+    else:
+        rec["Priority"] = "STD"
 
-    reg_opts = ["All"] + sorted(rec_view["Region"].dropna().unique().tolist()) if "Region" in rec_view.columns else ["All"]
+    reg_opts = ["All"] + sorted(rec["Region"].dropna().unique().tolist()) if "Region" in rec.columns else ["All"]
     filt = st.selectbox("Region filter", reg_opts)
-    show = rec_view if filt == "All" else rec_view[rec_view["Region"] == filt]
+    df_show = rec if filt == "All" else rec[rec["Region"] == filt]
 
-    def _style_rec(row: pd.Series) -> list[str]:
-        p = row.get("Priority", "STD")
-        if p == "HIGH":
-            return ["background-color: #FEE2E2"] * len(row)
-        if p == "MED":
-            return ["background-color: #FFEDD5"] * len(row)
-        return ["background-color: #D1FAE5"] * len(row)
+    def colour_priority(row: pd.Series) -> list[str]:
+        pr = row.get("Priority", "")
+        wr = str(row.get("Workshop_Recommendation", ""))
+        if pr == "HIGH" or wr.startswith("🔴"):
+            return ["background-color: #FFF5F5; color: #EF4444; font-weight: bold"] * len(row)
+        if pr == "MED" or wr.startswith("🟠"):
+            return ["background-color: #FFFBEB; color: #D97706; font-weight: bold"] * len(row)
+        return ["background-color: #F0FFF4; color: #059669"] * len(row)
 
     st.dataframe(
-        show.style.apply(_style_rec, axis=1),
+        df_show.style.apply(colour_priority, axis=1),
         use_container_width=True,
         hide_index=True,
     )
@@ -637,8 +639,9 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
     k4.metric("#1 skill (all regions)", "Communication")
     k5.metric("Max demand", "527")
 
-# =============================================================================
-elif tab_choice == "TAB 4 — EXPERIENCE ANALYSIS":
+
+def show_tab4(df_xl: pd.DataFrame) -> None:
+    tab_header()
     st.subheader("Experience Analysis")
 
     df_uk = df_xl.copy()
@@ -682,7 +685,7 @@ elif tab_choice == "TAB 4 — EXPERIENCE ANALYSIS":
             title="Experience level breakdown (UK Gaming)",
             hole=0.35,
         )
-        _plotly_show(fig_pie_e)
+        plotly_show(fig_pie_e)
 
         job_cat = "Overall Job Category"
         if job_cat in df_uk.columns and "Min Experience" in df_uk.columns:
@@ -703,9 +706,8 @@ elif tab_choice == "TAB 4 — EXPERIENCE ANALYSIS":
                 color_discrete_sequence=[COLOURS["teal"]],
                 title="Average Min Experience by job category (top 8)",
             )
-            _plotly_show(fig_hbar)
+            plotly_show(fig_hbar)
 
-        # Grouped bar: Entry / Mid / Senior per region (State)
         st_col = "State"
         if st_col in df_uk.columns:
             df_uk["Entry"] = (df_uk["ExpBucket"] == "Entry Level (0 yrs)").astype(int)
@@ -722,7 +724,7 @@ elif tab_choice == "TAB 4 — EXPERIENCE ANALYSIS":
                 title="Entry / Mid-Level / Senior counts per UK region (State)",
                 color_discrete_map={"Entry": COLOURS["green"], "Mid": COLOURS["amber"], "Senior": COLOURS["purple"]},
             )
-            _plotly_show(fig_g)
+            plotly_show(fig_g)
 
         e1, e2, e3, e4 = st.columns(4)
         e1.metric("No exp stated", "669 jobs (59.7%)")
@@ -784,7 +786,7 @@ elif tab_choice == "TAB 4 — EXPERIENCE ANALYSIS":
                 title="Top 15 skills vs experience level (counts)",
                 yaxis=dict(autorange="reversed"),
             )
-            _plotly_show(fig_heat)
+            plotly_show(fig_heat)
 
             seven = [
                 "communication",
@@ -811,7 +813,7 @@ elif tab_choice == "TAB 4 — EXPERIENCE ANALYSIS":
                 color_discrete_sequence=px.colors.qualitative.Set2,
                 title="Seven key skills by experience level",
             )
-            _plotly_show(fig_7)
+            plotly_show(fig_7)
 
             summary = pd.DataFrame(
                 [
@@ -868,8 +870,9 @@ SideFest needs a 3–5 year structured pathway.
             st.markdown("### Universal skills (26)")
             st.markdown("".join([f'<span class="badge">{b}</span>' for b in badges]), unsafe_allow_html=True)
 
-# =============================================================================
-elif tab_choice == "TAB 5 — GLOBAL COMPARISON":
+
+def show_tab5(df_xl: pd.DataFrame) -> None:
+    tab_header()
     st.subheader("Global Comparison — UK vs World")
 
     st.markdown(
@@ -886,6 +889,7 @@ This removes bias from larger countries having more jobs. A country with 10% sha
     st.caption(f"Gaming Company rows: {len(g):,}")
 
     if "City" in g.columns:
+
         def map_city(row) -> str:
             c = str(row.get("Country", "")).strip()
             city = str(row.get("City", "")).strip().lower()
@@ -929,7 +933,6 @@ This removes bias from larger countries having more jobs. A country with 10% sha
         st.warning("No matching skill in global data.")
         st.stop()
 
-    # pick canonical skill name (most frequent)
     top_skill = sk_f.groupby("Skills")["count"].sum().sort_values(ascending=False).index[0]
     one = sk_f[sk_f["Skills"] == top_skill].sort_values("share_pct", ascending=False)
 
@@ -947,7 +950,7 @@ This removes bias from larger countries having more jobs. A country with 10% sha
         title=f"Top 15 countries by skill share — {top_skill}",
     )
     fig_b.update_traces(hovertemplate="%{y}: %{x}%<extra></extra>")
-    _plotly_show(fig_b)
+    plotly_show(fig_b)
 
     def _is_uk(s: str) -> bool:
         t = str(s).strip().lower()
@@ -1038,7 +1041,7 @@ This removes bias from larger countries having more jobs. A country with 10% sha
         color_discrete_map={"UK": COLOURS["red"], "Other": COLOURS["teal"]},
         title="Top 15 Countries by Gaming Job Listings",
     )
-    _plotly_show(fig_top)
+    plotly_show(fig_top)
 
     st.markdown(
         """
@@ -1049,6 +1052,18 @@ Skills where UK ranks below the global average represent future opportunities th
 """,
         unsafe_allow_html=True,
     )
+
+
+if tab_choice == "TAB 1 — UK Overview":
+    show_tab1(df_a)
+elif tab_choice == "TAB 2 — Regional Analysis":
+    show_tab2(df_b)
+elif tab_choice == "TAB 3 — AI Gap Analysis":
+    show_tab3(df_c, df_d)
+elif tab_choice == "TAB 4 — Experience Analysis":
+    show_tab4(df_excel)
+elif tab_choice == "TAB 5 — Global Comparison":
+    show_tab5(df_excel)
 
 st.markdown("---")
 st.markdown(
