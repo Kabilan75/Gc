@@ -197,7 +197,8 @@ if tab == "TAB 1 — UK Overview":
         ],
         columns=["Rank", "Skill", "Gaming Posts", "Tech Posts", "Transferable Posts", "Type"],
     )
-    st.dataframe(top10, use_container_width=True, hide_index=True)
+    # Avoid Arrow conversion warnings on mixed numeric/string columns.
+    st.dataframe(top10.astype(str), use_container_width=True, hide_index=True)
 
     st.markdown(
         """
@@ -450,8 +451,8 @@ elif tab == "TAB 5 — Global Comparison":
 
     st.markdown("**Fair comparison method (no raw counts)**  ")
     st.markdown("We compare countries using **skill share** (not raw counts):")
-    st.latex(
-        r"\text{skill share}_{country} = \frac{\#(jobs\ mentioning\ skill\ in\ country)}{\#(all\ jobs\ in\ country)}"
+    st.markdown(
+        r"Skill share\(_{country}\) = (jobs mentioning skill in country) / (all jobs in country)"
     )
     st.markdown("This removes bias from countries having more job rows.")
 
@@ -489,17 +490,34 @@ elif tab == "TAB 5 — Global Comparison":
             )
             st.stop()
 
+    df = df.copy()
+    df.columns = [str(c).strip() for c in df.columns]
+
     # Flexible column mapping (sheet headers can vary slightly).
-    cols_lower = {c.lower(): c for c in df.columns}
+    cols_lower = {str(c).strip().lower(): c for c in df.columns}
+
     def pick(*names: str) -> str | None:
         for n in names:
             if n.lower() in cols_lower:
                 return cols_lower[n.lower()]
         return None
 
+    def pick_contains(*needles: str) -> str | None:
+        needles_l = [n.lower() for n in needles]
+        for c in df.columns:
+            cl = str(c).lower()
+            if any(n in cl for n in needles_l):
+                return c
+        return None
+
     col_company = pick("Company Category", "Company_Category", "company_category")
     col_country = pick("Country", "country", "Job Country", "job_country")
-    col_skill = pick("Skill", "skill", "Skill Name", "skill_name")
+    col_skill = pick("Skill", "Skills", "skill", "skills", "Skill Name", "skill_name")
+
+    # Last-resort fallbacks (handles headers like "Skill(s)" or "Country Name")
+    col_company = col_company or pick_contains("company category", "company_category")
+    col_country = col_country or pick_contains("country")
+    col_skill = col_skill or pick_contains("skill")
 
     missing = [k for k, v in {"Company Category": col_company, "Country": col_country, "Skill": col_skill}.items() if v is None]
     if missing:
