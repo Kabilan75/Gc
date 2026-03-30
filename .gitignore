@@ -9,4 +9,4 @@ env/
 .DS_Store
 
 # Optional: exclude large/private datasets if needed
-*.xlsx
+# *.xlsx
