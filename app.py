@@ -760,7 +760,11 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                     "Unknown": np.nan,
                 }
             )
-            tmp = df_uk.assign(_exp=exp_simple).explode("_skills_list")
+            tmp = (
+                df_uk.assign(_exp=exp_simple)
+                .explode("_skills_list")
+                .reset_index(drop=True)
+            )
             tmp = tmp[tmp["_exp"].notna() & tmp["_skills_list"].notna()]
 
             skill_tot = tmp["_skills_list"].value_counts().head(15).index.tolist()
@@ -911,7 +915,10 @@ This removes bias from larger countries having more jobs. A country with 10% sha
         return out
 
     g["_sk"] = g.apply(explode_skills, axis=1)
-    global_skills = g.explode("_sk").rename(columns={"_sk": "Skills"})
+    # explode duplicates index labels; reset so boolean row filtering works on all pandas versions
+    global_skills = (
+        g.explode("_sk").rename(columns={"_sk": "Skills"}).reset_index(drop=True)
+    )
     global_skills = global_skills[global_skills["Skills"].notna()].copy()
 
     total_per_country = global_skills.groupby("Country").size()
