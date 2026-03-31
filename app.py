@@ -611,21 +611,28 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         ],
     }
 
-    col_hm, col_ref = st.columns([1.35, 1.0])
+    col_hm, col_ref = st.columns([1.85, 0.62])
     with col_hm:
         plotly_show(fig_hm, height=500)
     with col_ref:
-        st.markdown("### Regional top 5 (reference cards)")
+        st.markdown(
+            "<p style='font-size:12px;font-weight:600;margin:0 0 6px 0;'>Regional top 5</p>",
+            unsafe_allow_html=True,
+        )
         for i in range(0, len(regions), 2):
             c_left, c_right = st.columns(2)
             for col, reg in zip([c_left, c_right], regions[i : i + 2]):
                 with col:
+                    c = REGION_COLOURS_DARK.get(reg, "#333")
+                    lines = "<br/>".join(
+                        f"{name} — {posts} ({norm}/100k)"
+                        for name, posts, norm in cards.get(reg, [])
+                    )
                     st.markdown(
-                        f"#### <span style='color:{REGION_COLOURS_DARK.get(reg,'#333')}'>{reg}</span>",
+                        f"<div style='font-size:10.5px;line-height:1.28;margin-bottom:6px;color:#475569'>"
+                        f"<b style='color:{c};'>{reg}</b><br/>{lines}</div>",
                         unsafe_allow_html=True,
                     )
-                    for name, posts, norm in cards.get(reg, []):
-                        st.markdown(f"**{name}** — {posts} ({norm}/100k)")
 
     clus_col = "Cluster_Name"
     cluster_rows = []
