@@ -375,23 +375,6 @@ div[data-testid="stPlotlyChart"] {
     border-radius: 10px;
     padding: 10px;
 }
-div[data-testid="stPlotlyChart"] * {
-    color: #E2E8F0 !important;
-}
-.js-plotly-plot .plotly .main-svg {
-    background: #0F172A !important;
-}
-.js-plotly-plot .plotly text {
-    fill: #E2E8F0 !important;
-}
-.js-plotly-plot .plotly .xtick text,
-.js-plotly-plot .plotly .ytick text,
-.js-plotly-plot .plotly .gtitle text {
-    fill: #94A3B8 !important;
-}
-.js-plotly-plot .plotly .modebar {
-    background: #0F172A !important;
-}
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
@@ -601,8 +584,8 @@ def show_tab1(df_a: pd.DataFrame) -> None:
                 "C++",
             ],
             "Gaming": [560, 335, 317, 168, 134, 124, 124, 127, 122, 121],
-            "Tech": [1060, 696, 688, 396, 267, 302, "—", 233, "—", "—"],
-            "Transferable": [1620, 1031, 1005, 564, 401, 421, 314, 360, "—", "—"],
+            "Tech": [1060, 696, 688, 396, 267, 302, None, 233, None, None],
+            "Transferable": [1620, 1031, 1005, 564, 401, 421, 314, 360, None, None],
             "Type": [
                 "All 3 tiers",
                 "All 3 tiers",
