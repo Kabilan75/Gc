@@ -295,30 +295,6 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     )
     plotly_show(fig1)
 
-    st.markdown("### Drilldown — explore one skill")
-    if "Activated Date" in df.columns and "UK Region" in df.columns and "Skills" in df.columns:
-        skills_opts = sorted(df["Skills"].dropna().astype(str).str.strip().unique().tolist())
-        default_skill = "communication" if "communication" in [s.lower() for s in skills_opts] else (skills_opts[0] if skills_opts else "")
-        selected_skill = st.selectbox("Select a skill", skills_opts, index=skills_opts.index(next((s for s in skills_opts if s.lower()==default_skill), skills_opts[0])) if skills_opts else 0)
-
-        sub = df[df["Skills"].astype(str).str.strip().str.lower() == str(selected_skill).strip().lower()].copy()
-        d = pd.to_datetime(sub["Activated Date"], errors="coerce")
-        sub = sub.assign(_date=d).dropna(subset=["_date"])
-
-        if not sub.empty:
-            weekly = sub.set_index("_date").resample("W").size().rename("Count").reset_index()
-            fig_trend = px.line(weekly, x="_date", y="Count", markers=True, title=f"Weekly trend — {selected_skill}")
-            plotly_show(fig_trend)
-
-            reg = sub["UK Region"].astype(str).str.strip().value_counts().reset_index()
-            reg.columns = ["Region", "Count"]
-            fig_reg = px.bar(reg.sort_values("Count", ascending=True), x="Count", y="Region", orientation="h", title="Regional breakdown")
-            plotly_show(fig_reg)
-        else:
-            st.info("No rows for this skill under current filters.")
-    else:
-        st.caption("Drilldown unavailable (missing Activated Date / UK Region / Skills columns).")
-
     # Reference category mix pie (fixed values)
     category_colours = [
         "#1D4ED8",  # Soft Skills — blue
@@ -412,6 +388,240 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
 """,
         unsafe_allow_html=True,
     )
+
+    st.markdown("---")
+    st.markdown("### 📊 Job Demand Analysis — Skills vs Actual Job Ads")
+    st.markdown("*How many unique job ads demand each skill — not just how many times it appears*")
+
+    demand_data = pd.DataFrame(
+        {
+            "Skill": [
+                "Communication",
+                "Team Management",
+                "Talent Acquisition",
+                "Cross-Functional",
+                "Problem-Solving",
+                "Python",
+                "Excel",
+                "Quality-Control",
+                "C++",
+                "Unity",
+                "Unreal",
+                "Storytelling",
+                "Agile Development",
+                "Budget Management",
+                "Maya",
+            ],
+            "Skill_Occurrences": [610, 379, 343, 180, 139, 139, 136, 135, 134, 133, 130, 129, 127, 118, 100],
+            "Unique_Job_Ads": [348, 237, 204, 110, 89, 82, 81, 73, 72, 68, 73, 73, 77, 74, 50],
+        }
+    )
+
+    demand_data["Avg_Skills_Per_Job"] = (demand_data["Skill_Occurrences"] / demand_data["Unique_Job_Ads"]).round(2)
+    demand_data["Coverage_%"] = (demand_data["Unique_Job_Ads"] / 1121 * 100).round(1)
+
+    view_type = st.radio(
+        "View by:",
+        ["Skill Occurrences (total mentions)", "Unique Job Ads (distinct jobs)"],
+        horizontal=True,
+    )
+
+    col_left, col_right = st.columns(2)
+    with col_left:
+        if view_type == "Skill Occurrences (total mentions)":
+            y_col = "Skill_Occurrences"
+            title = "Top 15 Skills — Total Skill Occurrences"
+            label = "Total Occurrences"
+            colour = "#0D9488"
+        else:
+            y_col = "Unique_Job_Ads"
+            title = "Top 15 Skills — Unique Job Ads Demanding Skill"
+            label = "Unique Job Ads"
+            colour = "#6D28D9"
+
+        fig_demand = px.bar(
+            demand_data,
+            x=y_col,
+            y="Skill",
+            orientation="h",
+            title=title,
+            labels={y_col: label, "Skill": ""},
+            text=y_col,
+            color_discrete_sequence=[colour],
+        )
+        fig_demand.update_traces(texttemplate="%{text:,}", textposition="outside")
+        fig_demand.update_layout(
+            yaxis={"categoryorder": "total ascending"},
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            height=500,
+            transition_duration=600,
+        )
+        st.plotly_chart(fig_demand, use_container_width=True)
+
+    with col_right:
+        fig_coverage = px.bar(
+            demand_data.sort_values("Coverage_%", ascending=True),
+            x="Coverage_%",
+            y="Skill",
+            orientation="h",
+            title="Skill Coverage — % of All 1,121 UK Gaming Jobs",
+            labels={"Coverage_%": "% of Job Ads", "Skill": ""},
+            text="Coverage_%",
+            color="Coverage_%",
+            color_continuous_scale="teal",
+        )
+        fig_coverage.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+        fig_coverage.update_layout(
+            yaxis={"categoryorder": "total ascending"},
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            height=500,
+            coloraxis_showscale=False,
+            transition_duration=600,
+        )
+        st.plotly_chart(fig_coverage, use_container_width=True)
+
+    st.markdown("#### Full Data Table")
+    st.dataframe(
+        demand_data.rename(
+            columns={
+                "Skill_Occurrences": "Total Mentions",
+                "Unique_Job_Ads": "Unique Job Ads",
+                "Avg_Skills_Per_Job": "Avg Skills Per Job",
+                "Coverage_%": "Coverage %",
+            }
+        ).style.background_gradient(
+            subset=["Total Mentions", "Unique Job Ads", "Coverage %"],
+            cmap="Blues",
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.info(
+        "**Key insight:** Communication appears in **610 skill mentions** across "
+        "**348 unique job ads** — meaning **31.0% of all UK gaming jobs** require "
+        "communication skills. This is the highest coverage of any skill in the dataset. "
+        "Unity appears in **133 mentions** across **68 unique job ads** (6.1% coverage) "
+        "— confirming it is a specialist gaming-only skill."
+    )
+
+    st.markdown("---")
+    st.markdown("### 🎯 Job Ads by Category")
+    st.markdown("*How many job ads exist per job category across UK gaming companies*")
+
+    category_data = pd.DataFrame(
+        {
+            "Category": [
+                "Art & Tech Art",
+                "Engineering & Development",
+                "Marketing & Advertising",
+                "Business Dev & Sales",
+                "Accounting & Finance",
+                "Game Design",
+                "Product & Project Mgmt",
+                "HR & Recruiting",
+                "Animation & Cinematics",
+                "UI/UX",
+            ],
+            "Job_Ads": [172, 167, 73, 57, 52, 52, 50, 45, 43, 39],
+        }
+    )
+    category_data["Percentage"] = (category_data["Job_Ads"] / 1121 * 100).round(1)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_cat = px.bar(
+            category_data.sort_values("Job_Ads", ascending=True),
+            x="Job_Ads",
+            y="Category",
+            orientation="h",
+            title="UK Gaming Job Ads by Category",
+            labels={"Job_Ads": "Number of Job Ads", "Category": ""},
+            text="Job_Ads",
+            color="Job_Ads",
+            color_continuous_scale="Blues",
+        )
+        fig_cat.update_traces(texttemplate="%{text:,}", textposition="outside")
+        fig_cat.update_layout(
+            yaxis={"categoryorder": "total ascending"},
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            coloraxis_showscale=False,
+            height=450,
+            transition_duration=600,
+        )
+        st.plotly_chart(fig_cat, use_container_width=True)
+
+    with col2:
+        fig_cat_pie = px.pie(
+            category_data,
+            values="Job_Ads",
+            names="Category",
+            title="Job Category Distribution — 1,121 UK Gaming Jobs",
+            hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Set3,
+        )
+        fig_cat_pie.update_traces(
+            textposition="inside",
+            textinfo="percent+label",
+            hovertemplate="<b>%{label}</b><br>Jobs: %{value}<br>Share: %{percent}<extra></extra>",
+        )
+        fig_cat_pie.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+            height=450,
+        )
+        st.plotly_chart(fig_cat_pie, use_container_width=True)
+
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total UK Gaming Job Ads", "1,121")
+    with col2:
+        st.metric("Largest Category", "Art & Tech Art (172)")
+    with col3:
+        st.metric("Most Technical", "Engineering & Dev (167)")
+    with col4:
+        st.metric("Communication is needed in", "31% of all jobs")
+
+    st.markdown("---")
+    st.markdown("### Skill deep dive — explore one skill")
+    if "Activated Date" in df.columns and "UK Region" in df.columns and "Skills" in df.columns:
+        skills_opts = sorted(df["Skills"].dropna().astype(str).str.strip().unique().tolist())
+        if skills_opts:
+            default_skill = (
+                next((s for s in skills_opts if s.lower() == "communication"), skills_opts[0])
+            )
+            selected_skill = st.selectbox("Select a skill", skills_opts, index=skills_opts.index(default_skill))
+        else:
+            selected_skill = ""
+
+        if selected_skill:
+            sub = df[df["Skills"].astype(str).str.strip().str.lower() == str(selected_skill).strip().lower()].copy()
+            d = pd.to_datetime(sub["Activated Date"], errors="coerce")
+            sub = sub.assign(_date=d).dropna(subset=["_date"])
+
+            if not sub.empty:
+                weekly = sub.set_index("_date").resample("W").size().rename("Count").reset_index()
+                fig_trend = px.line(weekly, x="_date", y="Count", markers=True, title=f"Weekly trend — {selected_skill}")
+                plotly_show(fig_trend)
+
+                reg = sub["UK Region"].astype(str).str.strip().value_counts().reset_index()
+                reg.columns = ["Region", "Count"]
+                fig_reg = px.bar(
+                    reg.sort_values("Count", ascending=True),
+                    x="Count",
+                    y="Region",
+                    orientation="h",
+                    title="Regional breakdown",
+                )
+                plotly_show(fig_reg)
+            else:
+                st.info("No rows for this skill under current filters.")
+    else:
+        st.caption("Skill deep dive unavailable (missing Activated Date / UK Region / Skills columns).")
 
 
 def show_tab2(df_b: pd.DataFrame) -> None:
