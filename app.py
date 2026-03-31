@@ -671,21 +671,6 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     )
     st.dataframe(exact_tab2, use_container_width=True, hide_index=True, height=240)
 
-    st.markdown("### Drilldown — top skills for selected region")
-    focus_region = st.selectbox("Focus region (drives drilldowns below)", regions, index=0)
-    sub_focus = df_b2[df_b2[reg_col].astype(str).str.strip() == focus_region]
-    top_focus = sub_focus[sk_col].astype(str).str.strip().value_counts().head(20).reset_index()
-    top_focus.columns = ["Skill", "Count"]
-    fig_focus = px.bar(
-        top_focus.sort_values("Count", ascending=True),
-        x="Count",
-        y="Skill",
-        orientation="h",
-        title=f"Top skills — {focus_region} (under current global filters)",
-        color_discrete_sequence=DARK_COLOURS,
-    )
-    plotly_show(fig_focus)
-
     region_pick = st.selectbox("Filter region — top 10 skills", regions)
     sub_r = df_b2[df_b2[reg_col] == region_pick]
     top10r = sub_r[sk_col].astype(str).str.strip().value_counts().head(10).reset_index()
