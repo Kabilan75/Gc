@@ -579,9 +579,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         title="Gaming Skill Demand Across UK Regions (per 100k population)",
         yaxis=dict(autorange="reversed"),
     )
-    plotly_show(fig_hm, height=520)
 
-    st.markdown("### Regional top 5 (reference cards)")
     cards = {
         "England": [
             ("Communication", "527", "0.93"),
@@ -612,15 +610,22 @@ def show_tab2(df_b: pd.DataFrame) -> None:
             ("Data Analytics", "4", "0.21"),
         ],
     }
-    c1, c2, c3, c4 = st.columns(4)
-    for col, reg in zip([c1, c2, c3, c4], regions):
-        with col:
-            st.markdown(
-                f"#### <span style='color:{REGION_COLOURS_DARK.get(reg,'#333')}'>{reg}</span>",
-                unsafe_allow_html=True,
-            )
-            for name, posts, norm in cards.get(reg, []):
-                st.markdown(f"**{name}** — {posts} ({norm}/100k)")
+
+    col_hm, col_ref = st.columns([1.35, 1.0])
+    with col_hm:
+        plotly_show(fig_hm, height=500)
+    with col_ref:
+        st.markdown("### Regional top 5 (reference cards)")
+        for i in range(0, len(regions), 2):
+            c_left, c_right = st.columns(2)
+            for col, reg in zip([c_left, c_right], regions[i : i + 2]):
+                with col:
+                    st.markdown(
+                        f"#### <span style='color:{REGION_COLOURS_DARK.get(reg,'#333')}'>{reg}</span>",
+                        unsafe_allow_html=True,
+                    )
+                    for name, posts, norm in cards.get(reg, []):
+                        st.markdown(f"**{name}** — {posts} ({norm}/100k)")
 
     clus_col = "Cluster_Name"
     cluster_rows = []
