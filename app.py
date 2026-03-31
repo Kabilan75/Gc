@@ -368,6 +368,31 @@ hr {
     color: #475569 !important;
 }
 
+/* ── Plotly charts (ensure visible on dark) ── */
+div[data-testid="stPlotlyChart"] {
+    background-color: #0F172A !important;
+    border: 1px solid #1E293B;
+    border-radius: 10px;
+    padding: 10px;
+}
+div[data-testid="stPlotlyChart"] * {
+    color: #E2E8F0 !important;
+}
+.js-plotly-plot .plotly .main-svg {
+    background: #0F172A !important;
+}
+.js-plotly-plot .plotly text {
+    fill: #E2E8F0 !important;
+}
+.js-plotly-plot .plotly .xtick text,
+.js-plotly-plot .plotly .ytick text,
+.js-plotly-plot .plotly .gtitle text {
+    fill: #94A3B8 !important;
+}
+.js-plotly-plot .plotly .modebar {
+    background: #0F172A !important;
+}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar {
     width: 6px;
