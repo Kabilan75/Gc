@@ -483,21 +483,16 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         st.plotly_chart(fig_coverage, use_container_width=True)
 
     st.markdown("#### Full Data Table")
-    st.dataframe(
-        demand_data.rename(
-            columns={
-                "Skill_Occurrences": "Total Mentions",
-                "Unique_Job_Ads": "Unique Job Ads",
-                "Avg_Skills_Per_Job": "Avg Skills Per Job",
-                "Coverage_%": "Coverage %",
-            }
-        ).style.background_gradient(
-            subset=["Total Mentions", "Unique Job Ads", "Coverage %"],
-            cmap="Blues",
-        ),
-        use_container_width=True,
-        hide_index=True,
+    demand_table = demand_data.rename(
+        columns={
+            "Skill_Occurrences": "Total Mentions",
+            "Unique_Job_Ads": "Unique Job Ads",
+            "Avg_Skills_Per_Job": "Avg Skills Per Job",
+            "Coverage_%": "Coverage %",
+        }
     )
+    # NOTE: Avoid pandas Styler.background_gradient here; it requires matplotlib on Streamlit Cloud.
+    st.dataframe(demand_table, use_container_width=True, hide_index=True)
 
     st.info(
         "**Key insight:** Communication appears in **610 skill mentions** across "
