@@ -63,25 +63,6 @@ POPULATION = {
     "Northern Ireland": 1910000,
 }
 
-CITY_TO_COUNTRY = {
-    "bengaluru": "India",
-    "london": "United Kingdom",
-    "vancouver": "Canada",
-    "warsaw": "Poland",
-    "shanghai": "China",
-    "berlin": "Germany",
-    "toronto": "Canada",
-    "sydney": "Australia",
-    "amsterdam": "Netherlands",
-    "barcelona": "Spain",
-    "kiev": "Ukraine",
-    "kyiv": "Ukraine",
-    "moscow": "Russia",
-    "melbourne": "Australia",
-    "mumbai": "India",
-}
-
-
 def apply_plotly_style(fig: go.Figure) -> go.Figure:
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)",
@@ -875,187 +856,429 @@ SideFest needs a 3–5 year structured pathway.
             st.markdown("".join([f'<span class="badge">{b}</span>' for b in badges]), unsafe_allow_html=True)
 
 
-def show_tab5(df_xl: pd.DataFrame) -> None:
-    tab_header()
-    st.subheader("Global Comparison — UK vs World")
+def show_tab5() -> None:
+    st.markdown("## 🌍 Global Comparison — UK vs World")
+    st.markdown("*University of Leicester | AI for Business Intelligence | Kabilan*")
+    st.markdown("---")
 
     st.markdown(
         """
-This comparison uses **skill share percentage** — the proportion of each country's gaming jobs that demand a skill.
-This removes bias from larger countries having more jobs. A country with 10% share means 1 in 10 of their gaming jobs demands that skill.
-"""
+    <div class='callout'>
+    This comparison uses <b>skill share percentage</b> — the proportion of each country's gaming jobs
+    that demand a skill. This removes bias from larger countries having more jobs.
+    A country with 10% share means 1 in 10 of their gaming jobs demands that skill.
+    </div>
+    """,
+        unsafe_allow_html=True,
     )
 
-    g = df_xl.copy()
-    g["Company Category"] = g["Company Category"].astype(str).str.strip()
-    g = g[g["Company Category"] == "Gaming Company"].copy()
+    with st.spinner("Loading global dataset — 27,898 rows..."):
+        df_raw = load_excel()
 
-    st.caption(f"Gaming Company rows: {len(g):,}")
+    city_to_country = {
+        "Bengaluru": "India",
+        "Bangalore": "India",
+        "Mumbai": "India",
+        "Delhi": "India",
+        "New Delhi": "India",
+        "Hyderabad": "India",
+        "Pune": "India",
+        "Chennai": "India",
+        "Kolkata": "India",
+        "Noida": "India",
+        "Gurgaon": "India",
+        "Gurugram": "India",
+        "London": "United Kingdom",
+        "Manchester": "United Kingdom",
+        "Bristol": "United Kingdom",
+        "Birmingham": "United Kingdom",
+        "Edinburgh": "United Kingdom",
+        "Glasgow": "United Kingdom",
+        "Leeds": "United Kingdom",
+        "Liverpool": "United Kingdom",
+        "Brighton": "United Kingdom",
+        "Cambridge": "United Kingdom",
+        "Oxford": "United Kingdom",
+        "Guildford": "United Kingdom",
+        "England": "United Kingdom",
+        "Scotland": "United Kingdom",
+        "Wales": "United Kingdom",
+        "Northern Ireland": "United Kingdom",
+        "UK": "United Kingdom",
+        "Britain": "United Kingdom",
+        "El Segundo": "United States",
+        "Los Angeles": "United States",
+        "San Francisco": "United States",
+        "Seattle": "United States",
+        "New York": "United States",
+        "Austin": "United States",
+        "Chicago": "United States",
+        "Boston": "United States",
+        "Philadelphia": "United States",
+        "San Diego": "United States",
+        "Salt Lake City": "United States",
+        "Washington": "United States",
+        "Houston": "United States",
+        "Dallas": "United States",
+        "Atlanta": "United States",
+        "Portland": "United States",
+        "San Carlos": "United States",
+        "St. Louis": "United States",
+        "Denver": "United States",
+        "Phoenix": "United States",
+        "Las Vegas": "United States",
+        "Miami": "United States",
+        "Minneapolis": "United States",
+        "Nashville": "United States",
+        "Redwood City": "United States",
+        "Irvine": "United States",
+        "Bellevue": "United States",
+        "Kirkland": "United States",
+        "San Jose": "United States",
+        "Sacramento": "United States",
+        "USA": "United States",
+        "US": "United States",
+        "United States of America": "United States",
+        "Vancouver": "Canada",
+        "Toronto": "Canada",
+        "Montreal": "Canada",
+        "Calgary": "Canada",
+        "Ottawa": "Canada",
+        "Edmonton": "Canada",
+        "Victoria": "Canada",
+        "Waterloo": "Canada",
+        "Shanghai": "China",
+        "Beijing": "China",
+        "Shenzhen": "China",
+        "Guangzhou": "China",
+        "Chengdu": "China",
+        "Hangzhou": "China",
+        "Berlin": "Germany",
+        "Munich": "Germany",
+        "Hamburg": "Germany",
+        "Dusseldorf": "Germany",
+        "Düsseldorf": "Germany",
+        "Frankfurt": "Germany",
+        "Cologne": "Germany",
+        "Köln": "Germany",
+        "Stuttgart": "Germany",
+        "Warsaw": "Poland",
+        "Krakow": "Poland",
+        "Wroclaw": "Poland",
+        "Gdansk": "Poland",
+        "Poznan": "Poland",
+        "Lodz": "Poland",
+        "Sydney": "Australia",
+        "Melbourne": "Australia",
+        "Brisbane": "Australia",
+        "Perth": "Australia",
+        "Adelaide": "Australia",
+        "Canberra": "Australia",
+        "Paris": "France",
+        "Lyon": "France",
+        "Bordeaux": "France",
+        "Montpellier": "France",
+        "Toulouse": "France",
+        "Madrid": "Spain",
+        "Barcelona": "Spain",
+        "Valencia": "Spain",
+        "Seville": "Spain",
+        "Bilbao": "Spain",
+        "Kiev": "Ukraine",
+        "Kyiv": "Ukraine",
+        "Kharkiv": "Ukraine",
+        "Dnipro": "Ukraine",
+        "Odessa": "Ukraine",
+        "Moscow": "Russia",
+        "Saint Petersburg": "Russia",
+        "St. Petersburg": "Russia",
+        "Novosibirsk": "Russia",
+        "Amsterdam": "Netherlands",
+        "Rotterdam": "Netherlands",
+        "Utrecht": "Netherlands",
+        "The Hague": "Netherlands",
+        "Stockholm": "Sweden",
+        "Gothenburg": "Sweden",
+        "Malmö": "Sweden",
+        "Malmo": "Sweden",
+        "Uppsala": "Sweden",
+        "Tokyo": "Japan",
+        "Osaka": "Japan",
+        "Kyoto": "Japan",
+        "Seoul": "South Korea",
+        "Busan": "South Korea",
+        "Taipei": "Taiwan",
+        "Oslo": "Norway",
+        "Copenhagen": "Denmark",
+        "Zurich": "Switzerland",
+        "Geneva": "Switzerland",
+        "Vienna": "Austria",
+        "Lisbon": "Portugal",
+        "Porto": "Portugal",
+        "Budapest": "Hungary",
+        "Prague": "Czech Republic",
+        "Brno": "Czech Republic",
+        "Bucharest": "Romania",
+        "Cluj": "Romania",
+        "Belgrade": "Serbia",
+        "Zagreb": "Croatia",
+        "Ljubljana": "Slovenia",
+        "Sofia": "Bulgaria",
+        "Vilnius": "Lithuania",
+        "Riga": "Latvia",
+        "Tallinn": "Estonia",
+        "Helsinki": "Finland",
+        "Espoo": "Finland",
+        "Ankara": "Turkey",
+        "Istanbul": "Turkey",
+        "Tel Aviv": "Israel",
+        "Jerusalem": "Israel",
+        "Dubai": "United Arab Emirates",
+        "Abu Dhabi": "United Arab Emirates",
+        "São Paulo": "Brazil",
+        "Sao Paulo": "Brazil",
+        "Rio de Janeiro": "Brazil",
+        "Mexico City": "Mexico",
+        "Guadalajara": "Mexico",
+        "Buenos Aires": "Argentina",
+        "Bogota": "Colombia",
+        "Medellin": "Colombia",
+        "Santiago": "Chile",
+        "Lima": "Peru",
+        "Johannesburg": "South Africa",
+        "Cape Town": "South Africa",
+        "Nairobi": "Kenya",
+        "Lagos": "Nigeria",
+        "Cairo": "Egypt",
+        "Accra": "Ghana",
+        "Shah Alam": "Malaysia",
+        "Kuala Lumpur": "Malaysia",
+        "Singapore City": "Singapore",
+        "Jakarta": "Indonesia",
+        "Bangkok": "Thailand",
+        "Ho Chi Minh City": "Vietnam",
+        "Hanoi": "Vietnam",
+        "Manila": "Philippines",
+        "Bratislava": "Slovakia",
+        "Minsk": "Belarus",
+        "Skopje": "North Macedonia",
+        "Sarajevo": "Bosnia and Herzegovina",
+    }
+    city_map_ci = {str(k).strip().lower(): v for k, v in city_to_country.items()}
 
-    if "City" in g.columns:
+    df_global = df_raw[df_raw["Company Category"].astype(str).str.strip() == "Gaming Company"].copy()
+    st.caption(f"Gaming Company rows before cleaning: {len(df_global):,}")
 
-        def map_city(row) -> str:
-            c = str(row.get("Country", "")).strip()
-            city = str(row.get("City", "")).strip().lower()
-            if city in CITY_TO_COUNTRY:
-                return CITY_TO_COUNTRY[city]
-            return c
+    df_global = df_global.dropna(subset=["Country"])
+    df_global["Country"] = df_global["Country"].astype(str).str.strip()
+    df_global = df_global[df_global["Country"] != ""]
+    df_global = df_global[df_global["Country"].str.lower() != "nan"]
+    df_global = df_global[df_global["Country"].str.lower() != "none"]
 
-        g["Country"] = g.apply(map_city, axis=1)
-
-    def explode_skills(row) -> list[str]:
-        s = row.get("Skills", "")
-        if pd.isna(s):
-            return []
-        out = []
-        for p in str(s).split(","):
-            t = p.strip().lower()
-            if t and t != "game-texts" and t != "nan":
-                out.append(t)
-        return out
-
-    g["_sk"] = g.apply(explode_skills, axis=1)
-    # Use "Skill" (singular) for exploded tokens — renaming to "Skills" would duplicate Excel's
-    # existing "Skills" column and break boolean indexing / groupby on Streamlit Cloud.
-    global_skills = g.explode("_sk").rename(columns={"_sk": "Skill"}).reset_index(drop=True)
-    global_skills = global_skills.dropna(subset=["Skill"]).copy()
-
-    total_per_country = global_skills.groupby("Country").size()
-    skill_country = global_skills.groupby(["Country", "Skill"], as_index=False).size().rename(
-        columns={"size": "count"}
+    df_global["Country"] = df_global["Country"].apply(
+        lambda x: city_map_ci.get(str(x).strip().lower(), x)
     )
-    skill_country["total"] = skill_country["Country"].map(total_per_country)
-    skill_country["share_pct"] = (skill_country["count"] / skill_country["total"] * 100).round(2)
-    skill_country = skill_country[skill_country["total"] >= 50].copy()
 
-    q = st.text_input("Skill search", value="communication").strip().lower()
-    if not q:
-        st.stop()
-
-    sk_f = skill_country[skill_country["Skill"].str.contains(q, na=False, case=False)]
-    if sk_f.empty:
-        sk_f = skill_country[skill_country["Skill"].str.lower() == q]
-    if sk_f.empty:
-        st.warning("No matching skill in global data.")
-        st.stop()
-
-    top_skill = sk_f.groupby("Skill")["count"].sum().sort_values(ascending=False).index[0]
-    one = sk_f[sk_f["Skill"] == top_skill].sort_values("share_pct", ascending=False)
-
-    top15 = one.head(15).copy()
-    top15["Highlight"] = top15["Country"].apply(
-        lambda c: "United Kingdom" if "united kingdom" in str(c).lower() or str(c).strip().lower() == "uk" else "Other"
+    df_global["Country"] = df_global["Country"].apply(
+        lambda x: "United States"
+        if str(x).strip() in ["US", "USA", "U.S.A", "U.S.", "United States of America"]
+        else x
     )
-    fig_b = px.bar(
-        top15.sort_values("share_pct", ascending=True),
-        x="share_pct",
+    df_global["Country"] = df_global["Country"].apply(
+        lambda x: "United Kingdom"
+        if str(x).strip()
+        in ["UK", "Britain", "Great Britain", "England", "Scotland", "Wales", "Northern Ireland"]
+        else x
+    )
+
+    st.caption(f"Gaming Company rows after cleaning: {len(df_global):,}")
+
+    df_global["Skills"] = df_global["Skills"].astype(str).str.lower().str.strip()
+    df_exploded = df_global.assign(Skills=df_global["Skills"].str.split(",")).explode("Skills")
+    df_exploded = df_exploded.reset_index(drop=True)
+    df_exploded["Skills"] = df_exploded["Skills"].str.strip()
+    df_exploded = df_exploded[df_exploded["Skills"] != ""]
+    df_exploded = df_exploded[df_exploded["Skills"] != "nan"]
+    df_exploded = df_exploded[df_exploded["Skills"] != "game-texts"]
+    df_exploded = df_exploded.dropna(subset=["Skills", "Country"])
+
+    total_per_country = df_exploded.groupby("Country").size().reset_index(name="total_rows")
+
+    valid_countries = total_per_country[total_per_country["total_rows"] >= 100]["Country"].tolist()
+    df_exploded = df_exploded[df_exploded["Country"].isin(valid_countries)]
+    total_per_country = total_per_country[total_per_country["Country"].isin(valid_countries)]
+
+    skill_country = df_exploded.groupby(["Country", "Skills"]).size().reset_index(name="count")
+    skill_country = skill_country.merge(total_per_country, on="Country")
+    skill_country["share_pct"] = (skill_country["count"] / skill_country["total_rows"] * 100).round(2)
+
+    st.caption(f"Valid countries (100+ skill rows): {len(valid_countries)}")
+
+    st.markdown("### 🌐 Top Countries by Gaming Job Listings")
+    top_countries = total_per_country.sort_values("total_rows", ascending=False).head(15)
+    top_countries["highlight"] = top_countries["Country"].apply(
+        lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
+    )
+    fig_countries = px.bar(
+        top_countries,
+        x="total_rows",
         y="Country",
         orientation="h",
-        color="Highlight",
-        color_discrete_map={"United Kingdom": COLOURS["red"], "Other": COLOURS["teal"]},
-        title=f"Top 15 countries by skill share — {top_skill}",
-    )
-    fig_b.update_traces(hovertemplate="%{y}: %{x}%<extra></extra>")
-    plotly_show(fig_b)
-
-    def _is_uk(s: str) -> bool:
-        t = str(s).strip().lower()
-        return "united kingdom" in t or t == "uk"
-
-    one_sorted = one.sort_values("share_pct", ascending=False).reset_index(drop=True)
-    one_sorted["Rank"] = np.arange(1, len(one_sorted) + 1)
-
-    uk_rows = one_sorted[one_sorted["Country"].map(_is_uk)]
-    uk_share = float(uk_rows.iloc[0]["share_pct"]) if not uk_rows.empty else float("nan")
-    uk_rank = int(uk_rows.iloc[0]["Rank"]) if not uk_rows.empty else None
-
-    n_countries = int(one["Country"].nunique())
-    global_avg = float(one["share_pct"].mean())
-    diff = (uk_share - global_avg) if uk_share == uk_share else 0.0
-    above = "above" if (uk_share == uk_share and uk_share >= global_avg) else "below"
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("UK share %", f"{uk_share:.2f}%" if uk_share == uk_share else "N/A")
-    c2.metric("UK rank", f"#{uk_rank} / {n_countries}" if uk_rank is not None else "N/A")
-    c3.metric("Global avg share %", f"{global_avg:.2f}%")
-
-    if uk_share == uk_share:
-        st.info(
-            f"'{top_skill}' is demanded in {n_countries} countries globally. "
-            f"UK skill share is {uk_share:.2f}%. "
-            f"The global average is {global_avg:.2f}%. "
-            f"The UK is {above} the global average by {abs(diff):.2f}%."
-        )
-    else:
-        st.info(
-            f"'{top_skill}' is demanded in {n_countries} countries globally. "
-            f"The global average is {global_avg:.2f}%."
-        )
-
-    st.markdown("### UK vs Global ranking (top 20 UK skills)")
-    uk_only = global_skills[
-        global_skills["Country"].astype(str).str.lower().str.contains("united kingdom")
-        | (global_skills["Country"].astype(str).str.strip().str.lower() == "uk")
-    ].copy()
-    uk_tot = len(uk_only)
-    if uk_tot == 0:
-        st.warning("No UK rows for ranking table.")
-    else:
-        uk_counts = uk_only.groupby("Skill").size().rename("uk_n").sort_values(ascending=False)
-        uk_top20 = uk_counts.head(20).reset_index()
-        uk_top20["UK Share %"] = (uk_top20["uk_n"] / uk_tot * 100).round(4)
-        uk_top20["UK Rank"] = uk_top20["UK Share %"].rank(method="min", ascending=False).astype(int)
-
-        glob_tot = len(global_skills)
-        glob_counts = global_skills.groupby("Skill").size()
-        glob_share_all = (glob_counts / glob_tot * 100).rename("Global Share %").reset_index()
-        glob_share_all["Global Rank"] = glob_share_all["Global Share %"].rank(method="min", ascending=False).astype(int)
-
-        comp = uk_top20.merge(glob_share_all, on="Skill", how="left")
-        comp["Trend"] = comp.apply(
-            lambda r: "↑ Ahead"
-            if pd.notna(r["Global Rank"]) and int(r["UK Rank"]) <= int(r["Global Rank"])
-            else "↓ Behind",
-            axis=1,
-        )
-        show_cols = ["Skill", "UK Share %", "UK Rank", "Global Share %", "Global Rank", "Trend"]
-        comp = comp[show_cols]
-
-        def _trend_style(row: pd.Series) -> list[str]:
-            t = row.get("Trend", "")
-            col = "#D1FAE5" if "Ahead" in str(t) else "#FEE2E2"
-            return [f"background-color: {col}"] * len(row)
-
-        st.dataframe(
-            comp.style.apply(_trend_style, axis=1),
-            use_container_width=True,
-            hide_index=True,
-        )
-
-    country_totals = global_skills.groupby("Country").size().sort_values(ascending=False)
-    top15c = country_totals.head(15).reset_index()
-    top15c.columns = ["Country", "rows"]
-    top15c["Highlight"] = top15c["Country"].apply(
-        lambda c: "UK" if "united kingdom" in str(c).lower() else "Other"
-    )
-    fig_top = px.bar(
-        top15c.sort_values("rows", ascending=True),
-        x="rows",
-        y="Country",
-        orientation="h",
-        color="Highlight",
-        color_discrete_map={"UK": COLOURS["red"], "Other": COLOURS["teal"]},
+        color="highlight",
+        color_discrete_map={"United Kingdom": "#EF4444", "Other": "#0D9488"},
         title="Top 15 Countries by Gaming Job Listings",
+        labels={"total_rows": "Skill Rows", "Country": ""},
+        text="total_rows",
     )
-    plotly_show(fig_top)
+    fig_countries.update_traces(texttemplate="%{text:,}", textposition="outside")
+    fig_countries.update_layout(
+        yaxis={"categoryorder": "total ascending"},
+        showlegend=True,
+        legend_title="",
+        height=500,
+    )
+    plotly_show(fig_countries)
+
+    st.markdown("---")
+
+    st.markdown("### 🔍 Skill Explorer — Search Any Skill")
+    skill_input = st.text_input(
+        "Type a skill name:",
+        value="communication",
+        placeholder="e.g. communication, python, unity, c++",
+    ).strip().lower()
+
+    if skill_input:
+        skill_data = skill_country[skill_country["Skills"] == skill_input].copy()
+        skill_data = skill_data.sort_values("share_pct", ascending=False)
+
+        if len(skill_data) == 0:
+            st.warning(
+                f"Skill '{skill_input}' not found. Try: communication, python, unity, team-management, cpp"
+            )
+        else:
+            top15 = skill_data.head(15).copy()
+            top15["highlight"] = top15["Country"].apply(
+                lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
+            )
+
+            fig_skill = px.bar(
+                top15,
+                x="share_pct",
+                y="Country",
+                orientation="h",
+                color="highlight",
+                color_discrete_map={"United Kingdom": "#EF4444", "Other": "#0D9488"},
+                title=f"Top 15 Countries by Skill Share — {skill_input}",
+                labels={"share_pct": "Skill Share (%)", "Country": ""},
+                text="share_pct",
+            )
+            fig_skill.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+            fig_skill.update_layout(
+                yaxis={"categoryorder": "total ascending"},
+                showlegend=True,
+                legend_title="",
+                height=500,
+            )
+            plotly_show(fig_skill)
+
+            uk_row = skill_data[skill_data["Country"] == "United Kingdom"]
+            n_countries = len(skill_data)
+            global_avg = float(skill_data["share_pct"].mean())
+            global_avg_r = round(global_avg, 2)
+
+            col1, col2, col3 = st.columns(3)
+            if len(uk_row) > 0:
+                uk_share = float(uk_row["share_pct"].values[0])
+                skill_ranked = skill_data.sort_values("share_pct", ascending=False).reset_index(drop=True)
+                skill_ranked["rank"] = np.arange(1, len(skill_ranked) + 1)
+                uk_r = skill_ranked[skill_ranked["Country"] == "United Kingdom"]
+                uk_rank_num = int(uk_r["rank"].iloc[0]) if not uk_r.empty else "N/A"
+                diff = round(uk_share - global_avg_r, 2)
+                direction = "above" if diff >= 0 else "below"
+                diff_abs = abs(diff)
+
+                with col1:
+                    st.metric("UK share %", f"{uk_share:.2f}%")
+                with col2:
+                    st.metric("UK rank", f"#{uk_rank_num} / {n_countries}")
+                with col3:
+                    st.metric("Global avg share %", f"{global_avg_r:.2f}%")
+
+                st.info(
+                    f"**'{skill_input}'** is demanded in **{n_countries} countries** globally. "
+                    f"UK skill share is **{uk_share:.2f}%**. "
+                    f"The global average is **{global_avg_r:.2f}%**. "
+                    f"The UK is **{direction}** the global average by **{diff_abs:.2f}%**."
+                )
+            else:
+                with col1:
+                    st.metric("UK share %", "Not in top countries")
+                with col2:
+                    st.metric("UK rank", f"N/A / {n_countries}")
+                with col3:
+                    st.metric("Global avg share %", f"{global_avg_r:.2f}%")
+                st.warning(f"United Kingdom does not appear in the data for '{skill_input}'.")
+
+    st.markdown("---")
+
+    st.markdown("### 📊 UK Skill Rankings vs Global Rankings")
+    st.markdown("*Which skills is the UK ahead of or behind the world on?*")
+
+    uk_skills = skill_country[skill_country["Country"] == "United Kingdom"].copy()
+    uk_skills = uk_skills.sort_values("share_pct", ascending=False).head(20)
+    uk_skills = uk_skills.rename(columns={"share_pct": "uk_share"})
+
+    global_avg_skills = skill_country.groupby("Skills")["share_pct"].mean().reset_index()
+    global_avg_skills.columns = ["Skills", "global_share"]
+    global_avg_skills = global_avg_skills.sort_values("global_share", ascending=False)
+    global_avg_skills["global_rank"] = range(1, len(global_avg_skills) + 1)
+
+    uk_skills["uk_rank"] = range(1, len(uk_skills) + 1)
+    comparison = uk_skills[["Skills", "uk_share", "uk_rank"]].merge(
+        global_avg_skills[["Skills", "global_share", "global_rank"]],
+        on="Skills",
+        how="left",
+    )
+    comparison["uk_share"] = comparison["uk_share"].round(2)
+    comparison["global_share"] = comparison["global_share"].round(2)
+    comparison["Trend"] = comparison.apply(
+        lambda row: "↑ Ahead" if row["uk_rank"] <= row["global_rank"] else "↓ Behind",
+        axis=1,
+    )
+    comparison.columns = [
+        "Skill",
+        "UK Share %",
+        "UK Rank",
+        "Global Avg Share %",
+        "Global Rank",
+        "Trend",
+    ]
+
+    def colour_trend(row: pd.Series) -> list[str]:
+        if row["Trend"] == "↑ Ahead":
+            return [""] * 5 + ["color: #059669; font-weight: bold"]
+        return [""] * 5 + ["color: #EF4444; font-weight: bold"]
+
+    st.dataframe(
+        comparison.style.apply(colour_trend, axis=1),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+    st.markdown("---")
 
     st.markdown(
         """
-<div class="callout">
-Skills where UK ranks above the global average are strong assets for UK young people — these skills make them globally competitive.
-Skills where UK ranks below the global average represent future opportunities the UK gaming industry has not yet fully developed.
-</div>
-""",
+    <div class='callout'>
+    <b>What this means for SideFest:</b><br>
+    Skills where the UK ranks <b>above the global average (↑ Ahead)</b> are strong assets —
+    UK young people trained in these skills are globally competitive.<br><br>
+    Skills where the UK ranks <b>below the global average (↓ Behind)</b> represent future
+    opportunities — the UK gaming industry has not yet fully developed these skills,
+    making them valuable to teach now before demand catches up.
+    </div>
+    """,
         unsafe_allow_html=True,
     )
 
@@ -1069,7 +1292,7 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
 elif tab_choice == "TAB 4 — Experience Analysis":
     show_tab4(df_excel)
 elif tab_choice == "TAB 5 — Global Comparison":
-    show_tab5(df_excel)
+    show_tab5()
 
 st.markdown("---")
 st.markdown(
