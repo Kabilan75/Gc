@@ -672,23 +672,24 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         sub = df_b2[df_b2[reg_col] == r]
         per_region_top[r] = sub[sk_col].astype(str).str.strip().value_counts().head(int(top_n))
 
+    # Build a union of the top skills across regions, sized by the slider.
     top_union: list[str] = []
     for r in regions:
         for s in per_region_top[r].index:
             if s not in top_union:
                 top_union.append(s)
-            if len(top_union) >= 15:
+            if len(top_union) >= int(top_n):
                 break
-        if len(top_union) >= 15:
+        if len(top_union) >= int(top_n):
             break
-    if len(top_union) < 15:
+    if len(top_union) < int(top_n):
         for r in regions:
             for s in per_region_top[r].index:
                 if s not in top_union:
                     top_union.append(s)
-                if len(top_union) >= 15:
+                if len(top_union) >= int(top_n):
                     break
-            if len(top_union) >= 15:
+            if len(top_union) >= int(top_n):
                 break
     top_union = top_union[: int(top_n)]
 
