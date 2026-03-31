@@ -251,44 +251,11 @@ with st.sidebar:
         ],
         label_visibility="collapsed",
     )
-    st.markdown("---")
-    st.sidebar.markdown("---")
-    st.sidebar.markdown(
-        "<div style='color:#475569;font-size:11px;line-height:1.8'>"
-        "University of Leicester<br>"
-        "AI for Business Intelligence<br>"
-        "<span style='color:#38BDF8'>Kabilan</span> | 2025"
-        "</div>",
-        unsafe_allow_html=True,
-    )
 
-    st.markdown("---")
-    st.markdown("## 🎛️ Global filters")
-
-    regions_all = ["All", "England", "Scotland", "Wales", "Northern Ireland"]
-    region_filter = st.selectbox("Region", regions_all, index=0)
-
-    skill_query = st.text_input("Skill contains", value="", placeholder="e.g. communication, python").strip().lower()
-
-    # Date filter uses Activated Date from Step A/B (gap/recs don’t have dates).
-    _date_col = "Activated Date"
-    _dates = pd.to_datetime(
-        pd.concat(
-            [
-                df_a[_date_col] if _date_col in df_a.columns else pd.Series(dtype="datetime64[ns]"),
-                df_b[_date_col] if _date_col in df_b.columns else pd.Series(dtype="datetime64[ns]"),
-            ],
-            ignore_index=True,
-        ),
-        errors="coerce",
-    ).dropna()
-    if _dates.empty:
-        date_range = None
-        st.caption("Date filter unavailable (no Activated Date).")
-    else:
-        min_d = _dates.min().date()
-        max_d = _dates.max().date()
-        date_range = st.date_input("Activated Date range", value=(min_d, max_d), min_value=min_d, max_value=max_d)
+    # Global filters removed (defaults keep app logic stable)
+    region_filter = "All"
+    skill_query = ""
+    date_range = None
 
 
 def _apply_filters(df: pd.DataFrame) -> pd.DataFrame:
