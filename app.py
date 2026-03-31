@@ -389,18 +389,6 @@ def show_tab1(df_a: pd.DataFrame) -> None:
         )
         plotly_show(fig_coverage)
 
-    st.markdown("#### Full Data Table")
-    demand_table = demand_data.rename(
-        columns={
-            "Skill_Occurrences": "Total Mentions",
-            "Unique_Job_Ads": "Unique Job Ads",
-            "Avg_Skills_Per_Job": "Avg Skills Per Job",
-            "Coverage_%": "Coverage %",
-        }
-    )
-    # NOTE: Avoid pandas Styler.background_gradient here; it requires matplotlib on Streamlit Cloud.
-    st.dataframe(demand_table, use_container_width=True, hide_index=True, height=360)
-
     st.info(
         "**Key insight:** Communication appears in **610 skill mentions** across "
         "**348 unique job ads** — meaning **31.0% of all UK gaming jobs** require "
