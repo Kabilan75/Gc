@@ -667,7 +667,6 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     regions = ["England", "Scotland", "Wales", "Northern Ireland"]
     st.markdown("### Controls")
     top_n = st.slider("Top skills to show (heatmap)", min_value=10, max_value=30, value=15, step=5)
-    focus_region = st.selectbox("Focus region (drives drilldowns below)", regions, index=0)
     per_region_top: dict[str, pd.Series] = {}
     for r in regions:
         sub = df_b2[df_b2[reg_col] == r]
@@ -804,6 +803,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     st.dataframe(exact_tab2, use_container_width=True, hide_index=True, height=240)
 
     st.markdown("### Drilldown — top skills for selected region")
+    focus_region = st.selectbox("Focus region (drives drilldowns below)", regions, index=0)
     sub_focus = df_b2[df_b2[reg_col].astype(str).str.strip() == focus_region]
     top_focus = sub_focus[sk_col].astype(str).str.strip().value_counts().head(20).reset_index()
     top_focus.columns = ["Skill", "Count"]
