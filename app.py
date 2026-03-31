@@ -40,21 +40,57 @@ COLOURS = {
     "sky": "#0369A1",
 }
 
-CLUSTER_COLOURS = {
-    "Game Development & Programming": "#1D4ED8",
-    "Soft Skills & Business Development": "#6D28D9",
-    "Project & Development Management": "#065F46",
-    "Soft Skills & Creative Production": "#9D174D",
-    "Business Tools & Productivity": "#92400E",
-    "Cloud, Infrastructure & DevOps": "#0369A1",
+DARK_COLOURS = [
+    "#38BDF8",  # sky blue — primary
+    "#818CF8",  # indigo — secondary
+    "#34D399",  # emerald — tertiary
+    "#F472B6",  # pink
+    "#FB923C",  # orange
+    "#A78BFA",  # violet
+    "#4ADE80",  # green
+    "#FCD34D",  # yellow
+]
+
+CLUSTER_COLOURS_DARK = {
+    "Game Development & Programming": "#38BDF8",
+    "Soft Skills & Business Development": "#818CF8",
+    "Project & Development Management": "#34D399",
+    "Soft Skills & Creative Production": "#F472B6",
+    "Business Tools & Productivity": "#FB923C",
+    "Cloud, Infrastructure & DevOps": "#A78BFA",
 }
 
-REGION_COLOURS = {
-    "England": "#1D4ED8",
-    "Scotland": "#065F46",
-    "Wales": "#92400E",
-    "Northern Ireland": "#5B21B6",
+REGION_COLOURS_DARK = {
+    "England": "#38BDF8",
+    "Scotland": "#34D399",
+    "Wales": "#FB923C",
+    "Northern Ireland": "#818CF8",
 }
+
+DARK_PLOTLY_LAYOUT = dict(
+    plot_bgcolor="#0A0E1A",
+    paper_bgcolor="#0A0E1A",
+    font=dict(color="#94A3B8", family="Arial"),
+    xaxis=dict(
+        gridcolor="#1E293B",
+        linecolor="#1E293B",
+        tickcolor="#475569",
+        title_font=dict(color="#64748B"),
+    ),
+    yaxis=dict(
+        gridcolor="#1E293B",
+        linecolor="#1E293B",
+        tickcolor="#475569",
+        title_font=dict(color="#64748B"),
+    ),
+    title_font=dict(color="#F1F5F9", size=14),
+    legend=dict(
+        bgcolor="#0F172A",
+        bordercolor="#1E293B",
+        borderwidth=1,
+        font=dict(color="#94A3B8"),
+    ),
+)
 
 POPULATION = {
     "England": 56490048,
@@ -65,11 +101,10 @@ POPULATION = {
 
 def apply_plotly_style(fig: go.Figure) -> go.Figure:
     fig.update_layout(
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Arial", size=12, color="#1E293B"),
+        **DARK_PLOTLY_LAYOUT,
+        font=dict(family="Arial", size=12, color="#94A3B8"),
         margin=dict(l=20, r=20, t=40, b=20),
-        hoverlabel=dict(bgcolor="white", font_size=12),
+        hoverlabel=dict(bgcolor="#0F172A", font=dict(color="#E2E8F0"), font_size=12),
     )
     return fig
 
@@ -83,6 +118,21 @@ def tab_header() -> None:
     st.markdown("## 🎮 UK Gaming Industry — Skill Demand Analysis")
     st.markdown("*University of Leicester | AI for Business Intelligence | Kabilan*")
     st.markdown("---")
+
+
+def animated_metric(label, value, prefix="", suffix="", color="#38BDF8"):
+    st.markdown(
+        f"""
+    <div style="background:#0F172A;border:1px solid #1E3A5F;border-radius:10px;
+                padding:20px;text-align:center;margin:4px;">
+        <div style="font-size:30px;font-weight:700;color:{color};">
+            {prefix}{value}{suffix}
+        </div>
+        <div style="font-size:12px;color:#64748B;margin-top:6px;">{label}</div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
 
 
 @st.cache_data(show_spinner=False)
@@ -140,14 +190,180 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-[data-testid="stSidebar"] {background-color: #0F1B2D;}
-[data-testid="stSidebar"] * {color: #E5E7EB !important;}
-.metric-card {background:#1A2535;border:1px solid #0D9488;border-radius:10px;padding:16px;text-align:center;}
-.metric-value {font-size:28px;font-weight:bold;color:#5EEAD4;}
-.metric-label {font-size:12px;color:#9CA3AF;}
-.callout {background:#FFF7ED;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;}
-.high-priority {background-color:#FFF5F5;}
-.badge {display:inline-block;background:#0D9488;color:white;padding:3px 10px;border-radius:12px;margin:3px;font-size:12px;}
+/* ── Global dark background ── */
+.stApp {
+    background-color: #0A0E1A;
+    color: #E2E8F0;
+}
+
+/* ── Main content area ── */
+section[data-testid="stMain"] {
+    background-color: #0A0E1A;
+}
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background-color: #060912 !important;
+    border-right: 1px solid #1E293B;
+}
+[data-testid="stSidebar"] * {
+    color: #94A3B8 !important;
+}
+[data-testid="stSidebar"] .stRadio label {
+    color: #CBD5E1 !important;
+    font-size: 13px;
+}
+
+/* ── Headers ── */
+h1, h2, h3, h4 {
+    color: #F1F5F9 !important;
+    font-weight: 600;
+}
+
+/* ── Metric boxes ── */
+div[data-testid="metric-container"] {
+    background-color: #0F172A;
+    border: 1px solid #1E3A5F;
+    border-radius: 10px;
+    padding: 16px;
+}
+div[data-testid="metric-container"] label {
+    color: #64748B !important;
+    font-size: 12px;
+}
+div[data-testid="metric-container"] div {
+    color: #38BDF8 !important;
+    font-size: 24px;
+    font-weight: 700;
+}
+
+/* ── Dataframes and tables ── */
+.stDataFrame {
+    background-color: #0F172A !important;
+    border: 1px solid #1E293B !important;
+    border-radius: 8px;
+}
+.stDataFrame * {
+    color: #CBD5E1 !important;
+    background-color: #0F172A !important;
+}
+
+/* ── Selectbox and inputs ── */
+.stSelectbox > div > div {
+    background-color: #0F172A !important;
+    border: 1px solid #1E3A5F !important;
+    color: #E2E8F0 !important;
+    border-radius: 8px;
+}
+.stTextInput > div > div > input {
+    background-color: #0F172A !important;
+    border: 1px solid #1E3A5F !important;
+    color: #E2E8F0 !important;
+    border-radius: 8px;
+}
+
+/* ── Radio buttons ── */
+.stRadio > div {
+    background-color: #0F172A;
+    border-radius: 8px;
+    padding: 8px;
+    border: 1px solid #1E293B;
+}
+
+/* ── Expander ── */
+div[data-testid="stExpander"] {
+    background-color: #0F172A !important;
+    border: 1px solid #1E293B !important;
+    border-radius: 8px;
+}
+
+/* ── Info and warning boxes ── */
+div[data-testid="stAlert"] {
+    background-color: #0F172A !important;
+    border: 1px solid #1E3A5F !important;
+    color: #94A3B8 !important;
+    border-radius: 8px;
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {
+    background-color: #0F172A;
+    border-radius: 8px;
+    padding: 4px;
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: transparent;
+    color: #64748B;
+    border-radius: 6px;
+}
+.stTabs [aria-selected="true"] {
+    background-color: #1E3A5F !important;
+    color: #38BDF8 !important;
+}
+
+/* ── Divider ── */
+hr {
+    border-color: #1E293B;
+}
+
+/* ── Callout box ── */
+.callout {
+    background: #0F172A;
+    border-left: 3px solid #38BDF8;
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    color: #94A3B8;
+}
+
+/* ── Metric card custom ── */
+.metric-card {
+    background: #0F172A;
+    border: 1px solid #1E3A5F;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+}
+.metric-value {
+    font-size: 30px;
+    font-weight: 700;
+    color: #38BDF8;
+}
+.metric-label {
+    font-size: 12px;
+    color: #64748B;
+    margin-top: 4px;
+}
+
+/* ── Badge ── */
+.badge {
+    display: inline-block;
+    background: #1E3A5F;
+    color: #38BDF8;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin: 3px;
+    font-size: 12px;
+    border: 1px solid #2563EB;
+}
+
+/* ── Caption text ── */
+.stCaption {
+    color: #475569 !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: #0A0E1A;
+}
+::-webkit-scrollbar-thumb {
+    background: #1E3A5F;
+    border-radius: 3px;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -192,10 +408,15 @@ with st.sidebar:
     st.markdown("**TAB 3**: Stage A→D gap pipeline + workshop priorities.")
     st.markdown("**TAB 4**: Experience distribution + gap skills by level.")
     st.markdown("**TAB 5**: Fair global comparison using skill share (% of jobs).")
-    st.markdown("---")
-    st.markdown("University of Leicester")
-    st.markdown("AI for Business Intelligence")
-    st.markdown("Kabilan | 2025")
+    st.sidebar.markdown("---")
+    st.sidebar.markdown(
+        "<div style='color:#475569;font-size:11px;line-height:1.8'>"
+        "University of Leicester<br>"
+        "AI for Business Intelligence<br>"
+        "<span style='color:#38BDF8'>Kabilan</span> | 2025"
+        "</div>",
+        unsafe_allow_html=True,
+    )
 
     st.markdown("---")
     st.markdown("## 🎛️ Global filters")
@@ -250,7 +471,6 @@ df_d_f = _apply_filters(df_d)
 
 
 def show_tab1(df_a: pd.DataFrame) -> None:
-    tab_header()
     st.subheader("UK Overview")
 
     # Basic metrics (pre-computed headline figures)
@@ -284,10 +504,11 @@ def show_tab1(df_a: pd.DataFrame) -> None:
         x="Count",
         y="Skill",
         orientation="h",
-        color_discrete_sequence=[COLOURS["teal"]],
+        color_discrete_sequence=DARK_COLOURS,
     )
     fig1.update_traces(hovertemplate="%{y}: %{x}<extra></extra>")
     fig1.update_layout(
+        **DARK_PLOTLY_LAYOUT,
         title="Top 20 Most Demanded Skills — UK Gaming Industry",
         xaxis_title="Count",
         yaxis_title="",
@@ -295,16 +516,6 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     )
     plotly_show(fig1)
 
-    # Reference category mix pie (fixed values)
-    category_colours = [
-        "#1D4ED8",  # Soft Skills — blue
-        "#6D28D9",  # Other — purple
-        "#0D9488",  # Tools & Software — teal
-        "#EF4444",  # Programming — red
-        "#F59E0B",  # 3D Art & Design — amber
-        "#10B981",  # Game Engines & Dev — green
-        "#EC4899",  # Cloud & DevOps — pink
-    ]
     fig_pie = px.pie(
         values=[2499, 1457, 893, 639, 575, 512, 373],
         names=[
@@ -317,7 +528,7 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             "Cloud & DevOps",
         ],
         title="Skill Category Mix — UK Gaming Industry",
-        color_discrete_sequence=category_colours,
+        color_discrete_sequence=DARK_COLOURS,
         hole=0.4,
     )
     fig_pie.update_traces(
@@ -326,6 +537,7 @@ def show_tab1(df_a: pd.DataFrame) -> None:
         hovertemplate="<b>%{label}</b><br>Count: %{value:,}<br>Share: %{percent}<extra></extra>",
     )
     fig_pie.update_layout(
+        **DARK_PLOTLY_LAYOUT,
         showlegend=True,
         legend=dict(orientation="v", x=1.0, y=0.5),
     )
@@ -447,17 +659,16 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
             title=title,
             labels={y_col: label, "Skill": ""},
             text=y_col,
-            color_discrete_sequence=[colour],
+            color_discrete_sequence=DARK_COLOURS,
         )
         fig_demand.update_traces(texttemplate="%{text:,}", textposition="outside")
         fig_demand.update_layout(
+            **DARK_PLOTLY_LAYOUT,
             yaxis={"categoryorder": "total ascending"},
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
             height=500,
             transition_duration=600,
         )
-        st.plotly_chart(fig_demand, use_container_width=True)
+        plotly_show(fig_demand)
 
     with col_right:
         fig_coverage = px.bar(
@@ -473,14 +684,13 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         )
         fig_coverage.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
         fig_coverage.update_layout(
+            **DARK_PLOTLY_LAYOUT,
             yaxis={"categoryorder": "total ascending"},
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
             height=500,
             coloraxis_showscale=False,
             transition_duration=600,
         )
-        st.plotly_chart(fig_coverage, use_container_width=True)
+        plotly_show(fig_coverage)
 
     st.markdown("#### Full Data Table")
     demand_table = demand_data.rename(
@@ -540,14 +750,13 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         )
         fig_cat.update_traces(texttemplate="%{text:,}", textposition="outside")
         fig_cat.update_layout(
+            **DARK_PLOTLY_LAYOUT,
             yaxis={"categoryorder": "total ascending"},
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
             coloraxis_showscale=False,
             height=450,
             transition_duration=600,
         )
-        st.plotly_chart(fig_cat, use_container_width=True)
+        plotly_show(fig_cat)
 
     with col2:
         fig_cat_pie = px.pie(
@@ -556,7 +765,7 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
             names="Category",
             title="Job Category Distribution — 1,121 UK Gaming Jobs",
             hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Set3,
+            color_discrete_sequence=DARK_COLOURS,
         )
         fig_cat_pie.update_traces(
             textposition="inside",
@@ -564,12 +773,11 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
             hovertemplate="<b>%{label}</b><br>Jobs: %{value}<br>Share: %{percent}<extra></extra>",
         )
         fig_cat_pie.update_layout(
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
+            **DARK_PLOTLY_LAYOUT,
             showlegend=False,
             height=450,
         )
-        st.plotly_chart(fig_cat_pie, use_container_width=True)
+        plotly_show(fig_cat_pie)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -620,7 +828,6 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
 
 
 def show_tab2(df_b: pd.DataFrame) -> None:
-    tab_header()
     st.subheader("Regional Analysis")
 
     reg_col = "UK Region"
@@ -683,6 +890,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         )
     )
     fig_hm.update_layout(
+        **DARK_PLOTLY_LAYOUT,
         title="Gaming Skill Demand Across UK Regions (per 100k population)",
         yaxis=dict(autorange="reversed"),
     )
@@ -723,7 +931,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     for col, reg in zip([c1, c2, c3, c4], regions):
         with col:
             st.markdown(
-                f"#### <span style='color:{REGION_COLOURS.get(reg,'#333')}'>{reg}</span>",
+                f"#### <span style='color:{REGION_COLOURS_DARK.get(reg,'#333')}'>{reg}</span>",
                 unsafe_allow_html=True,
             )
             for name, posts, norm in cards.get(reg, []):
@@ -746,9 +954,14 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         y="per100k",
         color="Cluster",
         title="Skill Cluster Composition by UK Region (per 100k population)",
-        color_discrete_map=CLUSTER_COLOURS,
+        color_discrete_map=CLUSTER_COLOURS_DARK,
     )
-    fig_stack.update_layout(barmode="stack", xaxis_title="", yaxis_title="Skills per 100k population")
+    fig_stack.update_layout(
+        **DARK_PLOTLY_LAYOUT,
+        barmode="stack",
+        xaxis_title="",
+        yaxis_title="Skills per 100k population",
+    )
     plotly_show(fig_stack)
 
     exact_tab2 = pd.DataFrame(
@@ -772,7 +985,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         y="Skill",
         orientation="h",
         title=f"Top skills — {focus_region} (under current global filters)",
-        color_discrete_sequence=[REGION_COLOURS.get(focus_region, COLOURS["teal"])],
+        color_discrete_sequence=DARK_COLOURS,
     )
     plotly_show(fig_focus)
 
@@ -785,14 +998,17 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         x="Count",
         y="Skill",
         orientation="h",
-        color_discrete_sequence=[REGION_COLOURS.get(region_pick, COLOURS["teal"])],
+        color_discrete_sequence=DARK_COLOURS,
     )
-    fig_r.update_layout(title=f"Top 10 skills — {region_pick}", showlegend=False)
+    fig_r.update_layout(
+        **DARK_PLOTLY_LAYOUT,
+        title=f"Top 10 skills — {region_pick}",
+        showlegend=False,
+    )
     plotly_show(fig_r)
 
 
 def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
-    tab_header()
     st.subheader("AI Gap Analysis")
 
     st.markdown("### Controls")
@@ -860,6 +1076,7 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         )
     )
     fig_gap.update_layout(
+        **DARK_PLOTLY_LAYOUT,
         title="Average Gap Score — Region × Skill Cluster",
         yaxis=dict(autorange="reversed"),
     )
@@ -887,7 +1104,7 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         color="Cluster_Name",
         size="Demand",
         hover_name="Skills",
-        color_discrete_map=CLUSTER_COLOURS,
+        color_discrete_map=CLUSTER_COLOURS_DARK,
         title="Demand vs Gap Score — (each dot = one skill)",
     )
     plotly_show(fig_sc)
@@ -897,7 +1114,7 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         x="UK Region",
         y="Gap_Score",
         color="UK Region",
-        color_discrete_map=REGION_COLOURS,
+        color_discrete_map=REGION_COLOURS_DARK,
         title="Gap Score Distribution by UK Region",
     )
     plotly_show(fig_box)
@@ -959,7 +1176,6 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
 
 
 def show_tab4(df_xl: pd.DataFrame) -> None:
-    tab_header()
     st.subheader("Experience Analysis")
 
     df_uk = df_xl.copy()
@@ -1021,7 +1237,7 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                 x="Avg Min Experience",
                 y="Category",
                 orientation="h",
-                color_discrete_sequence=[COLOURS["teal"]],
+                color_discrete_sequence=DARK_COLOURS,
                 title="Average Min Experience by job category (top 8)",
             )
             plotly_show(fig_hbar)
@@ -1105,6 +1321,7 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                 )
             )
             fig_heat.update_layout(
+                **DARK_PLOTLY_LAYOUT,
                 title="Top 15 skills vs experience level (counts)",
                 yaxis=dict(autorange="reversed"),
             )
@@ -1132,7 +1349,7 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                 color="Level",
                 barmode="group",
                 category_orders={"Skill": seven, "Level": levels},
-                color_discrete_sequence=px.colors.qualitative.Set2,
+                color_discrete_sequence=DARK_COLOURS,
                 title="Seven key skills by experience level",
             )
             plotly_show(fig_7)
@@ -1194,10 +1411,6 @@ SideFest needs a 3–5 year structured pathway.
 
 
 def show_tab5() -> None:
-    st.markdown("## 🌍 Global Comparison — UK vs World")
-    st.markdown("*University of Leicester | AI for Business Intelligence | Kabilan*")
-    st.markdown("---")
-
     st.markdown(
         """
     <div class='callout'>
@@ -1478,15 +1691,14 @@ def show_tab5() -> None:
         textposition="outside",
     )
     fig_countries.update_layout(
+        **DARK_PLOTLY_LAYOUT,
         yaxis={"categoryorder": "total ascending"},
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)",
         showlegend=True,
         legend_title="",
         height=500,
         transition_duration=600,
     )
-    st.plotly_chart(fig_countries, use_container_width=True)
+    plotly_show(fig_countries)
 
     # Show summary metrics below chart
     col1, col2, col3 = st.columns(3)
@@ -1535,6 +1747,7 @@ def show_tab5() -> None:
             )
             fig_skill.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
             fig_skill.update_layout(
+                **DARK_PLOTLY_LAYOUT,
                 yaxis={"categoryorder": "total ascending"},
                 showlegend=True,
                 legend_title="",
