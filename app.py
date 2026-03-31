@@ -67,29 +67,7 @@ REGION_COLOURS_DARK = {
     "Northern Ireland": "#818CF8",
 }
 
-DARK_PLOTLY_LAYOUT = dict(
-    plot_bgcolor="#0A0E1A",
-    paper_bgcolor="#0A0E1A",
-    xaxis=dict(
-        gridcolor="#1E293B",
-        linecolor="#1E293B",
-        tickcolor="#475569",
-        title=dict(font=dict(color="#64748B")),
-    ),
-    yaxis=dict(
-        gridcolor="#1E293B",
-        linecolor="#1E293B",
-        tickcolor="#475569",
-        title=dict(font=dict(color="#64748B")),
-    ),
-    title=dict(font=dict(color="#F1F5F9", size=14)),
-    legend=dict(
-        bgcolor="#0F172A",
-        bordercolor="#1E293B",
-        borderwidth=1,
-        font=dict(color="#94A3B8"),
-    ),
-)
+DARK_PLOTLY_LAYOUT = {}
 
 POPULATION = {
     "England": 56490048,
@@ -99,12 +77,45 @@ POPULATION = {
 }
 
 def apply_plotly_style(fig: go.Figure) -> go.Figure:
+    # Streamlit Cloud can run older Plotly builds; keep these keys conservative.
     fig.update_layout(
-        **DARK_PLOTLY_LAYOUT,
+        template="plotly_dark",
+        plot_bgcolor="#0A0E1A",
+        paper_bgcolor="#0A0E1A",
         font=dict(family="Arial", size=12, color="#94A3B8"),
         margin=dict(l=20, r=20, t=40, b=20),
         hoverlabel=dict(bgcolor="#0F172A", font=dict(color="#E2E8F0"), font_size=12),
     )
+
+    try:
+        fig.update_xaxes(
+            gridcolor="#1E293B",
+            linecolor="#1E293B",
+            tickcolor="#475569",
+            title_font=dict(color="#64748B"),
+        )
+        fig.update_yaxes(
+            gridcolor="#1E293B",
+            linecolor="#1E293B",
+            tickcolor="#475569",
+            title_font=dict(color="#64748B"),
+        )
+    except TypeError:
+        # Fallback for older plotly that doesn't accept some axis kwargs.
+        pass
+
+    try:
+        fig.update_layout(
+            title=dict(font=dict(color="#F1F5F9", size=14)),
+            legend=dict(
+                bgcolor="#0F172A",
+                bordercolor="#1E293B",
+                borderwidth=1,
+                font=dict(color="#94A3B8"),
+            ),
+        )
+    except TypeError:
+        pass
     return fig
 
 
