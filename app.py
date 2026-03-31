@@ -85,37 +85,37 @@ POPULATION = {
 def apply_plotly_style(fig):
     try:
         fig.update_layout(
-            template="plotly_dark",
-            plot_bgcolor="#0F172A",
-            paper_bgcolor="#0F172A",
-            font=dict(color="#E2E8F0", family="Arial", size=12),
+            template="plotly_white",
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#1E293B", family="Arial", size=12),
             margin=dict(l=40, r=40, t=50, b=40),
-            title_font=dict(color="#F1F5F9", size=14),
+            title_font=dict(color="#0F172A", size=14),
             colorway=DARK_COLOURS,
         )
     except Exception:
         pass
     try:
         fig.update_xaxes(
-            gridcolor="#1E293B",
-            linecolor="#334155",
-            tickfont=dict(color="#94A3B8"),
-            title_font=dict(color="#94A3B8"),
+            gridcolor="#E2E8F0",
+            linecolor="#CBD5E1",
+            tickfont=dict(color="#475569"),
+            title_font=dict(color="#475569"),
         )
         fig.update_yaxes(
-            gridcolor="#1E293B",
-            linecolor="#334155",
-            tickfont=dict(color="#94A3B8"),
-            title_font=dict(color="#94A3B8"),
+            gridcolor="#E2E8F0",
+            linecolor="#CBD5E1",
+            tickfont=dict(color="#475569"),
+            title_font=dict(color="#475569"),
         )
     except Exception:
         pass
     try:
         fig.update_layout(
             legend=dict(
-                bgcolor="#1E293B",
-                bordercolor="#334155",
-                font=dict(color="#CBD5E1"),
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="#E2E8F0",
+                font=dict(color="#334155"),
             )
         )
     except Exception:
@@ -206,188 +206,15 @@ st.set_page_config(
 st.markdown(
     """
 <style>
-/* ── Global dark background ── */
-.stApp {
-    background-color: #0A0E1A;
-    color: #E2E8F0;
-}
-
-/* ── Main content area ── */
-section[data-testid="stMain"] {
-    background-color: #0A0E1A;
-}
-
-/* ── Sidebar ── */
-[data-testid="stSidebar"] {
-    background-color: #060912 !important;
-    border-right: 1px solid #1E293B;
-}
-[data-testid="stSidebar"] * {
-    color: #94A3B8 !important;
-}
-[data-testid="stSidebar"] .stRadio label {
-    color: #CBD5E1 !important;
-    font-size: 13px;
-}
-
-/* ── Headers ── */
-h1, h2, h3, h4 {
-    color: #F1F5F9 !important;
-    font-weight: 600;
-}
-
-/* ── Metric boxes ── */
-div[data-testid="metric-container"] {
-    background-color: #0F172A;
-    border: 1px solid #1E3A5F;
-    border-radius: 10px;
-    padding: 16px;
-}
-div[data-testid="metric-container"] label {
-    color: #64748B !important;
-    font-size: 12px;
-}
-div[data-testid="metric-container"] div {
-    color: #38BDF8 !important;
-    font-size: 24px;
-    font-weight: 700;
-}
-
-/* ── Dataframes and tables ── */
-.stDataFrame {
-    background-color: #0F172A !important;
-    border: 1px solid #1E293B !important;
-    border-radius: 8px;
-}
-.stDataFrame * {
-    color: #CBD5E1 !important;
-    background-color: #0F172A !important;
-}
-
-/* ── Selectbox and inputs ── */
-.stSelectbox > div > div {
-    background-color: #0F172A !important;
-    border: 1px solid #1E3A5F !important;
-    color: #E2E8F0 !important;
-    border-radius: 8px;
-}
-.stTextInput > div > div > input {
-    background-color: #0F172A !important;
-    border: 1px solid #1E3A5F !important;
-    color: #E2E8F0 !important;
-    border-radius: 8px;
-}
-
-/* ── Radio buttons ── */
-.stRadio > div {
-    background-color: #0F172A;
-    border-radius: 8px;
-    padding: 8px;
-    border: 1px solid #1E293B;
-}
-
-/* ── Expander ── */
-div[data-testid="stExpander"] {
-    background-color: #0F172A !important;
-    border: 1px solid #1E293B !important;
-    border-radius: 8px;
-}
-
-/* ── Info and warning boxes ── */
-div[data-testid="stAlert"] {
-    background-color: #0F172A !important;
-    border: 1px solid #1E3A5F !important;
-    color: #94A3B8 !important;
-    border-radius: 8px;
-}
-
-/* ── Tabs ── */
-.stTabs [data-baseweb="tab-list"] {
-    background-color: #0F172A;
-    border-radius: 8px;
-    padding: 4px;
-}
-.stTabs [data-baseweb="tab"] {
-    background-color: transparent;
-    color: #64748B;
-    border-radius: 6px;
-}
-.stTabs [aria-selected="true"] {
-    background-color: #1E3A5F !important;
-    color: #38BDF8 !important;
-}
-
-/* ── Divider ── */
-hr {
-    border-color: #1E293B;
-}
-
-/* ── Callout box ── */
-.callout {
-    background: #0F172A;
-    border-left: 3px solid #38BDF8;
-    padding: 14px 18px;
-    border-radius: 0 8px 8px 0;
-    margin: 12px 0;
-    color: #94A3B8;
-}
-
-/* ── Metric card custom ── */
-.metric-card {
-    background: #0F172A;
-    border: 1px solid #1E3A5F;
-    border-radius: 10px;
-    padding: 20px;
-    text-align: center;
-}
-.metric-value {
-    font-size: 30px;
-    font-weight: 700;
-    color: #38BDF8;
-}
-.metric-label {
-    font-size: 12px;
-    color: #64748B;
-    margin-top: 4px;
-}
-
-/* ── Badge ── */
-.badge {
-    display: inline-block;
-    background: #1E3A5F;
-    color: #38BDF8;
-    padding: 3px 10px;
-    border-radius: 12px;
-    margin: 3px;
-    font-size: 12px;
-    border: 1px solid #2563EB;
-}
-
-/* ── Caption text ── */
-.stCaption {
-    color: #475569 !important;
-}
-
-/* ── Plotly charts (ensure visible on dark) ── */
-div[data-testid="stPlotlyChart"] {
-    background-color: #0F172A !important;
-    border: 1px solid #1E293B;
-    border-radius: 10px;
-    padding: 10px;
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-::-webkit-scrollbar-track {
-    background: #0A0E1A;
-}
-::-webkit-scrollbar-thumb {
-    background: #1E3A5F;
-    border-radius: 3px;
-}
+/* ── Light professional theme (original) ── */
+[data-testid="stSidebar"] {background-color: #0F1B2D;}
+[data-testid="stSidebar"] * {color: #E5E7EB !important;}
+.metric-card {background:#1A2535;border:1px solid #0D9488;border-radius:10px;padding:16px;text-align:center;}
+.metric-value {font-size:28px;font-weight:bold;color:#5EEAD4;}
+.metric-label {font-size:12px;color:#9CA3AF;}
+.callout {background:#FFF7ED;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;}
+.high-priority {background-color:#FFF5F5;}
+.badge {display:inline-block;background:#0D9488;color:white;padding:3px 10px;border-radius:12px;margin:3px;font-size:12px;}
 </style>
 """,
     unsafe_allow_html=True,
