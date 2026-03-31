@@ -76,50 +76,49 @@ POPULATION = {
     "Northern Ireland": 1910000,
 }
 
-def apply_plotly_style(fig: go.Figure) -> go.Figure:
-    # Streamlit Cloud can run older Plotly builds; keep these keys conservative.
-    fig.update_layout(
-        template="plotly_dark",
-        plot_bgcolor="#0A0E1A",
-        paper_bgcolor="#0A0E1A",
-        font=dict(family="Arial", size=12, color="#94A3B8"),
-        margin=dict(l=20, r=20, t=40, b=20),
-        hoverlabel=dict(bgcolor="#0F172A", font=dict(color="#E2E8F0"), font_size=12),
-    )
-
-    try:
-        fig.update_xaxes(
-            gridcolor="#1E293B",
-            linecolor="#1E293B",
-            tickcolor="#475569",
-            title_font=dict(color="#64748B"),
-        )
-        fig.update_yaxes(
-            gridcolor="#1E293B",
-            linecolor="#1E293B",
-            tickcolor="#475569",
-            title_font=dict(color="#64748B"),
-        )
-    except TypeError:
-        # Fallback for older plotly that doesn't accept some axis kwargs.
-        pass
-
+def apply_plotly_style(fig):
     try:
         fig.update_layout(
-            title=dict(font=dict(color="#F1F5F9", size=14)),
+            template="plotly_dark",
+            plot_bgcolor="#0A0E1A",
+            paper_bgcolor="#0A0E1A",
+            font=dict(color="#94A3B8", family="Arial", size=12),
+            margin=dict(l=20, r=20, t=40, b=20),
+        )
+    except Exception:
+        pass
+    try:
+        fig.update_layout(hoverlabel=dict(bgcolor="#0F172A", font_color="#E2E8F0"))
+    except Exception:
+        pass
+    try:
+        fig.update_layout(
             legend=dict(
                 bgcolor="#0F172A",
                 bordercolor="#1E293B",
                 borderwidth=1,
                 font=dict(color="#94A3B8"),
-            ),
+            )
         )
-    except TypeError:
+    except Exception:
+        pass
+    try:
+        fig.update_xaxes(
+            gridcolor="#1E293B",
+            linecolor="#1E293B",
+            tickfont=dict(color="#64748B"),
+        )
+        fig.update_yaxes(
+            gridcolor="#1E293B",
+            linecolor="#1E293B",
+            tickfont=dict(color="#64748B"),
+        )
+    except Exception:
         pass
     return fig
 
 
-def plotly_show(fig: go.Figure) -> None:
+def plotly_show(fig):
     apply_plotly_style(fig)
     st.plotly_chart(fig, use_container_width=True)
 
@@ -521,7 +520,6 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     )
     fig1.update_traces(hovertemplate="%{y}: %{x}<extra></extra>")
     fig1.update_layout(
-        **DARK_PLOTLY_LAYOUT,
         title="Top 20 Most Demanded Skills — UK Gaming Industry",
         xaxis_title="Count",
         yaxis_title="",
@@ -550,7 +548,6 @@ def show_tab1(df_a: pd.DataFrame) -> None:
         hovertemplate="<b>%{label}</b><br>Count: %{value:,}<br>Share: %{percent}<extra></extra>",
     )
     fig_pie.update_layout(
-        **DARK_PLOTLY_LAYOUT,
         showlegend=True,
         legend=dict(orientation="v", x=1.0, y=0.5),
     )
@@ -676,7 +673,6 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         )
         fig_demand.update_traces(texttemplate="%{text:,}", textposition="outside")
         fig_demand.update_layout(
-            **DARK_PLOTLY_LAYOUT,
             yaxis={"categoryorder": "total ascending"},
             height=500,
             transition_duration=600,
@@ -697,7 +693,6 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         )
         fig_coverage.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
         fig_coverage.update_layout(
-            **DARK_PLOTLY_LAYOUT,
             yaxis={"categoryorder": "total ascending"},
             height=500,
             coloraxis_showscale=False,
@@ -763,7 +758,6 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         )
         fig_cat.update_traces(texttemplate="%{text:,}", textposition="outside")
         fig_cat.update_layout(
-            **DARK_PLOTLY_LAYOUT,
             yaxis={"categoryorder": "total ascending"},
             coloraxis_showscale=False,
             height=450,
@@ -786,7 +780,6 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
             hovertemplate="<b>%{label}</b><br>Jobs: %{value}<br>Share: %{percent}<extra></extra>",
         )
         fig_cat_pie.update_layout(
-            **DARK_PLOTLY_LAYOUT,
             showlegend=False,
             height=450,
         )
@@ -903,7 +896,6 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         )
     )
     fig_hm.update_layout(
-        **DARK_PLOTLY_LAYOUT,
         title="Gaming Skill Demand Across UK Regions (per 100k population)",
         yaxis=dict(autorange="reversed"),
     )
@@ -970,7 +962,6 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         color_discrete_map=CLUSTER_COLOURS_DARK,
     )
     fig_stack.update_layout(
-        **DARK_PLOTLY_LAYOUT,
         barmode="stack",
         xaxis_title="",
         yaxis_title="Skills per 100k population",
@@ -1014,7 +1005,6 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         color_discrete_sequence=DARK_COLOURS,
     )
     fig_r.update_layout(
-        **DARK_PLOTLY_LAYOUT,
         title=f"Top 10 skills — {region_pick}",
         showlegend=False,
     )
@@ -1089,7 +1079,6 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         )
     )
     fig_gap.update_layout(
-        **DARK_PLOTLY_LAYOUT,
         title="Average Gap Score — Region × Skill Cluster",
         yaxis=dict(autorange="reversed"),
     )
@@ -1334,7 +1323,6 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                 )
             )
             fig_heat.update_layout(
-                **DARK_PLOTLY_LAYOUT,
                 title="Top 15 skills vs experience level (counts)",
                 yaxis=dict(autorange="reversed"),
             )
@@ -1704,7 +1692,6 @@ def show_tab5() -> None:
         textposition="outside",
     )
     fig_countries.update_layout(
-        **DARK_PLOTLY_LAYOUT,
         yaxis={"categoryorder": "total ascending"},
         showlegend=True,
         legend_title="",
@@ -1760,7 +1747,6 @@ def show_tab5() -> None:
             )
             fig_skill.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
             fig_skill.update_layout(
-                **DARK_PLOTLY_LAYOUT,
                 yaxis={"categoryorder": "total ascending"},
                 showlegend=True,
                 legend_title="",
