@@ -80,24 +80,21 @@ def apply_plotly_style(fig):
     try:
         fig.update_layout(
             template="plotly_dark",
-            plot_bgcolor="#0A0E1A",
-            paper_bgcolor="#0A0E1A",
-            font=dict(color="#94A3B8", family="Arial", size=12),
-            margin=dict(l=20, r=20, t=40, b=20),
+            plot_bgcolor="#0F172A",
+            paper_bgcolor="#0F172A",
+            font=dict(color="#E2E8F0", family="Arial", size=12),
+            margin=dict(l=40, r=40, t=50, b=40),
+            title_font=dict(color="#F1F5F9", size=14),
         )
-    except Exception:
-        pass
-    try:
-        fig.update_layout(hoverlabel=dict(bgcolor="#0F172A", font_color="#E2E8F0"))
     except Exception:
         pass
     try:
         fig.update_layout(
             legend=dict(
-                bgcolor="#0F172A",
-                bordercolor="#1E293B",
+                bgcolor="#1E293B",
+                bordercolor="#334155",
                 borderwidth=1,
-                font=dict(color="#94A3B8"),
+                font=dict(color="#CBD5E1"),
             )
         )
     except Exception:
@@ -105,13 +102,15 @@ def apply_plotly_style(fig):
     try:
         fig.update_xaxes(
             gridcolor="#1E293B",
-            linecolor="#1E293B",
-            tickfont=dict(color="#64748B"),
+            linecolor="#334155",
+            tickfont=dict(color="#94A3B8"),
+            title_font=dict(color="#94A3B8"),
         )
         fig.update_yaxes(
             gridcolor="#1E293B",
-            linecolor="#1E293B",
-            tickfont=dict(color="#64748B"),
+            linecolor="#334155",
+            tickfont=dict(color="#94A3B8"),
+            title_font=dict(color="#94A3B8"),
         )
     except Exception:
         pass
@@ -553,9 +552,9 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     )
     plotly_show(fig_pie)
 
-    hierarchy = pd.DataFrame(
+    hierarchy_data = pd.DataFrame(
         {
-            "Rank": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "Rank": range(1, 11),
             "Skill": [
                 "Communication",
                 "Team Management",
@@ -568,9 +567,9 @@ def show_tab1(df_a: pd.DataFrame) -> None:
                 "Unity",
                 "C++",
             ],
-            "Gaming": ["560", "335", "317", "168", "134", "124", "124", "127", "122", "121"],
-            "Tech": ["1,060", "696", "688", "396", "267", "302", "—", "233", "—", "—"],
-            "Transferable": ["1,620", "1,031", "1,005", "564", "401", "421", "314", "360", "—", "—"],
+            "Gaming": [560, 335, 317, 168, 134, 124, 124, 127, 122, 121],
+            "Tech": [1060, 696, 688, 396, 267, 302, "—", 233, "—", "—"],
+            "Transferable": [1620, 1031, 1005, 564, 401, 421, 314, 360, "—", "—"],
             "Type": [
                 "All 3 tiers",
                 "All 3 tiers",
@@ -585,20 +584,7 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             ],
         }
     )
-
-    def _style_hierarchy(row: pd.Series) -> list[str]:
-        skill = str(row["Skill"])
-        if skill == "Communication":
-            return ["background-color: #FEF3C7"] * len(row)
-        if skill in ("Unity", "C++"):
-            return ["background-color: #D1FAE5"] * len(row)
-        return [""] * len(row)
-
-    st.dataframe(
-        hierarchy.style.apply(_style_hierarchy, axis=1),
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(hierarchy_data, use_container_width=True, hide_index=True)
 
     st.markdown(
         """
@@ -1122,52 +1108,38 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     plotly_show(fig_box)
 
     st.markdown("### Workshop recommendations")
-    rec = df_d.copy()
-    rec = rec.rename(
-        columns={
-            "UK_Region": "Region",
-            "Priority_Rank": "Rank",
-            "Skill_Cluster": "Cluster",
-            "Demand_Count": "Demand",
-        }
-    )
 
-    def _prio(x: str) -> str:
-        s = str(x).upper()
-        if "HIGH" in s:
-            return "HIGH"
-        if "MEDIUM" in s:
-            return "MED"
-        return "STD"
+    # Load recommendations
+    df_rec = load_step_d()
 
-    if "Workshop_Recommendation" in rec.columns:
-        rec["Priority"] = rec["Workshop_Recommendation"].map(_prio)
+    # Region filter
+    regions_list = ["All"] + sorted(df_rec["UK_Region"].unique().tolist())
+    selected_region = st.selectbox("Filter by region:", regions_list)
+
+    if selected_region != "All":
+        df_filtered = df_rec[df_rec["UK_Region"] == selected_region].copy()
     else:
-        rec["Priority"] = "STD"
+        df_filtered = df_rec.copy()
 
-    if region_view != "All" and "Region" in rec.columns:
-        rec = rec[rec["Region"].astype(str).str.strip() == region_view]
-    if "Demand" in rec.columns:
-        rec = rec[pd.to_numeric(rec["Demand"], errors="coerce").fillna(0) >= float(min_demand)]
-    if "Priority" in rec.columns and prio_view:
-        rec = rec[rec["Priority"].isin(prio_view)]
+    # Clean column names for display
+    display_cols = ["UK_Region", "Priority_Rank", "Skill", "Skill_Cluster", "Demand_Count", "Gap_Score"]
+    available_cols = [c for c in display_cols if c in df_filtered.columns]
+    df_show = df_filtered[available_cols].copy()
+    df_show.columns = ["Region", "Rank", "Skill", "Cluster", "Demand", "Gap Score"][: len(available_cols)]
 
-    df_show = rec.copy()
+    # Colour code by priority
+    def get_priority(gap):
+        if gap >= 7:
+            return "HIGH"
+        elif gap >= 5.5:
+            return "MED"
+        else:
+            return "STD"
 
-    def colour_priority(row: pd.Series) -> list[str]:
-        pr = row.get("Priority", "")
-        wr = str(row.get("Workshop_Recommendation", ""))
-        if pr == "HIGH" or wr.startswith("🔴"):
-            return ["background-color: #FFF5F5; color: #EF4444; font-weight: bold"] * len(row)
-        if pr == "MED" or wr.startswith("🟠"):
-            return ["background-color: #FFFBEB; color: #D97706; font-weight: bold"] * len(row)
-        return ["background-color: #F0FFF4; color: #059669"] * len(row)
+    if "Gap Score" in df_show.columns:
+        df_show["Priority"] = df_show["Gap Score"].apply(get_priority)
 
-    st.dataframe(
-        df_show.style.apply(colour_priority, axis=1),
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(df_show, use_container_width=True, hide_index=True)
 
     k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Communication gap", "10.0")
@@ -1355,19 +1327,25 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
             )
             plotly_show(fig_7)
 
-            summary = pd.DataFrame(
-                [
-                    ("Communication", 16, 31, 147, 29, 15),
-                    ("Team Management", 8, 19, 103, 26, 25),
-                    ("Talent Acquisition", 10, 21, 71, 18, 20),
-                    ("Cross-Functional", 0, 6, 50, 19, 12),
-                    ("Python", 9, 7, 29, 5, 5),
-                    ("Unity", 0, 3, 34, 5, 11),
-                    ("C++", 3, 11, 35, 6, 10),
-                ],
-                columns=["Skill", "Entry", "Junior", "Mid", "Senior", "Expert"],
+            exp_summary = pd.DataFrame(
+                {
+                    "Skill": [
+                        "Communication",
+                        "Team Management",
+                        "Talent Acquisition",
+                        "Cross-Functional",
+                        "Python",
+                        "Unity",
+                        "C++",
+                    ],
+                    "Entry Level": [16, 8, 10, 0, 9, 0, 3],
+                    "Junior": [31, 19, 21, 6, 7, 3, 11],
+                    "Mid-Level": [147, 103, 71, 50, 29, 34, 35],
+                    "Senior": [29, 26, 18, 19, 5, 5, 6],
+                    "Expert": [15, 25, 20, 12, 5, 11, 10],
+                }
             )
-            st.dataframe(summary, use_container_width=True, hide_index=True)
+            st.dataframe(exp_summary, use_container_width=True, hide_index=True)
 
             st.markdown(
                 """
@@ -1827,16 +1805,7 @@ def show_tab5() -> None:
         "Trend",
     ]
 
-    def colour_trend(row: pd.Series) -> list[str]:
-        if row["Trend"] == "↑ Ahead":
-            return [""] * 5 + ["color: #059669; font-weight: bold"]
-        return [""] * 5 + ["color: #EF4444; font-weight: bold"]
-
-    st.dataframe(
-        comparison.style.apply(colour_trend, axis=1),
-        use_container_width=True,
-        hide_index=True,
-    )
+    st.dataframe(comparison, use_container_width=True, hide_index=True)
 
     st.markdown("---")
 
