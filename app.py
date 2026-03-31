@@ -70,7 +70,6 @@ REGION_COLOURS_DARK = {
 DARK_PLOTLY_LAYOUT = dict(
     plot_bgcolor="#0A0E1A",
     paper_bgcolor="#0A0E1A",
-    font=dict(color="#94A3B8", family="Arial"),
     xaxis=dict(
         gridcolor="#1E293B",
         linecolor="#1E293B",
