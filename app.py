@@ -712,7 +712,7 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
         }
     )
     # NOTE: Avoid pandas Styler.background_gradient here; it requires matplotlib on Streamlit Cloud.
-    st.dataframe(demand_table, use_container_width=True, hide_index=True)
+    st.dataframe(demand_table, use_container_width=True, hide_index=True, height=360)
 
     st.info(
         "**Key insight:** Communication appears in **610 skill mentions** across "
@@ -901,7 +901,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         title="Gaming Skill Demand Across UK Regions (per 100k population)",
         yaxis=dict(autorange="reversed"),
     )
-    plotly_show(fig_hm)
+    plotly_show(fig_hm, height=520)
 
     st.markdown("### Regional top 5 (reference cards)")
     cards = {
@@ -968,7 +968,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         xaxis_title="",
         yaxis_title="Skills per 100k population",
     )
-    plotly_show(fig_stack)
+    plotly_show(fig_stack, height=520)
 
     exact_tab2 = pd.DataFrame(
         [
@@ -979,7 +979,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         ],
         columns=["Region", "Game Dev", "Soft Skills", "Proj Mgmt", "Creative", "Biz Tools", "Cloud"],
     )
-    st.dataframe(exact_tab2, use_container_width=True, hide_index=True)
+    st.dataframe(exact_tab2, use_container_width=True, hide_index=True, height=240)
 
     st.markdown("### Drilldown — top skills for selected region")
     sub_focus = df_b2[df_b2[reg_col].astype(str).str.strip() == focus_region]
@@ -1084,7 +1084,7 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         title="Average Gap Score — Region × Skill Cluster",
         yaxis=dict(autorange="reversed"),
     )
-    plotly_show(fig_gap)
+    plotly_show(fig_gap, height=520)
 
     exact_gap = pd.DataFrame(
         [
@@ -1095,7 +1095,7 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         ],
         columns=["Region", "Biz Tools", "Cloud", "Game Dev", "Proj Mgmt", "Soft Skills", "Creative"],
     )
-    st.dataframe(exact_gap, use_container_width=True, hide_index=True)
+    st.dataframe(exact_gap, use_container_width=True, hide_index=True, height=240)
 
     scatter_src = dfc.copy()
     if "Demand" in scatter_src.columns:
@@ -1155,7 +1155,7 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     if "Gap Score" in df_show.columns:
         df_show["Priority"] = df_show["Gap Score"].apply(get_priority)
 
-    st.dataframe(df_show, use_container_width=True, hide_index=True)
+    st.dataframe(df_show, use_container_width=True, hide_index=True, height=360)
 
     k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Communication gap", "10.0")
@@ -1314,7 +1314,7 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                 title="Top 15 skills vs experience level (counts)",
                 yaxis=dict(autorange="reversed"),
             )
-            plotly_show(fig_heat)
+            plotly_show(fig_heat, height=520)
 
             seven = [
                 "communication",
@@ -1341,7 +1341,7 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                 color_discrete_sequence=DARK_COLOURS,
                 title="Seven key skills by experience level",
             )
-            plotly_show(fig_7)
+            plotly_show(fig_7, height=520)
 
             exp_summary = pd.DataFrame(
                 {
@@ -1361,7 +1361,7 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
                     "Expert": [15, 25, 20, 12, 5, 11, 10],
                 }
             )
-            st.dataframe(exp_summary, use_container_width=True, hide_index=True)
+            st.dataframe(exp_summary, use_container_width=True, hide_index=True, height=260)
 
             st.markdown(
                 """
@@ -1821,7 +1821,7 @@ def show_tab5() -> None:
         "Trend",
     ]
 
-    st.dataframe(comparison, use_container_width=True, hide_index=True)
+    st.dataframe(comparison, use_container_width=True, hide_index=True, height=420)
 
     st.markdown("---")
 
