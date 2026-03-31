@@ -51,6 +51,12 @@ DARK_COLOURS = [
     "#FCD34D",  # yellow
 ]
 
+DRK_CONTINUOUS = [
+    "#0F172A",  # base panel
+    "#1E3A5F",  # mid
+    "#38BDF8",  # highlight
+]
+
 CLUSTER_COLOURS_DARK = {
     "Game Development & Programming": "#38BDF8",
     "Soft Skills & Business Development": "#818CF8",
@@ -85,6 +91,7 @@ def apply_plotly_style(fig):
             font=dict(color="#E2E8F0", family="Arial", size=12),
             margin=dict(l=40, r=40, t=50, b=40),
             title_font=dict(color="#F1F5F9", size=14),
+            colorway=DARK_COLOURS,
         )
     except Exception:
         pass
@@ -676,7 +683,7 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
             labels={"Coverage_%": "% of Job Ads", "Skill": ""},
             text="Coverage_%",
             color="Coverage_%",
-            color_continuous_scale="teal",
+            color_continuous_scale=DRK_CONTINUOUS,
         )
         fig_coverage.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
         fig_coverage.update_layout(
@@ -741,7 +748,7 @@ Unity and C++ are gaming-exclusive — they appear ONLY in gaming jobs.
             labels={"Job_Ads": "Number of Job Ads", "Category": ""},
             text="Job_Ads",
             color="Job_Ads",
-            color_continuous_scale="Blues",
+            color_continuous_scale=DRK_CONTINUOUS,
         )
         fig_cat.update_traces(texttemplate="%{text:,}", textposition="outside")
         fig_cat.update_layout(
