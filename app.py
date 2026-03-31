@@ -202,15 +202,25 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     tab_header()
     st.subheader("UK Overview")
 
+    # Basic metrics (pre-computed headline figures)
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Total Jobs", "1,121")
     m2.metric("Unique Skills", "352")
     m3.metric("Total Skill Rows", "6,948")
     m4.metric("UK Regions", "4")
 
-    skill_col = "Skills" if "Skills" in df_a.columns else df_a.columns[4]
+    # Clean step_a data before aggregations
+    df = df_a.copy()
+    if "Skills" in df.columns:
+        df = df[df["Skills"] != "game-texts"]
+        df = df[df["Skills"].astype(str).str.strip() != ""]
+        df = df[df["Skills"].astype(str).str.lower() != "nan"]
+    if "UK Region" in df.columns:
+        df = df[df["UK Region"].astype(str).str.strip() != "Unknown"]
+
+    skill_col = "Skills" if "Skills" in df.columns else df.columns[4]
     top20 = (
-        df_a[skill_col]
+        df[skill_col]
         .astype(str)
         .str.strip()
         .value_counts()
@@ -234,27 +244,40 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     )
     plotly_show(fig1)
 
-    pie_labels = [
-        "Soft Skills",
-        "Other",
-        "Tools & Software",
-        "Programming",
-        "3D Art & Design",
-        "Game Engines & Dev",
-        "Cloud & DevOps",
+    # Reference category mix pie (fixed values)
+    category_colours = [
+        "#1D4ED8",  # Soft Skills — blue
+        "#6D28D9",  # Other — purple
+        "#0D9488",  # Tools & Software — teal
+        "#EF4444",  # Programming — red
+        "#F59E0B",  # 3D Art & Design — amber
+        "#10B981",  # Game Engines & Dev — green
+        "#EC4899",  # Cloud & DevOps — pink
     ]
-    pie_vals = [2499, 1457, 893, 639, 575, 512, 373]
-    fig_pie = go.Figure(
-        data=[
-            go.Pie(
-                labels=pie_labels,
-                values=pie_vals,
-                hole=0.35,
-                marker=dict(colors=px.colors.sequential.Teal_r[: len(pie_vals)]),
-            )
-        ]
+    fig_pie = px.pie(
+        values=[2499, 1457, 893, 639, 575, 512, 373],
+        names=[
+            "Soft Skills",
+            "Other",
+            "Tools & Software",
+            "Programming",
+            "3D Art & Design",
+            "Game Engines & Dev",
+            "Cloud & DevOps",
+        ],
+        title="Skill Category Mix — UK Gaming Industry",
+        color_discrete_sequence=category_colours,
+        hole=0.4,
     )
-    fig_pie.update_layout(title="Skill category mix (reference distribution)")
+    fig_pie.update_traces(
+        textposition="inside",
+        textinfo="percent+label",
+        hovertemplate="<b>%{label}</b><br>Count: %{value:,}<br>Share: %{percent}<extra></extra>",
+    )
+    fig_pie.update_layout(
+        showlegend=True,
+        legend=dict(orientation="v", x=1.0, y=0.5),
+    )
     plotly_show(fig_pie)
 
     hierarchy = pd.DataFrame(
