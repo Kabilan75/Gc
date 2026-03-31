@@ -240,11 +240,6 @@ with st.spinner("Loading global dataset — 27,898 rows..."):
         st.stop()
 
 with st.sidebar:
-    st.markdown("## 🎮 UK Gaming Industry — Skill Demand Analysis")
-    st.markdown("*University of Leicester | AI for Business Intelligence | Kabilan*")
-    st.markdown("---")
-    st.markdown("## 🎮 Navigation")
-    st.markdown("---")
     tab_choice = st.radio(
         "section",
         [
