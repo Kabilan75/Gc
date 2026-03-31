@@ -89,17 +89,6 @@ def apply_plotly_style(fig):
     except Exception:
         pass
     try:
-        fig.update_layout(
-            legend=dict(
-                bgcolor="#1E293B",
-                bordercolor="#334155",
-                borderwidth=1,
-                font=dict(color="#CBD5E1"),
-            )
-        )
-    except Exception:
-        pass
-    try:
         fig.update_xaxes(
             gridcolor="#1E293B",
             linecolor="#334155",
@@ -114,10 +103,22 @@ def apply_plotly_style(fig):
         )
     except Exception:
         pass
+    try:
+        fig.update_layout(
+            legend=dict(
+                bgcolor="#1E293B",
+                bordercolor="#334155",
+                font=dict(color="#CBD5E1"),
+            )
+        )
+    except Exception:
+        pass
     return fig
 
 
-def plotly_show(fig):
+def plotly_show(fig, height=None):
+    if height:
+        fig.update_layout(height=height)
     apply_plotly_style(fig)
     st.plotly_chart(fig, use_container_width=True)
 
