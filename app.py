@@ -504,7 +504,9 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             if not sub.empty:
                 weekly = sub.set_index("_date").resample("W").size().rename("Count").reset_index()
                 fig_trend = px.line(weekly, x="_date", y="Count", markers=True, title=f"Weekly trend — {selected_skill}")
-                plotly_show(fig_trend)
+                left, right = st.columns(2)
+                with left:
+                    plotly_show(fig_trend, height=420)
 
                 reg = sub["UK Region"].astype(str).str.strip().value_counts().reset_index()
                 reg.columns = ["Region", "Count"]
@@ -515,7 +517,8 @@ def show_tab1(df_a: pd.DataFrame) -> None:
                     orientation="h",
                     title="Regional breakdown",
                 )
-                plotly_show(fig_reg)
+                with right:
+                    plotly_show(fig_reg, height=420)
             else:
                 st.info("No rows for this skill under current filters.")
     else:
