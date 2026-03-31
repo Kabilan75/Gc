@@ -760,7 +760,6 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         title="Average Gap Score — Region × Skill Cluster",
         yaxis=dict(autorange="reversed"),
     )
-    plotly_show(fig_gap, height=520)
 
     exact_gap = pd.DataFrame(
         [
@@ -771,7 +770,18 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         ],
         columns=["Region", "Biz Tools", "Cloud", "Game Dev", "Proj Mgmt", "Soft Skills", "Creative"],
     )
-    st.dataframe(exact_gap, use_container_width=True, hide_index=True, height=240)
+
+    _gap_row_h = 480
+    col_gap_hm, col_gap_tbl = st.columns([1.45, 0.92])
+    with col_gap_hm:
+        plotly_show(fig_gap, height=_gap_row_h)
+    with col_gap_tbl:
+        st.dataframe(
+            exact_gap,
+            use_container_width=True,
+            hide_index=True,
+            height=_gap_row_h,
+        )
 
     scatter_src = dfc.copy()
     if "Demand" in scatter_src.columns:
