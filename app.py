@@ -310,6 +310,10 @@ def show_tab1(df_a: pd.DataFrame) -> None:
         .reset_index()
     )
     top20.columns = ["Skill", "Count"]
+    # Display label: dataset may use "cpp" but should read as C++
+    top20["Skill"] = top20["Skill"].map(
+        lambda s: "C++" if str(s).strip().lower() == "cpp" else str(s).strip()
+    )
     fig1 = px.bar(
         top20.sort_values("Count", ascending=True),
         x="Count",
