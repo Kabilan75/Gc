@@ -771,16 +771,17 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         columns=["Region", "Biz Tools", "Cloud", "Game Dev", "Proj Mgmt", "Soft Skills", "Creative"],
     )
 
-    _gap_row_h = 480
+    _gap_hm_h = 480
+    _gap_tbl_h = 220  # ~5 data rows, no tall empty scroll area
     col_gap_hm, col_gap_tbl = st.columns([1.45, 0.92])
     with col_gap_hm:
-        plotly_show(fig_gap, height=_gap_row_h)
+        plotly_show(fig_gap, height=_gap_hm_h)
     with col_gap_tbl:
         st.dataframe(
-            exact_gap,
+            exact_gap.head(5),
             use_container_width=True,
             hide_index=True,
-            height=_gap_row_h,
+            height=_gap_tbl_h,
         )
 
     scatter_src = dfc.copy()
