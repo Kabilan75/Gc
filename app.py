@@ -252,11 +252,6 @@ with st.sidebar:
         label_visibility="collapsed",
     )
     st.markdown("---")
-    st.markdown("**TAB 1**: UK headline stats + top skills.")
-    st.markdown("**TAB 2**: Regional skill demand + clusters (normalised /100k).")
-    st.markdown("**TAB 3**: Stage A→D gap pipeline + workshop priorities.")
-    st.markdown("**TAB 4**: Experience distribution + gap skills by level.")
-    st.markdown("**TAB 5**: Fair global comparison using skill share (% of jobs).")
     st.sidebar.markdown("---")
     st.sidebar.markdown(
         "<div style='color:#475569;font-size:11px;line-height:1.8'>"
