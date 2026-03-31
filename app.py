@@ -1246,30 +1246,53 @@ def show_tab5() -> None:
 
     st.caption(f"Valid countries (100+ skill rows): {len(valid_countries)}")
 
-    st.markdown("### 🌐 Top Countries by Gaming Job Listings")
-    top_countries = total_per_country.sort_values("total_rows", ascending=False).head(15)
-    top_countries["highlight"] = top_countries["Country"].apply(
+    # Count UNIQUE JOB LISTINGS per country — not skill rows
+    job_counts = df_global["Country"].value_counts().reset_index()
+    job_counts.columns = ["Country", "Job_Listings"]
+    job_counts = job_counts.head(15)
+    job_counts["highlight"] = job_counts["Country"].apply(
         lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
     )
+
+    st.markdown("### 🌐 Top Countries by Gaming Job Listings")
+    st.caption("Counting unique job listings per country — not skill rows")
+
     fig_countries = px.bar(
-        top_countries,
-        x="total_rows",
+        job_counts,
+        x="Job_Listings",
         y="Country",
         orientation="h",
         color="highlight",
         color_discrete_map={"United Kingdom": "#EF4444", "Other": "#0D9488"},
-        title="Top 15 Countries by Gaming Job Listings",
-        labels={"total_rows": "Skill Rows", "Country": ""},
-        text="total_rows",
+        title="Top 15 Countries by Unique Gaming Job Listings",
+        labels={"Job_Listings": "Unique Job Listings", "Country": ""},
+        text="Job_Listings",
     )
-    fig_countries.update_traces(texttemplate="%{text:,}", textposition="outside")
+    fig_countries.update_traces(
+        texttemplate="%{text:,}",
+        textposition="outside",
+    )
     fig_countries.update_layout(
         yaxis={"categoryorder": "total ascending"},
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         showlegend=True,
         legend_title="",
         height=500,
+        transition_duration=600,
     )
-    plotly_show(fig_countries)
+    st.plotly_chart(fig_countries, use_container_width=True)
+
+    # Show summary metrics below chart
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Global Gaming Jobs", f"{len(df_global):,}")
+    with col2:
+        st.metric("Countries with Gaming Jobs", f"{df_global['Country'].nunique():,}")
+    with col3:
+        uk_jobs = len(df_global[df_global["Country"] == "United Kingdom"])
+        uk_pct = round(uk_jobs / len(df_global) * 100, 1) if len(df_global) else 0.0
+        st.metric("UK Share of Global Jobs", f"{uk_pct}%")
 
     st.markdown("---")
 
