@@ -197,6 +197,57 @@ with st.sidebar:
     st.markdown("AI for Business Intelligence")
     st.markdown("Kabilan | 2025")
 
+    st.markdown("---")
+    st.markdown("## 🎛️ Global filters")
+
+    regions_all = ["All", "England", "Scotland", "Wales", "Northern Ireland"]
+    region_filter = st.selectbox("Region", regions_all, index=0)
+
+    skill_query = st.text_input("Skill contains", value="", placeholder="e.g. communication, python").strip().lower()
+
+    # Date filter uses Activated Date from Step A/B (gap/recs don’t have dates).
+    _date_col = "Activated Date"
+    _dates = pd.to_datetime(
+        pd.concat(
+            [
+                df_a[_date_col] if _date_col in df_a.columns else pd.Series(dtype="datetime64[ns]"),
+                df_b[_date_col] if _date_col in df_b.columns else pd.Series(dtype="datetime64[ns]"),
+            ],
+            ignore_index=True,
+        ),
+        errors="coerce",
+    ).dropna()
+    if _dates.empty:
+        date_range = None
+        st.caption("Date filter unavailable (no Activated Date).")
+    else:
+        min_d = _dates.min().date()
+        max_d = _dates.max().date()
+        date_range = st.date_input("Activated Date range", value=(min_d, max_d), min_value=min_d, max_value=max_d)
+
+
+def _apply_filters(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    if region_filter != "All" and "UK Region" in out.columns:
+        out = out[out["UK Region"].astype(str).str.strip() == region_filter]
+    if date_range and "Activated Date" in out.columns:
+        d = pd.to_datetime(out["Activated Date"], errors="coerce")
+        start, end = date_range
+        mask = d.dt.date.between(start, end)
+        out = out[mask]
+    if skill_query:
+        if "Skills" in out.columns:
+            out = out[out["Skills"].astype(str).str.lower().str.contains(skill_query, na=False)]
+        elif "Skill" in out.columns:
+            out = out[out["Skill"].astype(str).str.lower().str.contains(skill_query, na=False)]
+    return out
+
+
+df_a_f = _apply_filters(df_a)
+df_b_f = _apply_filters(df_b)
+df_c_f = _apply_filters(df_c)
+df_d_f = _apply_filters(df_d)
+
 
 def show_tab1(df_a: pd.DataFrame) -> None:
     tab_header()
@@ -243,6 +294,30 @@ def show_tab1(df_a: pd.DataFrame) -> None:
         showlegend=False,
     )
     plotly_show(fig1)
+
+    st.markdown("### Drilldown — explore one skill")
+    if "Activated Date" in df.columns and "UK Region" in df.columns and "Skills" in df.columns:
+        skills_opts = sorted(df["Skills"].dropna().astype(str).str.strip().unique().tolist())
+        default_skill = "communication" if "communication" in [s.lower() for s in skills_opts] else (skills_opts[0] if skills_opts else "")
+        selected_skill = st.selectbox("Select a skill", skills_opts, index=skills_opts.index(next((s for s in skills_opts if s.lower()==default_skill), skills_opts[0])) if skills_opts else 0)
+
+        sub = df[df["Skills"].astype(str).str.strip().str.lower() == str(selected_skill).strip().lower()].copy()
+        d = pd.to_datetime(sub["Activated Date"], errors="coerce")
+        sub = sub.assign(_date=d).dropna(subset=["_date"])
+
+        if not sub.empty:
+            weekly = sub.set_index("_date").resample("W").size().rename("Count").reset_index()
+            fig_trend = px.line(weekly, x="_date", y="Count", markers=True, title=f"Weekly trend — {selected_skill}")
+            plotly_show(fig_trend)
+
+            reg = sub["UK Region"].astype(str).str.strip().value_counts().reset_index()
+            reg.columns = ["Region", "Count"]
+            fig_reg = px.bar(reg.sort_values("Count", ascending=True), x="Count", y="Region", orientation="h", title="Regional breakdown")
+            plotly_show(fig_reg)
+        else:
+            st.info("No rows for this skill under current filters.")
+    else:
+        st.caption("Drilldown unavailable (missing Activated Date / UK Region / Skills columns).")
 
     # Reference category mix pie (fixed values)
     category_colours = [
@@ -348,10 +423,13 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     df_b2 = df_b.copy()
 
     regions = ["England", "Scotland", "Wales", "Northern Ireland"]
+    st.markdown("### Controls")
+    top_n = st.slider("Top skills to show (heatmap)", min_value=10, max_value=30, value=15, step=5)
+    focus_region = st.selectbox("Focus region (drives drilldowns below)", regions, index=0)
     per_region_top: dict[str, pd.Series] = {}
     for r in regions:
         sub = df_b2[df_b2[reg_col] == r]
-        per_region_top[r] = sub[sk_col].astype(str).str.strip().value_counts().head(15)
+        per_region_top[r] = sub[sk_col].astype(str).str.strip().value_counts().head(int(top_n))
 
     top_union: list[str] = []
     for r in regions:
@@ -371,7 +449,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
                     break
             if len(top_union) >= 15:
                 break
-    top_union = top_union[:15]
+    top_union = top_union[: int(top_n)]
 
     z = []
     text = []
@@ -479,6 +557,20 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     )
     st.dataframe(exact_tab2, use_container_width=True, hide_index=True)
 
+    st.markdown("### Drilldown — top skills for selected region")
+    sub_focus = df_b2[df_b2[reg_col].astype(str).str.strip() == focus_region]
+    top_focus = sub_focus[sk_col].astype(str).str.strip().value_counts().head(20).reset_index()
+    top_focus.columns = ["Skill", "Count"]
+    fig_focus = px.bar(
+        top_focus.sort_values("Count", ascending=True),
+        x="Count",
+        y="Skill",
+        orientation="h",
+        title=f"Top skills — {focus_region} (under current global filters)",
+        color_discrete_sequence=[REGION_COLOURS.get(focus_region, COLOURS["teal"])],
+    )
+    plotly_show(fig_focus)
+
     region_pick = st.selectbox("Filter region — top 10 skills", regions)
     sub_r = df_b2[df_b2[reg_col] == region_pick]
     top10r = sub_r[sk_col].astype(str).str.strip().value_counts().head(10).reset_index()
@@ -498,6 +590,12 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     tab_header()
     st.subheader("AI Gap Analysis")
 
+    st.markdown("### Controls")
+    regions_o = ["England", "Scotland", "Wales", "Northern Ireland"]
+    region_view = st.selectbox("Region (for scatter + recommendations)", ["All"] + regions_o, index=0)
+    min_demand = st.slider("Minimum demand (scatter/recs)", min_value=0, max_value=600, value=0, step=10)
+    prio_view = st.multiselect("Priorities", options=["HIGH", "MED", "STD"], default=["HIGH", "MED", "STD"])
+
     s1, s2, s3, s4 = st.columns(4)
     with s1:
         st.markdown("#### Step A: Data Prep")
@@ -512,12 +610,15 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         st.markdown("#### Step D: Recommender")
         st.write("Top 5 per region, 20 total recommendations")
 
+    dfc = df_c.copy()
+    if region_view != "All" and "UK Region" in dfc.columns:
+        dfc = dfc[dfc["UK Region"].astype(str).str.strip() == region_view]
+
     gap_avg = (
-        df_c.groupby(["UK Region", "Cluster_Name"], as_index=False)["Gap_Score"]
+        dfc.groupby(["UK Region", "Cluster_Name"], as_index=False)["Gap_Score"]
         .mean()
         .rename(columns={"Gap_Score": "Avg Gap"})
     )
-    regions_o = ["England", "Scotland", "Wales", "Northern Ireland"]
     clusters_o = [
         "Business Tools & Productivity",
         "Cloud, Infrastructure & DevOps",
@@ -570,21 +671,24 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     )
     st.dataframe(exact_gap, use_container_width=True, hide_index=True)
 
-    eng = df_c[df_c["UK Region"].astype(str).str.strip() == "England"].copy()
+    scatter_src = dfc.copy()
+    if "Demand" in scatter_src.columns:
+        scatter_src = scatter_src[pd.to_numeric(scatter_src["Demand"], errors="coerce").fillna(0) >= float(min_demand)]
+
     fig_sc = px.scatter(
-        eng,
+        scatter_src,
         x="Demand",
         y="Gap_Score",
         color="Cluster_Name",
         size="Demand",
         hover_name="Skills",
         color_discrete_map=CLUSTER_COLOURS,
-        title="Demand vs Gap Score — England (each dot = one skill)",
+        title="Demand vs Gap Score — (each dot = one skill)",
     )
     plotly_show(fig_sc)
 
     fig_box = px.box(
-        df_c,
+        dfc,
         x="UK Region",
         y="Gap_Score",
         color="UK Region",
@@ -617,9 +721,14 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     else:
         rec["Priority"] = "STD"
 
-    reg_opts = ["All"] + sorted(rec["Region"].dropna().unique().tolist()) if "Region" in rec.columns else ["All"]
-    filt = st.selectbox("Region filter", reg_opts)
-    df_show = rec if filt == "All" else rec[rec["Region"] == filt]
+    if region_view != "All" and "Region" in rec.columns:
+        rec = rec[rec["Region"].astype(str).str.strip() == region_view]
+    if "Demand" in rec.columns:
+        rec = rec[pd.to_numeric(rec["Demand"], errors="coerce").fillna(0) >= float(min_demand)]
+    if "Priority" in rec.columns and prio_view:
+        rec = rec[rec["Priority"].isin(prio_view)]
+
+    df_show = rec.copy()
 
     def colour_priority(row: pd.Series) -> list[str]:
         pr = row.get("Priority", "")
