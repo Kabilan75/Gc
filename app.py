@@ -328,7 +328,6 @@ def show_tab1(df_a: pd.DataFrame) -> None:
         yaxis_title="",
         showlegend=False,
     )
-    plotly_show(fig1)
 
     fig_pie = px.pie(
         values=[2499, 1457, 893, 639, 575, 512, 373],
@@ -352,9 +351,9 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     )
     fig_pie.update_layout(
         showlegend=True,
-        legend=dict(orientation="v", x=1.0, y=0.5),
+        legend=dict(orientation="v", x=1.02, y=0.5, font=dict(size=10)),
+        margin=dict(r=10),
     )
-    plotly_show(fig_pie)
 
     hierarchy_data = pd.DataFrame(
         {
@@ -388,7 +387,22 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             ],
         }
     )
-    st.dataframe(hierarchy_data, use_container_width=True, hide_index=True)
+
+    # One row: bar + pie + tier table (compact height)
+    _row_h = 440
+    col_skills, col_mix, col_tiers = st.columns([1.15, 1.0, 0.95])
+    with col_skills:
+        plotly_show(fig1, height=_row_h)
+    with col_mix:
+        plotly_show(fig_pie, height=_row_h)
+    with col_tiers:
+        st.caption("Tier comparison — top 10 skills")
+        st.dataframe(
+            hierarchy_data,
+            use_container_width=True,
+            hide_index=True,
+            height=_row_h,
+        )
 
     st.markdown(
         """
