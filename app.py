@@ -798,7 +798,6 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         color_discrete_map=CLUSTER_COLOURS_DARK,
         title="Demand vs Gap Score — (each dot = one skill)",
     )
-    plotly_show(fig_sc)
 
     fig_box = px.box(
         dfc,
@@ -808,7 +807,13 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         color_discrete_map=REGION_COLOURS_DARK,
         title="Gap Score Distribution by UK Region",
     )
-    plotly_show(fig_box)
+
+    _gap_scatter_h = 440
+    col_sc, col_box = st.columns(2)
+    with col_sc:
+        plotly_show(fig_sc, height=_gap_scatter_h)
+    with col_box:
+        plotly_show(fig_box, height=_gap_scatter_h)
 
     st.markdown("### Workshop recommendations")
 
