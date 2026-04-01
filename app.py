@@ -202,11 +202,30 @@ def load_step_d() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_excel() -> pd.DataFrame:
-    p = _find_file("Combined_Data_cleaned.xlsx", "Updated_27_02_26_-_Kabilan.xlsx")
+def load_excel_workbook() -> pd.DataFrame:
+    """Full Combined Data for Tab 4 and general use — prefers raw workbook, else cleaned."""
+    p = _find_file("Updated_27_02_26_-_Kabilan.xlsx", "Combined_Data_cleaned.xlsx")
     if not p:
-        raise FileNotFoundError("Combined_Data_cleaned.xlsx or Updated_27_02_26_-_Kabilan.xlsx")
+        raise FileNotFoundError(
+            "Updated_27_02_26_-_Kabilan.xlsx or Combined_Data_cleaned.xlsx (place either in the project folder)"
+        )
     return pd.read_excel(p, sheet_name="Combined Data")
+
+
+@st.cache_data(show_spinner=False)
+def load_excel_global_comparison() -> tuple[pd.DataFrame, str]:
+    """Tab 5 only: prefer preprocessed deduplicated file, else raw workbook."""
+    p_clean = _find_file("Combined_Data_cleaned.xlsx")
+    p_raw = _find_file("Updated_27_02_26_-_Kabilan.xlsx")
+    if p_clean is not None:
+        df = pd.read_excel(p_clean, sheet_name="Combined Data")
+        return df, str(p_clean.name)
+    if p_raw is not None:
+        df = pd.read_excel(p_raw, sheet_name="Combined Data")
+        return df, str(p_raw.name)
+    raise FileNotFoundError(
+        "Combined_Data_cleaned.xlsx or Updated_27_02_26_-_Kabilan.xlsx (needed for Global Comparison)"
+    )
 
 
 _TAB5_SKILL_COLS = frozenset({"skills", "skill"})
@@ -341,9 +360,9 @@ except FileNotFoundError as e:
     st.error(f"Required CSV not found: {e}")
     st.stop()
 
-with st.spinner("Loading global dataset — 27,898 rows..."):
+with st.spinner("Loading Combined Data workbook..."):
     try:
-        df_excel = load_excel()
+        df_excel = load_excel_workbook()
     except FileNotFoundError as e:
         st.error(f"Required Excel not found: {e}")
         st.stop()
@@ -1202,7 +1221,16 @@ SideFest needs a 3–5 year structured pathway.
             st.markdown("".join([f'<span class="badge">{b}</span>' for b in badges]), unsafe_allow_html=True)
 
 
-def show_tab5(df_combined: pd.DataFrame) -> None:
+def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
+    st.markdown("## 🌍 Global Comparison — UK vs World")
+    st.caption(
+        f"**Data file:** `{data_source}` — "
+        + (
+            "preprocessed (deduplicated) workbook."
+            if data_source == "Combined_Data_cleaned.xlsx"
+            else "raw workbook; run `python preprocess_combined_for_global.py` to build `Combined_Data_cleaned.xlsx` for cleaner counts."
+        )
+    )
     st.markdown(
         """
     <div class='callout'>
@@ -1495,7 +1523,15 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
 elif tab_choice == "TAB 4 — Experience Analysis":
     show_tab4(df_excel)
 elif tab_choice == "TAB 5 — Global Comparison":
-    show_tab5(df_excel)
+    try:
+        df_global_cmp, global_src = load_excel_global_comparison()
+    except FileNotFoundError as e:
+        st.error(str(e))
+        st.stop()
+    except Exception as e:
+        st.error(f"Error reading global comparison workbook: {e}")
+        st.stop()
+    show_tab5(df_global_cmp, data_source=global_src)
 
 st.markdown("---")
 st.markdown(
