@@ -4,6 +4,7 @@ All charts built with Plotly from CSV/Excel only (no static images).
 """
 from __future__ import annotations
 
+import hashlib
 import warnings
 from pathlib import Path
 
@@ -208,58 +209,103 @@ def load_excel() -> pd.DataFrame:
     return pd.read_excel(p, sheet_name="Combined Data")
 
 
-def dedupe_to_unique_job_listings(df: pd.DataFrame) -> pd.DataFrame:
-    """Collapse long-format rows (e.g. one row per skill) to one row per job listing."""
-    if df.empty:
-        return df
-    lower_map = {str(c).strip().lower(): c for c in df.columns}
+_TAB5_SKILL_COLS = frozenset({"skills", "skill"})
 
-    def _nonempty_series(col: str) -> pd.Series:
-        s = df[col].astype(str).str.strip()
-        return df[col].notna() & s.ne("") & s.str.lower().ne("nan") & s.str.lower().ne("none")
 
-    url_keys = (
+def _tab5_is_nullish_series(s: pd.Series) -> pd.Series:
+    t = s.astype(str).str.strip().str.lower()
+    return s.isna() | t.isin(("", "nan", "none", "null", "na", "n/a", "#n/a"))
+
+
+def _tab5_normalize_job_url(val: object) -> str:
+    if pd.isna(val):
+        return ""
+    s = str(val).strip().lower()
+    if s in ("", "nan", "none", "null", "n/a"):
+        return ""
+    s = s.split("?")[0].split("#")[0].rstrip("/")
+    return s
+
+
+def tab5_drop_all_null_columns(df: pd.DataFrame) -> pd.DataFrame:
+    return df.dropna(axis=1, how="all")
+
+
+def tab5_non_skill_columns(df: pd.DataFrame) -> list[str]:
+    return [
+        c
+        for c in df.columns
+        if str(c).strip().lower() not in _TAB5_SKILL_COLS and str(c).strip() != "_job_uid"
+    ]
+
+
+def tab5_assign_job_uid(df: pd.DataFrame) -> pd.DataFrame:
+    """Stable ID per job ad: prefer normalized URL; else hash of all non-skill cells."""
+    out = df.copy()
+    lower_map = {str(c).strip().lower(): c for c in out.columns}
+    url_priority = (
         "job url",
         "job_url",
         "posting url",
+        "linkedin url",
         "job link",
         "joblink",
-        "linkedin url",
         "url",
         "link",
     )
-    for lk in url_keys:
+    norm_url: pd.Series | None = None
+    for lk in url_priority:
         col = lower_map.get(lk)
         if col is None:
             continue
-        valid = _nonempty_series(col)
-        if valid.sum() == 0:
-            continue
-        if valid.mean() < 0.25:
-            continue
-        return df.loc[valid].drop_duplicates(subset=[col], keep="first")
+        nu = out[col].map(_tab5_normalize_job_url)
+        if len(nu) and (nu != "").mean() >= 0.12:
+            norm_url = nu
+            break
 
-    id_keys = (
-        "job id",
-        "jobid",
-        "posting id",
-        "listing id",
-        "vacancy id",
-    )
-    for lk in id_keys:
+    id_priority = ("job id", "jobid", "posting id", "listing id", "vacancy id")
+    norm_id: pd.Series | None = None
+    for lk in id_priority:
         col = lower_map.get(lk)
         if col is None:
             continue
-        valid = _nonempty_series(col)
-        if valid.sum() == 0 or valid.mean() < 0.25:
-            continue
-        return df.loc[valid].drop_duplicates(subset=[col], keep="first")
+        ni = out[col].astype(str).str.strip().str.lower()
+        ni = ni.replace({"nan": "", "none": "", "null": ""})
+        if len(ni) and (ni != "").mean() >= 0.12:
+            norm_id = ni
+            break
 
-    skill_omit = {"skills", "skill"}
-    key_cols = [c for c in df.columns if str(c).strip().lower() not in skill_omit]
+    key_cols = tab5_non_skill_columns(out)
     if not key_cols:
-        return df.drop_duplicates()
-    return df.drop_duplicates(subset=key_cols, keep="first")
+        out["_job_uid"] = np.arange(len(out), dtype=np.int64).astype(str)
+        return out
+
+    sub = out[key_cols].fillna("")
+    sub = sub.astype(str).apply(lambda x: x.str.strip().str.lower())
+    sub = sub.replace({"nan": "", "none": "", "null": "", "n/a": "", "#n/a": ""})
+    fp_raw = sub.agg("|".join, axis=1)
+    fp_uid = "fp:" + fp_raw.map(lambda x: hashlib.md5(x.encode("utf-8", errors="replace")).hexdigest())
+
+    uid = fp_uid.to_numpy(dtype=object)
+    if norm_id is not None:
+        m = norm_id.to_numpy(dtype=object) != ""
+        uid = np.where(m, "id:" + norm_id.to_numpy(dtype=object), uid)
+    if norm_url is not None:
+        m = norm_url.to_numpy(dtype=object) != ""
+        uid = np.where(m, "url:" + norm_url.to_numpy(dtype=object), uid)
+    out["_job_uid"] = uid
+    return out
+
+
+def tab5_unique_job_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """One row per _job_uid (deterministic first row)."""
+    if df.empty:
+        return df
+    if "_job_uid" not in df.columns:
+        df = tab5_assign_job_uid(df)
+    return df.sort_values("_job_uid", kind="mergesort").drop_duplicates(subset=["_job_uid"], keep="first").reset_index(
+        drop=True
+    )
 
 
 st.set_page_config(
@@ -1156,33 +1202,30 @@ SideFest needs a 3–5 year structured pathway.
             st.markdown("".join([f'<span class="badge">{b}</span>' for b in badges]), unsafe_allow_html=True)
 
 
-def show_tab5() -> None:
+def show_tab5(df_combined: pd.DataFrame) -> None:
     st.markdown(
         """
     <div class='callout'>
-    This comparison uses <b>skill share percentage</b> — the proportion of each country's gaming jobs
-    that demand a skill. This removes bias from larger countries having more jobs.
-    A country with 10% share means 1 in 10 of their gaming jobs demands that skill.
+    This comparison uses <b>skill share percentage</b> among <b>unique job ads</b> per country
+    (duplicate listing rows removed; null/empty rows dropped). Each share is the percentage of
+    <b>distinct jobs</b> in that country that list the skill — not raw skill-row counts.
     </div>
     """,
         unsafe_allow_html=True,
     )
 
-    with st.spinner("Loading global dataset — 27,898 rows..."):
-        df_raw = load_excel()
+    df_raw = tab5_drop_all_null_columns(df_combined.copy())
 
     # Comprehensive mapping lives in city_to_country_tab5.py; supplement fills keys omitted from user paste.
     city_to_country = {**CITY_TO_COUNTRY_SUPPLEMENT, **CITY_TO_COUNTRY}
     city_map_ci = {str(k).strip().lower(): v for k, v in city_to_country.items()}
 
     df_global = df_raw[df_raw["Company Category"].astype(str).str.strip() == "Gaming Company"].copy()
-    st.caption(f"Gaming Company rows before cleaning: {len(df_global):,}")
+    st.caption(f"Gaming Company rows (after dropping all-null columns): {len(df_global):,}")
 
     df_global = df_global.dropna(subset=["Country"])
     df_global["Country"] = df_global["Country"].astype(str).str.strip()
-    df_global = df_global[df_global["Country"] != ""]
-    df_global = df_global[df_global["Country"].str.lower() != "nan"]
-    df_global = df_global[df_global["Country"].str.lower() != "none"]
+    df_global = df_global[~_tab5_is_nullish_series(df_global["Country"])]
 
     df_global["Country"] = df_global["Country"].apply(
         lambda x: city_map_ci.get(str(x).strip().lower(), x)
@@ -1200,34 +1243,52 @@ def show_tab5() -> None:
         else x
     )
 
-    st.caption(f"Gaming Company rows after cleaning: {len(df_global):,}")
+    sk_col = "Skills" if "Skills" in df_global.columns else "Skill" if "Skill" in df_global.columns else None
+    if sk_col is None:
+        st.error("Combined Data must include a **Skills** or **Skill** column.")
+        return
+    if sk_col != "Skills":
+        df_global = df_global.rename(columns={sk_col: "Skills"})
 
-    df_jobs_unique = dedupe_to_unique_job_listings(df_global)
+    df_global = df_global.dropna(subset=["Skills"])
+    df_global["Skills"] = df_global["Skills"].astype(str).str.strip()
+    df_global = df_global[~_tab5_is_nullish_series(df_global["Skills"])]
+    df_global = df_global[df_global["Skills"].str.lower() != "game-texts"]
+
+    rows_after_text_clean = len(df_global)
+    df_global = df_global.reset_index(drop=True)
+    df_global = tab5_assign_job_uid(df_global)
+    df_jobs_unique = tab5_unique_job_rows(df_global)
+
     st.caption(
-        f"Unique job listings (same ad counted once, using job URL/ID if present, else all columns except skill): "
-        f"{len(df_jobs_unique):,}"
+        f"Rows with valid country + skills: {rows_after_text_clean:,} → **{len(df_jobs_unique):,} unique job ads** "
+        f"(deduped by URL / job ID / fingerprint; query strings stripped from URLs)"
     )
 
-    df_global["Skills"] = df_global["Skills"].astype(str).str.lower().str.strip()
-    df_exploded = df_global.assign(Skills=df_global["Skills"].str.split(",")).explode("Skills")
+    # Skill analysis uses only one row per job; share = jobs listing skill ÷ jobs in country
+    df_u = df_jobs_unique.copy()
+    df_u["Skills"] = df_u["Skills"].astype(str).str.lower().str.strip()
+    df_exploded = df_u.assign(Skills=df_u["Skills"].str.split(",")).explode("Skills")
     df_exploded = df_exploded.reset_index(drop=True)
     df_exploded["Skills"] = df_exploded["Skills"].str.strip()
     df_exploded = df_exploded[df_exploded["Skills"] != ""]
-    df_exploded = df_exploded[df_exploded["Skills"] != "nan"]
+    df_exploded = df_exploded[~_tab5_is_nullish_series(df_exploded["Skills"])]
     df_exploded = df_exploded[df_exploded["Skills"] != "game-texts"]
     df_exploded = df_exploded.dropna(subset=["Skills", "Country"])
 
-    total_per_country = df_exploded.groupby("Country").size().reset_index(name="total_rows")
+    job_totals_all = df_jobs_unique.groupby("Country", dropna=False).size().reset_index(name="total_jobs")
+    valid_countries = job_totals_all[job_totals_all["total_jobs"] >= 100]["Country"].tolist()
+    if not valid_countries:
+        valid_countries = job_totals_all.nlargest(min(15, len(job_totals_all)), "total_jobs")["Country"].tolist()
 
-    valid_countries = total_per_country[total_per_country["total_rows"] >= 100]["Country"].tolist()
-    df_exploded = df_exploded[df_exploded["Country"].isin(valid_countries)]
-    total_per_country = total_per_country[total_per_country["Country"].isin(valid_countries)]
+    job_totals = job_totals_all[job_totals_all["Country"].isin(valid_countries)].copy()
+    df_exploded_cmp = df_exploded[df_exploded["Country"].isin(valid_countries)]
 
-    skill_country = df_exploded.groupby(["Country", "Skills"]).size().reset_index(name="count")
-    skill_country = skill_country.merge(total_per_country, on="Country")
-    skill_country["share_pct"] = (skill_country["count"] / skill_country["total_rows"] * 100).round(2)
+    skill_country = df_exploded_cmp.groupby(["Country", "Skills"])["_job_uid"].nunique().reset_index(name="count")
+    skill_country = skill_country.merge(job_totals, on="Country")
+    skill_country["share_pct"] = (skill_country["count"] / skill_country["total_jobs"] * 100).round(2)
 
-    st.caption(f"Valid countries (100+ skill rows): {len(valid_countries)}")
+    st.caption(f"Countries in comparison (≥100 unique job ads, or top 15 if none qualify): {len(valid_countries)}")
 
     # Count unique job listings per country (deduped), not raw skill-level rows
     job_counts_full = (
@@ -1243,8 +1304,8 @@ def show_tab5() -> None:
 
     st.markdown("### 🌐 Top Countries by Gaming Job Listings")
     st.caption(
-        "Each bar is **distinct job ads** in that country (duplicates from multi-row skill data are merged). "
-        "Skill-share charts below still use every skill row."
+        "Each bar counts **unique job ads** only (null rows removed, duplicates merged). "
+        "Skill shares below use the same deduplicated jobs."
     )
 
     fig_countries = px.bar(
@@ -1434,7 +1495,7 @@ elif tab_choice == "TAB 3 — AI Gap Analysis":
 elif tab_choice == "TAB 4 — Experience Analysis":
     show_tab4(df_excel)
 elif tab_choice == "TAB 5 — Global Comparison":
-    show_tab5()
+    show_tab5(df_excel)
 
 st.markdown("---")
 st.markdown(
