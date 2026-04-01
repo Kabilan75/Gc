@@ -977,6 +977,17 @@ def show_tab4(df_xl: pd.DataFrame) -> None:
 
             skill_tot = tmp["_skills_list"].value_counts().head(15).index.tolist()
             levels = ["Entry", "Junior", "Mid", "Senior", "Expert"]
+            st.markdown(
+                """
+**Experience level key** (heatmap columns, left → right: *Entry · Junior · Mid · Senior · Expert*)
+
+- **Entry Level** — 0 years  
+- **Junior** — 1 to 2 years  
+- **Mid-Level** — 3 to 5 years  
+- **Senior** — 6 to 8 years  
+- **Expert** — 9 plus years  
+"""
+            )
             heat = []
             for sk in skill_tot:
                 row = []
