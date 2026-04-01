@@ -57,14 +57,14 @@ DRK_CONTINUOUS = [
     "#38BDF8",  # highlight
 ]
 
-# Average gap heatmap: sequential dark → light (low values darker, high values lighter)
+# Average gap heatmap: light (low score) → dark (high score)
 GAP_HEATMAP_COLORSCALE = [
-    [0.0, "#0f172a"],
-    [0.2, "#1e3a5f"],
-    [0.4, "#475569"],
-    [0.6, "#94a3b8"],
-    [0.85, "#e2e8f0"],
-    [1.0, "#f8fafc"],
+    [0.0, "#f8fafc"],
+    [0.15, "#e2e8f0"],
+    [0.4, "#94a3b8"],
+    [0.6, "#475569"],
+    [0.8, "#1e3a5f"],
+    [1.0, "#0f172a"],
 ]
 
 CLUSTER_COLOURS_DARK = {
@@ -764,7 +764,7 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
             texttemplate="%{text}",
             colorscale=GAP_HEATMAP_COLORSCALE,
             colorbar=dict(
-                title="Avg gap (dark = lower, light = higher)",
+                title="Avg gap (light = lower, dark = higher)",
                 thickness=14,
                 len=0.75,
             ),
