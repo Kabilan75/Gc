@@ -57,6 +57,15 @@ DRK_CONTINUOUS = [
     "#38BDF8",  # highlight
 ]
 
+# Average gap heatmap: green (lower gap) → amber → red (higher gap / more attention)
+GAP_HEATMAP_COLORSCALE = [
+    [0.0, "#166534"],
+    [0.25, "#4ade80"],
+    [0.5, "#fbbf24"],
+    [0.75, "#f97316"],
+    [1.0, "#991b1b"],
+]
+
 CLUSTER_COLOURS_DARK = {
     "Game Development & Programming": "#38BDF8",
     "Soft Skills & Business Development": "#818CF8",
@@ -752,8 +761,12 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
             y=regions_o,
             text=text,
             texttemplate="%{text}",
-            colorscale="RdYlGn_r",
-            colorbar=dict(title="Avg gap"),
+            colorscale=GAP_HEATMAP_COLORSCALE,
+            colorbar=dict(
+                title="Avg gap (green = lower, red = higher)",
+                thickness=14,
+                len=0.75,
+            ),
         )
     )
     fig_gap.update_layout(
