@@ -203,9 +203,9 @@ def load_step_d() -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_excel() -> pd.DataFrame:
-    p = _find_file("Updated_27_02_26_-_Kabilan.xlsx")
+    p = _find_file("Combined_Data_cleaned.xlsx", "Updated_27_02_26_-_Kabilan.xlsx")
     if not p:
-        raise FileNotFoundError("Updated_27_02_26_-_Kabilan.xlsx")
+        raise FileNotFoundError("Combined_Data_cleaned.xlsx or Updated_27_02_26_-_Kabilan.xlsx")
     return pd.read_excel(p, sheet_name="Combined Data")
 
 

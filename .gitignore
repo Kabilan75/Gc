@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .env
 .streamlit/secrets.toml
+
+# Generated from Updated_27_02_26_-_Kabilan.xlsx — run: python preprocess_combined_for_global.py
+Combined_Data_cleaned.xlsx
