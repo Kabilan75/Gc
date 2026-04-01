@@ -208,6 +208,60 @@ def load_excel() -> pd.DataFrame:
     return pd.read_excel(p, sheet_name="Combined Data")
 
 
+def dedupe_to_unique_job_listings(df: pd.DataFrame) -> pd.DataFrame:
+    """Collapse long-format rows (e.g. one row per skill) to one row per job listing."""
+    if df.empty:
+        return df
+    lower_map = {str(c).strip().lower(): c for c in df.columns}
+
+    def _nonempty_series(col: str) -> pd.Series:
+        s = df[col].astype(str).str.strip()
+        return df[col].notna() & s.ne("") & s.str.lower().ne("nan") & s.str.lower().ne("none")
+
+    url_keys = (
+        "job url",
+        "job_url",
+        "posting url",
+        "job link",
+        "joblink",
+        "linkedin url",
+        "url",
+        "link",
+    )
+    for lk in url_keys:
+        col = lower_map.get(lk)
+        if col is None:
+            continue
+        valid = _nonempty_series(col)
+        if valid.sum() == 0:
+            continue
+        if valid.mean() < 0.25:
+            continue
+        return df.loc[valid].drop_duplicates(subset=[col], keep="first")
+
+    id_keys = (
+        "job id",
+        "jobid",
+        "posting id",
+        "listing id",
+        "vacancy id",
+    )
+    for lk in id_keys:
+        col = lower_map.get(lk)
+        if col is None:
+            continue
+        valid = _nonempty_series(col)
+        if valid.sum() == 0 or valid.mean() < 0.25:
+            continue
+        return df.loc[valid].drop_duplicates(subset=[col], keep="first")
+
+    skill_omit = {"skills", "skill"}
+    key_cols = [c for c in df.columns if str(c).strip().lower() not in skill_omit]
+    if not key_cols:
+        return df.drop_duplicates()
+    return df.drop_duplicates(subset=key_cols, keep="first")
+
+
 st.set_page_config(
     page_title="UK Gaming Industry — Skill Demand Analysis",
     page_icon="🎮",
@@ -1148,6 +1202,12 @@ def show_tab5() -> None:
 
     st.caption(f"Gaming Company rows after cleaning: {len(df_global):,}")
 
+    df_jobs_unique = dedupe_to_unique_job_listings(df_global)
+    st.caption(
+        f"Unique job listings (same ad counted once, using job URL/ID if present, else all columns except skill): "
+        f"{len(df_jobs_unique):,}"
+    )
+
     df_global["Skills"] = df_global["Skills"].astype(str).str.lower().str.strip()
     df_exploded = df_global.assign(Skills=df_global["Skills"].str.split(",")).explode("Skills")
     df_exploded = df_exploded.reset_index(drop=True)
@@ -1169,16 +1229,23 @@ def show_tab5() -> None:
 
     st.caption(f"Valid countries (100+ skill rows): {len(valid_countries)}")
 
-    # Count UNIQUE JOB LISTINGS per country — not skill rows
-    job_counts = df_global["Country"].value_counts().reset_index()
-    job_counts.columns = ["Country", "Job_Listings"]
-    job_counts = job_counts.head(15)
+    # Count unique job listings per country (deduped), not raw skill-level rows
+    job_counts_full = (
+        df_jobs_unique.groupby("Country", dropna=False)
+        .size()
+        .reset_index(name="Job_Listings")
+        .sort_values("Job_Listings", ascending=False)
+    )
+    job_counts = job_counts_full.head(15).copy()
     job_counts["highlight"] = job_counts["Country"].apply(
         lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
     )
 
     st.markdown("### 🌐 Top Countries by Gaming Job Listings")
-    st.caption("Counting unique job listings per country — not skill rows")
+    st.caption(
+        "Each bar is **distinct job ads** in that country (duplicates from multi-row skill data are merged). "
+        "Skill-share charts below still use every skill row."
+    )
 
     fig_countries = px.bar(
         job_counts,
@@ -1204,15 +1271,23 @@ def show_tab5() -> None:
     )
     plotly_show(fig_countries)
 
+    with st.expander("Exact job-listing counts by country (deduplicated)"):
+        st.dataframe(
+            job_counts_full.reset_index(drop=True),
+            use_container_width=True,
+            hide_index=True,
+            height=min(420, 36 + 24 * len(job_counts_full)),
+        )
+
     # Show summary metrics below chart
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Global Gaming Jobs", f"{len(df_global):,}")
+        st.metric("Total Global Gaming Jobs (unique ads)", f"{len(df_jobs_unique):,}")
     with col2:
-        st.metric("Countries with Gaming Jobs", f"{df_global['Country'].nunique():,}")
+        st.metric("Countries with Gaming Jobs", f"{df_jobs_unique['Country'].nunique():,}")
     with col3:
-        uk_jobs = len(df_global[df_global["Country"] == "United Kingdom"])
-        uk_pct = round(uk_jobs / len(df_global) * 100, 1) if len(df_global) else 0.0
+        uk_jobs = len(df_jobs_unique[df_jobs_unique["Country"] == "United Kingdom"])
+        uk_pct = round(uk_jobs / len(df_jobs_unique) * 100, 1) if len(df_jobs_unique) else 0.0
         st.metric("UK Share of Global Jobs", f"{uk_pct}%")
 
     st.markdown("---")
