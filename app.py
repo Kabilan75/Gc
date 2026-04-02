@@ -202,19 +202,8 @@ def load_step_d() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def load_excel_workbook() -> pd.DataFrame:
-    """Full Combined Data for Tab 4 and general use — prefers raw workbook, else cleaned."""
-    p = _find_file("Updated_27_02_26_-_Kabilan.xlsx", "Combined_Data_cleaned.xlsx")
-    if not p:
-        raise FileNotFoundError(
-            "Updated_27_02_26_-_Kabilan.xlsx or Combined_Data_cleaned.xlsx (place either in the project folder)"
-        )
-    return pd.read_excel(p, sheet_name="Combined Data")
-
-
-@st.cache_data(show_spinner=False)
 def load_excel_global_comparison() -> tuple[pd.DataFrame, str]:
-    """Tab 5 only: prefer preprocessed deduplicated file, else raw workbook."""
+    """Global Comparison tab: prefer preprocessed deduplicated file, else raw workbook."""
     p_clean = _find_file("Combined_Data_cleaned.xlsx")
     p_raw = _find_file("Updated_27_02_26_-_Kabilan.xlsx")
     if p_clean is not None:
@@ -363,16 +352,6 @@ except FileNotFoundError as e:
     st.error(f"Required CSV not found: {e}")
     st.stop()
 
-with st.spinner("Loading Combined Data workbook..."):
-    try:
-        df_excel = load_excel_workbook()
-    except FileNotFoundError as e:
-        st.error(f"Required Excel not found: {e}")
-        st.stop()
-    except Exception as e:
-        st.error(f"Error reading Excel: {e}")
-        st.stop()
-
 with st.sidebar:
     tab_choice = st.radio(
         "section",
@@ -380,8 +359,7 @@ with st.sidebar:
             "TAB 1 — UK Overview",
             "TAB 2 — Regional Analysis",
             "TAB 3 — AI Gap Analysis",
-            "TAB 4 — Experience Analysis",
-            "TAB 5 — Global Comparison",
+            "TAB 4 — Global Comparison",
         ],
         label_visibility="collapsed",
     )
@@ -973,257 +951,6 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     k5.metric("Max demand", "527")
 
 
-def show_tab4(df_xl: pd.DataFrame) -> None:
-    st.subheader("Experience Analysis")
-
-    df_uk = df_xl.copy()
-    df_uk["Company Category"] = df_uk["Company Category"].astype(str).str.strip()
-    df_uk = df_uk[
-        (df_uk["Country"].astype(str).str.strip() == "United Kingdom")
-        & (df_uk["Company Category"] == "Gaming Company")
-    ].copy()
-
-    def bucket_exp(x) -> str:
-        if pd.isna(x):
-            return "Unknown"
-        try:
-            v = float(x)
-        except (TypeError, ValueError):
-            return "Unknown"
-        if v == 0:
-            return "Entry Level (0 yrs)"
-        if 1 <= v <= 2:
-            return "Junior (1-2 yrs)"
-        if 3 <= v <= 5:
-            return "Mid-Level (3-5 yrs)"
-        if 6 <= v <= 8:
-            return "Senior (6-8 yrs)"
-        if v >= 9:
-            return "Expert (9+ yrs)"
-        return "Unknown"
-
-    if "Min Experience" in df_uk.columns:
-        df_uk["ExpBucket"] = df_uk["Min Experience"].map(bucket_exp)
-    else:
-        df_uk["ExpBucket"] = "Unknown"
-
-    t_ov, t_deep = st.tabs(["Overview", "Deep Analysis"])
-
-    with t_ov:
-        vc = df_uk["ExpBucket"].value_counts()
-        fig_pie_e = px.pie(
-            values=vc.values,
-            names=vc.index,
-            title="Experience level breakdown (UK Gaming)",
-            hole=0.35,
-        )
-        plotly_show(fig_pie_e)
-
-        job_cat = "Overall Job Category"
-        if job_cat in df_uk.columns and "Min Experience" in df_uk.columns:
-            sub_avg = df_uk[df_uk["Min Experience"].notna()].copy()
-            top8 = (
-                sub_avg.groupby(job_cat, dropna=False)["Min Experience"]
-                .mean()
-                .sort_values(ascending=False)
-                .head(8)
-                .reset_index()
-            )
-            top8.columns = ["Category", "Avg Min Experience"]
-            fig_hbar = px.bar(
-                top8.sort_values("Avg Min Experience", ascending=True),
-                x="Avg Min Experience",
-                y="Category",
-                orientation="h",
-                color_discrete_sequence=DARK_COLOURS,
-                title="Average Min Experience by job category (top 8)",
-            )
-            plotly_show(fig_hbar)
-
-        st_col = "State"
-        if st_col in df_uk.columns:
-            df_uk["Entry"] = (df_uk["ExpBucket"] == "Entry Level (0 yrs)").astype(int)
-            df_uk["Mid"] = (df_uk["ExpBucket"] == "Mid-Level (3-5 yrs)").astype(int)
-            df_uk["Senior"] = (df_uk["ExpBucket"] == "Senior (6-8 yrs)").astype(int)
-            agg = df_uk.groupby(st_col, dropna=False)[["Entry", "Mid", "Senior"]].sum().reset_index()
-            agg_m = agg.melt(id_vars=[st_col], var_name="Level", value_name="Count")
-            fig_g = px.bar(
-                agg_m,
-                x=st_col,
-                y="Count",
-                color="Level",
-                barmode="group",
-                title="Entry / Mid-Level / Senior counts per UK region (State)",
-                color_discrete_map={"Entry": COLOURS["green"], "Mid": COLOURS["amber"], "Senior": COLOURS["purple"]},
-            )
-            plotly_show(fig_g)
-
-        e1, e2, e3, e4 = st.columns(4)
-        e1.metric("No exp stated", "669 jobs (59.7%)")
-        e2.metric("Mid-level", "251 jobs (55.5%)")
-        e3.metric("Entry level", "27 (6.0%)")
-        e4.metric("HR & Recruiting avg", "8.2 yrs")
-
-    with t_deep:
-        skcol = "Skills"
-        if skcol not in df_uk.columns:
-            st.error("Skills column missing in Excel.")
-        else:
-
-            def split_skills(s) -> list[str]:
-                if pd.isna(s):
-                    return []
-                parts = str(s).split(",")
-                out = []
-                for p in parts:
-                    t = p.strip().lower()
-                    if t and t != "game-texts" and t != "nan":
-                        out.append(t)
-                return out
-
-            df_uk["_skills_list"] = df_uk[skcol].map(split_skills)
-            exp_simple = df_uk["ExpBucket"].map(
-                {
-                    "Entry Level (0 yrs)": "Entry",
-                    "Junior (1-2 yrs)": "Junior",
-                    "Mid-Level (3-5 yrs)": "Mid",
-                    "Senior (6-8 yrs)": "Senior",
-                    "Expert (9+ yrs)": "Expert",
-                    "Unknown": np.nan,
-                }
-            )
-            tmp = (
-                df_uk.assign(_exp=exp_simple)
-                .explode("_skills_list")
-                .reset_index(drop=True)
-            )
-            tmp = tmp[tmp["_exp"].notna() & tmp["_skills_list"].notna()]
-
-            skill_tot = tmp["_skills_list"].value_counts().head(15).index.tolist()
-            levels = ["Entry", "Junior", "Mid", "Senior", "Expert"]
-            st.markdown(
-                """
-**Experience level key** (heatmap columns, left → right: *Entry · Junior · Mid · Senior · Expert*)
-
-- **Entry Level** — 0 years  
-- **Junior** — 1 to 2 years  
-- **Mid-Level** — 3 to 5 years  
-- **Senior** — 6 to 8 years  
-- **Expert** — 9 plus years  
-"""
-            )
-            heat = []
-            for sk in skill_tot:
-                row = []
-                for lv in levels:
-                    row.append(
-                        len(tmp[(tmp["_skills_list"] == sk) & (tmp["_exp"] == lv)])
-                    )
-                heat.append(row)
-            fig_heat = go.Figure(
-                data=go.Heatmap(
-                    z=heat,
-                    x=levels,
-                    y=skill_tot,
-                    colorscale="YlOrRd",
-                    colorbar=dict(title="Count"),
-                )
-            )
-            fig_heat.update_layout(
-                title="Top 15 skills vs experience level (counts)",
-                yaxis=dict(autorange="reversed"),
-            )
-            plotly_show(fig_heat, height=520)
-
-            seven = [
-                "communication",
-                "team-management",
-                "talent-acquisition",
-                "cross-functional",
-                "python",
-                "unity",
-                "cpp",
-            ]
-            sub7 = tmp[tmp["_skills_list"].isin(seven)].copy()
-            cts = (
-                sub7.groupby(["_skills_list", "_exp"], as_index=False)
-                .size()
-                .rename(columns={"size": "Count", "_skills_list": "Skill", "_exp": "Level"})
-            )
-            fig_7 = px.bar(
-                cts,
-                x="Skill",
-                y="Count",
-                color="Level",
-                barmode="group",
-                category_orders={"Skill": seven, "Level": levels},
-                color_discrete_sequence=DARK_COLOURS,
-                title="Seven key skills by experience level",
-            )
-            plotly_show(fig_7, height=520)
-
-            exp_summary = pd.DataFrame(
-                {
-                    "Skill": [
-                        "Communication",
-                        "Team Management",
-                        "Talent Acquisition",
-                        "Cross-Functional",
-                        "Python",
-                        "Unity",
-                        "C++",
-                    ],
-                    "Entry Level": [16, 8, 10, 0, 9, 0, 3],
-                    "Junior": [31, 19, 21, 6, 7, 3, 11],
-                    "Mid-Level": [147, 103, 71, 50, 29, 34, 35],
-                    "Senior": [29, 26, 18, 19, 5, 5, 6],
-                    "Expert": [15, 25, 20, 12, 5, 11, 10],
-                }
-            )
-            st.dataframe(exp_summary, use_container_width=True, hide_index=True, height=260)
-
-            st.markdown(
-                """
-<div class="callout">
-Communication has 9.2× more mid-level jobs than entry level. Team Management has 12.9× more.
-SideFest needs a 3–5 year structured pathway.
-</div>
-""",
-                unsafe_allow_html=True,
-            )
-
-            badges = [
-                "agile-development",
-                "aws",
-                "azure",
-                "c#",
-                "ci-cd",
-                "communication",
-                "cpp",
-                "data-analytics",
-                "data-science",
-                "excel",
-                "github",
-                "java",
-                "kubernetes",
-                "linux",
-                "machine-learning",
-                "ms-office",
-                "problem-solving",
-                "python",
-                "quality-control",
-                "salesforce",
-                "sql",
-                "storytelling",
-                "talent-acquisition",
-                "team-management",
-                "timeline-management",
-                "user-experience-ux",
-            ]
-            st.markdown("### Universal skills (26)")
-            st.markdown("".join([f'<span class="badge">{b}</span>' for b in badges]), unsafe_allow_html=True)
-
-
 def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     st.markdown("## 🌍 Global Comparison — UK vs World")
     st.caption(
@@ -1564,9 +1291,7 @@ elif tab_choice == "TAB 2 — Regional Analysis":
     show_tab2(df_b)
 elif tab_choice == "TAB 3 — AI Gap Analysis":
     show_tab3(df_c, df_d)
-elif tab_choice == "TAB 4 — Experience Analysis":
-    show_tab4(df_excel)
-elif tab_choice == "TAB 5 — Global Comparison":
+elif tab_choice == "TAB 4 — Global Comparison":
     try:
         df_global_cmp, global_src = load_excel_global_comparison()
     except FileNotFoundError as e:
