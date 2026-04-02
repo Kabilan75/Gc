@@ -229,6 +229,9 @@ def load_excel_global_comparison() -> tuple[pd.DataFrame, str]:
 
 
 _TAB5_SKILL_COLS = frozenset({"skills", "skill"})
+# Skill-share bar chart: ignore tiny jurisdictions (1 job → trivial 100% if that job lists the skill).
+_TAB5_SHARE_CHART_MIN_JOBS = 30
+_TAB5_SHARE_CHART_MIN_JOBS_FALLBACK = 10
 
 
 def _tab5_is_nullish_series(s: pd.Series) -> pd.Series:
@@ -1413,11 +1416,30 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
             n_countries = n_countries_all
             global_avg_r = round(float(skill_data["share_pct"].mean()), 2)
 
-            top15 = skill_data.head(15).copy()
+            # Bar chart: exclude micro-samples where one job = misleading 100% (or many duplicate "countries").
+            pool = skill_data[skill_data["total_jobs"] >= _TAB5_SHARE_CHART_MIN_JOBS].copy()
+            chart_min_note = _TAB5_SHARE_CHART_MIN_JOBS
+            if pool.empty:
+                pool = skill_data[skill_data["total_jobs"] >= _TAB5_SHARE_CHART_MIN_JOBS_FALLBACK].copy()
+                chart_min_note = _TAB5_SHARE_CHART_MIN_JOBS_FALLBACK
+            if pool.empty:
+                pool = skill_data.nlargest(15, "count").copy()
+                chart_min_note = None
+
+            if chart_min_note is not None:
+                top15 = pool.sort_values(["share_pct", "Country"], ascending=[False, True]).head(15)
+            else:
+                top15 = pool.sort_values(["share_pct", "Country"], ascending=[False, True]).head(15)
+
             top15["highlight"] = top15["Country"].apply(
                 lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
             )
 
+            title_suffix = (
+                f"≥{chart_min_note} gaming jobs each"
+                if chart_min_note is not None
+                else "by job count (sparse data)"
+            )
             fig_skill = px.bar(
                 top15,
                 x="share_pct",
@@ -1425,7 +1447,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                 orientation="h",
                 color="highlight",
                 color_discrete_map={"United Kingdom": "#EF4444", "Other": "#0D9488"},
-                title=f"Top 15 Countries by Skill Share — {skill_input} (of {n_countries} countries)",
+                title=f"Top 15 by skill share — {skill_input} ({title_suffix})",
                 labels={"share_pct": "Skill Share (%)", "Country": ""},
                 text="share_pct",
             )
@@ -1437,6 +1459,15 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                 height=500,
             )
             plotly_show(fig_skill)
+            if chart_min_note is not None:
+                st.caption(
+                    f"Chart excludes locations with fewer than **{chart_min_note}** gaming jobs so one-off ads do not show as **100%**. "
+                    f"UK rank and global average still use **all {n_countries}** locations."
+                )
+            else:
+                st.caption(
+                    "Very few locations met the minimum job threshold; showing top 15 by **number of jobs** listing this skill."
+                )
 
             uk_r = skill_data[skill_data["Country"] == "United Kingdom"]
             col1, col2, col3 = st.columns(3)
