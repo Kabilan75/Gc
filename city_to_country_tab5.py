@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """Comprehensive city to country mapping for Tab 5 global comparison."""
 
+from __future__ import annotations
+
+import pandas as pd
+
 CITY_TO_COUNTRY = {
     # ── UNITED STATES ──────────────────────────────────────
     'USA': 'United States', 'US': 'United States',
@@ -397,7 +401,7 @@ CITY_TO_COUNTRY = {
     'Navi Mumbai': 'India', 'Kochi': 'India',
     'Amritsar': 'India', 'Vadodara': 'India',
     'Agra': 'India', 'Thiruvananthapuram': 'India',
-    'Faridabad': 'India', 'Lahore': 'India',
+    'Faridabad': 'India',
     'Kolhapur': 'India', 'Amravati': 'India',
     'Prayagraj': 'India', 'Warangal': 'India',
     'Malappuram': 'India', 'Panaji': 'India',
@@ -742,3 +746,94 @@ CITY_TO_COUNTRY_SUPPLEMENT = {
     'Singapore City': 'Singapore',
     'St. Petersburg': 'Russia',
 }
+
+
+def _tab5_nullish(val: object) -> bool:
+    if val is None:
+        return True
+    try:
+        if pd.isna(val):
+            return True
+    except (TypeError, ValueError):
+        pass
+    s = str(val).strip().lower()
+    return s in ("", "nan", "none", "null", "n/a", "#n/a")
+
+
+def _tab5_split_location_parts(raw: str) -> list[str]:
+    s = raw.replace(" or ", ",")
+    parts = [s]
+    for sep in (",", "/", "|", ";"):
+        new: list[str] = []
+        for p in parts:
+            new.extend([x.strip() for x in p.split(sep) if x.strip()])
+        parts = new
+    return parts
+
+
+def lookup_tab5_location(raw: object, city_map_ci: dict[str, str]) -> str | None:
+    """Map a single location string to a country using the lookup table and common aliases."""
+    if _tab5_nullish(raw):
+        return None
+    s = str(raw).strip()
+    key = s.lower()
+    if key in city_map_ci:
+        return city_map_ci[key]
+    for part in _tab5_split_location_parts(s):
+        k = part.lower()
+        if k in city_map_ci:
+            return city_map_ci[k]
+    if s in ("US", "USA", "U.S.A", "U.S.", "United States of America"):
+        return "United States"
+    if s in ("UK", "Britain", "Great Britain", "England", "Scotland", "Wales", "Northern Ireland"):
+        return "United Kingdom"
+    return None
+
+
+def resolve_tab5_country_row(country: object, city: object | None, city_map_ci: dict[str, str]) -> str:
+    """
+    Prefer Country when it resolves to a known country; otherwise use City.
+    Returns canonical country name or '' if unmapped.
+    """
+    known = frozenset(city_map_ci.values())
+    c_res = lookup_tab5_location(country, city_map_ci)
+    cy_res = lookup_tab5_location(city, city_map_ci) if city is not None else None
+    if c_res and c_res in known:
+        return c_res
+    if cy_res and cy_res in known:
+        return cy_res
+    if c_res:
+        return c_res
+    if cy_res:
+        return cy_res
+    return ""
+
+
+def build_tab5_city_map() -> dict[str, str]:
+    """City/alias → country, plus identity keys for every canonical country name."""
+    base = {**CITY_TO_COUNTRY_SUPPLEMENT, **CITY_TO_COUNTRY}
+    city_map_ci = {str(k).strip().lower(): v for k, v in base.items()}
+    for v in set(base.values()):
+        city_map_ci.setdefault(str(v).strip().lower(), v)
+    return city_map_ci
+
+
+TAB5_CITY_MAP_CI: dict[str, str] = build_tab5_city_map()
+TAB5_KNOWN_COUNTRIES: frozenset[str] = frozenset(TAB5_CITY_MAP_CI.values())
+TAB5_CHART_COUNTRIES: frozenset[str] = frozenset(c for c in TAB5_KNOWN_COUNTRIES if c != "Remote")
+
+
+def normalize_tab5_dataframe_country(df: pd.DataFrame) -> pd.DataFrame:
+    """Set Country from Country + City columns using the same rules as the preprocess script."""
+    out = df.copy()
+    if "Country" not in out.columns:
+        return out
+    has_city = "City" in out.columns
+    cmap = TAB5_CITY_MAP_CI
+
+    def _one(row: pd.Series) -> str:
+        cy = row["City"] if has_city else None
+        return resolve_tab5_country_row(row["Country"], cy, cmap)
+
+    out["Country"] = out.apply(_one, axis=1)
+    return out
