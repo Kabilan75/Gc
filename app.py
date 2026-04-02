@@ -5,6 +5,7 @@ All charts built with Plotly from CSV/Excel only (no static images).
 from __future__ import annotations
 
 import hashlib
+import html
 import warnings
 from pathlib import Path
 
@@ -19,6 +20,12 @@ from city_to_country_tab5 import TAB5_CHART_COUNTRIES, normalize_tab5_dataframe_
 warnings.filterwarnings("ignore")
 
 APP_DIR = Path(__file__).resolve().parent
+
+# Sidebar / navigation labels (must match st.radio options exactly)
+T_OVERVIEW = "📊  UK Overview"
+T_REGIONAL = "🗺️  Regional Analysis"
+T_GAP = "🤖  AI Gap Analysis"
+T_GLOBAL = "🌍  Global Comparison"
 
 
 def clean_skill_name(skill):
@@ -128,34 +135,41 @@ def apply_plotly_style(fig):
             template="plotly_white",
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#1E293B", family="Arial", size=12),
-            margin=dict(l=40, r=40, t=50, b=40),
-            title_font=dict(color="#0F172A", size=14),
+            font=dict(color="#374151", family="Inter, sans-serif", size=12),
+            margin=dict(l=20, r=20, t=40, b=20),
+            title_font=dict(color="#0F172A", size=15, family="Inter, sans-serif"),
             colorway=DARK_COLOURS,
+            hoverlabel=dict(
+                bgcolor="white",
+                font_size=12,
+                font_family="Inter",
+                bordercolor="#E2E8F0",
+            ),
         )
     except Exception:
         pass
     try:
         fig.update_xaxes(
-            gridcolor="#E2E8F0",
-            linecolor="#CBD5E1",
-            tickfont=dict(color="#475569"),
-            title_font=dict(color="#475569"),
+            gridcolor="#F1F5F9",
+            linecolor="#E2E8F0",
+            tickfont=dict(color="#64748B", size=11, family="Inter"),
+            title_font=dict(color="#475569", size=12),
         )
         fig.update_yaxes(
-            gridcolor="#E2E8F0",
-            linecolor="#CBD5E1",
-            tickfont=dict(color="#475569"),
-            title_font=dict(color="#475569"),
+            gridcolor="#F1F5F9",
+            linecolor="#E2E8F0",
+            tickfont=dict(color="#64748B", size=11, family="Inter"),
+            title_font=dict(color="#475569", size=12),
         )
     except Exception:
         pass
     try:
         fig.update_layout(
             legend=dict(
-                bgcolor="rgba(255,255,255,0.85)",
+                bgcolor="rgba(255,255,255,0.95)",
                 bordercolor="#E2E8F0",
-                font=dict(color="#334155"),
+                borderwidth=1,
+                font=dict(color="#374151", size=11, family="Inter"),
             )
         )
     except Exception:
@@ -170,21 +184,90 @@ def plotly_show(fig, height=None):
     st.plotly_chart(fig, use_container_width=True)
 
 
-def tab_header() -> None:
-    st.markdown("## 🎮 UK Gaming Industry — Skill Demand Analysis")
-    st.markdown("*University of Leicester | AI for Business Intelligence | Kabilan*")
-    st.markdown("---")
-
-
-def animated_metric(label, value, prefix="", suffix="", color="#38BDF8"):
+def page_header(title: str, subtitle: str, icon: str = "🎮", badge: str | None = None) -> None:
+    badge_html = (
+        f'<span style="background:rgba(13,148,136,0.2);color:#5EEAD4;font-size:12px;font-weight:600;'
+        f'padding:4px 12px;border-radius:20px;margin-left:12px;">{html.escape(badge)}</span>'
+        if badge
+        else ""
+    )
     st.markdown(
         f"""
-    <div style="background:#0F172A;border:1px solid #1E3A5F;border-radius:10px;
-                padding:20px;text-align:center;margin:4px;">
-        <div style="font-size:30px;font-weight:700;color:{color};">
-            {prefix}{value}{suffix}
-        </div>
-        <div style="font-size:12px;color:#64748B;margin-top:6px;">{label}</div>
+    <div class="page-header">
+        <h1>{html.escape(icon)} {html.escape(title)}{badge_html}</h1>
+        <p>{html.escape(subtitle)}</p>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
+def kpi_card(value: str, label: str, sub: str = "", accent: str = "#0D9488") -> None:
+    sub_html = f'<div class="kpi-sub">{html.escape(sub)}</div>' if sub else ""
+    st.markdown(
+        f"""
+    <div class="kpi-card" style="--accent: {html.escape(accent, quote=True)}">
+        <div class="kpi-value">{html.escape(str(value))}</div>
+        <div class="kpi-label">{html.escape(label)}</div>
+        {sub_html}
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
+def section_header(title: str, badge: str | None = None) -> None:
+    badge_html = f'<span class="section-badge">{html.escape(badge)}</span>' if badge else ""
+    st.markdown(
+        f"""
+    <div class="section-header">
+        <h2>{html.escape(title)}</h2>
+        {badge_html}
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
+def chart_card(title: str, subtitle: str = "") -> None:
+    sub = f'<div class="chart-subtitle">{html.escape(subtitle)}</div>' if subtitle else ""
+    st.markdown(
+        f"""
+    <div class="chart-card">
+        <div class="chart-title">{html.escape(title)}</div>
+        {sub}
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+
+def plotly_show_in_card(fig, card_title: str, card_subtitle: str = "", height: int | None = None) -> None:
+    chart_card(card_title, card_subtitle)
+    try:
+        fig.update_layout(title=None)
+    except Exception:
+        pass
+    plotly_show(fig, height=height)
+
+
+def insight(
+    text: str,
+    title: str = "Key Insight",
+    type: str = "default",
+    icon: str = "💡",
+) -> None:
+    type_class = {
+        "default": "",
+        "warning": "warning",
+        "info": "info",
+        "critical": "critical",
+    }.get(type, "")
+    st.markdown(
+        f"""
+    <div class="insight-box {type_class}">
+        <div class="insight-title">{html.escape(icon)} {html.escape(title)}</div>
+        <div class="insight-text">{html.escape(text)}</div>
     </div>
     """,
         unsafe_allow_html=True,
@@ -347,24 +430,452 @@ def tab5_unique_job_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 st.set_page_config(
-    page_title="UK Gaming Industry — Skill Demand Analysis",
+    page_title="UK Gaming Industry — Skill Intelligence",
     page_icon="🎮",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 st.markdown(
-    """
+    r"""
 <style>
-/* ── Light professional theme (original) ── */
-[data-testid="stSidebar"] {background-color: #0F1B2D;}
-[data-testid="stSidebar"] * {color: #E5E7EB !important;}
-.metric-card {background:#1A2535;border:1px solid #0D9488;border-radius:10px;padding:16px;text-align:center;}
-.metric-value {font-size:28px;font-weight:bold;color:#5EEAD4;}
-.metric-label {font-size:12px;color:#9CA3AF;}
-.callout {background:#FFF7ED;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0;}
-.high-priority {background-color:#FFF5F5;}
-.badge {display:inline-block;background:#0D9488;color:white;padding:3px 10px;border-radius:12px;margin:3px;font-size:12px;}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Base ── */
+* { font-family: 'Inter', sans-serif !important; }
+.stApp { background: #F0F4F8; }
+.main .block-container {
+    padding: 2rem 2.5rem;
+    max-width: 1400px;
+}
+
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #0F1B2D 0%, #1a2d47 100%) !important;
+    border-right: none !important;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.15);
+}
+[data-testid="stSidebar"] * {
+    color: #94A3B8 !important;
+}
+[data-testid="stSidebar"] .stRadio > label {
+    color: #CBD5E1 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+}
+[data-testid="stSidebar"] .stRadio [data-testid="stMarkdownContainer"] p {
+    font-size: 13px !important;
+}
+
+/* ── Page header ── */
+.page-header {
+    background: linear-gradient(135deg, #0F1B2D 0%, #1E3A5F 50%, #0D9488 100%);
+    border-radius: 16px;
+    padding: 32px 40px;
+    margin-bottom: 28px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+.page-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+}
+.page-header h1 {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: white !important;
+    margin: 0 !important;
+    letter-spacing: -0.5px;
+}
+.page-header p {
+    font-size: 14px !important;
+    color: rgba(255,255,255,0.65) !important;
+    margin: 8px 0 0 0 !important;
+}
+
+/* ── Section headers ── */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 28px 0 16px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #E2E8F0;
+}
+.section-header h2 {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    color: #0F172A !important;
+    margin: 0 !important;
+}
+.section-badge {
+    background: #0D9488;
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+}
+
+/* ── KPI Cards ── */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.kpi-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+.kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--accent, #0D9488);
+}
+.kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.kpi-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: #0F172A;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 6px;
+    font-family: 'Inter', sans-serif !important;
+}
+.kpi-label {
+    font-size: 13px;
+    color: #64748B;
+    font-weight: 500;
+    letter-spacing: 0.2px;
+}
+.kpi-sub {
+    font-size: 11px;
+    color: #94A3B8;
+    margin-top: 4px;
+}
+
+/* ── Chart cards ── */
+.chart-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+}
+.chart-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #0F172A;
+    margin-bottom: 4px;
+}
+.chart-subtitle {
+    font-size: 12px;
+    color: #94A3B8;
+    margin-bottom: 16px;
+}
+
+/* ── Insight boxes ── */
+.insight-box {
+    background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+    border: 1px solid #86EFAC;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 12px 0;
+}
+.insight-box.warning {
+    background: linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%);
+    border-color: #FCA678;
+}
+.insight-box.info {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border-color: #93C5FD;
+}
+.insight-box.critical {
+    background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%);
+    border-color: #FCA5A5;
+}
+.insight-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #166534;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.insight-box.warning .insight-title { color: #92400E; }
+.insight-box.info .insight-title { color: #1E40AF; }
+.insight-box.critical .insight-title { color: #9F1239; }
+.insight-text {
+    font-size: 13px;
+    color: #374151;
+    line-height: 1.6;
+}
+
+/* ── Data tables ── */
+.stDataFrame {
+    border-radius: 10px !important;
+    overflow: hidden !important;
+    border: 1px solid #E2E8F0 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+.stDataFrame thead tr th {
+    background: #F8FAFC !important;
+    color: #475569 !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-bottom: 2px solid #E2E8F0 !important;
+    padding: 12px 16px !important;
+}
+.stDataFrame tbody tr td {
+    font-size: 13px !important;
+    color: #1E293B !important;
+    padding: 10px 16px !important;
+    border-bottom: 1px solid #F1F5F9 !important;
+}
+.stDataFrame tbody tr:hover td {
+    background: #F8FAFC !important;
+}
+
+/* ── Sidebar navigation ── */
+.nav-item {
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin: 3px 0;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: #94A3B8;
+}
+.nav-item:hover {
+    background: rgba(255,255,255,0.08);
+    color: #E2E8F0;
+}
+.nav-item.active {
+    background: rgba(13,148,136,0.2);
+    color: #5EEAD4;
+    font-weight: 600;
+}
+.nav-label {
+    font-size: 11px;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 14px 6px 14px;
+    font-weight: 600;
+}
+
+/* ── Metrics ── */
+div[data-testid="metric-container"] {
+    background: white !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+div[data-testid="metric-container"] [data-testid="stMetricValue"] {
+    font-size: 28px !important;
+    font-weight: 700 !important;
+    color: #0F172A !important;
+    font-family: 'Inter', sans-serif !important;
+}
+div[data-testid="metric-container"] [data-testid="stMetricLabel"] {
+    font-size: 12px !important;
+    color: #64748B !important;
+    font-weight: 500 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+/* ── Selectbox ── */
+.stSelectbox > div > div {
+    background: white !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    color: #1E293B !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+}
+
+/* ── Text input ── */
+.stTextInput > div > div > input {
+    background: white !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    color: #1E293B !important;
+    padding: 10px 14px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+}
+.stTextInput > div > div > input:focus {
+    border-color: #0D9488 !important;
+    box-shadow: 0 0 0 3px rgba(13,148,136,0.1) !important;
+}
+
+/* ── Radio buttons ── */
+.stRadio > div {
+    gap: 8px !important;
+}
+.stRadio label {
+    background: white;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+/* ── Expander ── */
+div[data-testid="stExpander"] {
+    background: white !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    overflow: hidden !important;
+}
+div[data-testid="stExpander"] summary {
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    color: #0F172A !important;
+    padding: 16px 20px !important;
+}
+
+/* ── Divider ── */
+hr {
+    border: none !important;
+    border-top: 1px solid #E2E8F0 !important;
+    margin: 24px 0 !important;
+}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"] {
+    background: #F8FAFC;
+    border-radius: 10px;
+    padding: 4px;
+    border: 1px solid #E2E8F0;
+    gap: 2px;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #64748B;
+    padding: 8px 16px;
+    border: none;
+}
+.stTabs [aria-selected="true"] {
+    background: white !important;
+    color: #0D9488 !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+/* ── Alerts ── */
+div[data-testid="stAlert"] {
+    border-radius: 10px !important;
+    border: none !important;
+    font-size: 13px !important;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #F1F5F9; }
+::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ── Footer ── */
+.dashboard-footer {
+    text-align: center;
+    padding: 24px;
+    color: #94A3B8;
+    font-size: 12px;
+    border-top: 1px solid #E2E8F0;
+    margin-top: 40px;
+}
+
+/* ── Priority badges ── */
+.badge-high {
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FCA5A5;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-med {
+    background: #FFFBEB;
+    color: #D97706;
+    border: 1px solid #FCD34D;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+.badge-std {
+    background: #F0FDF4;
+    color: #16A34A;
+    border: 1px solid #86EFAC;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+/* ── Skill tags ── */
+.skill-tag {
+    display: inline-block;
+    background: #EFF6FF;
+    color: #1D4ED8;
+    border: 1px solid #BFDBFE;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    margin: 3px;
+}
+.skill-tag.global {
+    background: #F0FDF4;
+    color: #16A34A;
+    border-color: #86EFAC;
+}
+
+/* ── Loading spinner ── */
+.stSpinner > div {
+    border-color: #0D9488 !important;
+}
 </style>
 """,
     unsafe_allow_html=True,
@@ -380,18 +891,92 @@ except FileNotFoundError as e:
     st.stop()
 
 with st.sidebar:
+    st.markdown(
+        """
+    <div style="padding: 8px 0 24px 0;">
+        <div style="font-size:20px;font-weight:700;
+                    color:#F1F5F9;letter-spacing:-0.5px;">
+            🎮 Skill Intelligence
+        </div>
+        <div style="font-size:11px;color:#475569;
+                    margin-top:4px;letter-spacing:0.5px;">
+            UK GAMING INDUSTRY
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown(
+        """
+    <div style="font-size:10px;color:#475569;
+                text-transform:uppercase;letter-spacing:1.5px;
+                font-weight:600;margin-bottom:8px;">
+        Navigation
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
     tab_choice = st.radio(
-        "section",
-        [
-            "TAB 1 — UK Overview",
-            "TAB 2 — Regional Analysis",
-            "TAB 3 — AI Gap Analysis",
-            "TAB 4 — Global Comparison",
-        ],
+        "",
+        [T_OVERVIEW, T_REGIONAL, T_GAP, T_GLOBAL],
         label_visibility="collapsed",
     )
 
-    # Global filters removed (defaults keep app logic stable)
+    st.markdown("<hr style='border-color:#1E293B;margin:20px 0;'>", unsafe_allow_html=True)
+
+    st.markdown(
+        """
+    <div style="font-size:10px;color:#334155;
+                text-transform:uppercase;letter-spacing:1px;
+                font-weight:600;margin-bottom:12px;">
+        About
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    descriptions = {
+        T_OVERVIEW: "1,121 gaming jobs · 352 skills · top demand analysis",
+        T_REGIONAL: "4 UK regions · normalised per 100k population",
+        T_GAP: "TF-IDF + K-Means + Location Quotient pipeline",
+        T_GLOBAL: "81 countries · skill share · UK vs world",
+    }
+
+    st.markdown(
+        f"""
+    <div style="background:rgba(13,148,136,0.1);
+                border:1px solid rgba(13,148,136,0.2);
+                border-radius:8px;padding:12px 14px;
+                font-size:12px;color:#94A3B8;
+                line-height:1.6;">
+        {descriptions.get(tab_choice, "")}
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("<hr style='border-color:#1E293B;margin:20px 0;'>", unsafe_allow_html=True)
+
+    st.markdown(
+        """
+    <div style="font-size:11px;color:#334155;line-height:1.8;">
+        <div style="color:#64748B;font-weight:600;">
+            University of Leicester
+        </div>
+        <div style="color:#475569;">
+            AI for Business Intelligence
+        </div>
+        <div style="color:#0D9488;font-weight:600;
+                    margin-top:4px;">
+            Kabilan · 2025
+        </div>
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
     region_filter = "All"
     skill_query = ""
     date_range = None
@@ -421,16 +1006,23 @@ df_d_f = _apply_filters(df_d)
 
 
 def show_tab1(df_a: pd.DataFrame) -> None:
-    st.subheader("UK Overview")
+    page_header(
+        "UK Overview",
+        "Skill demand analysis across 1,121 UK gaming job listings",
+        "📊",
+        "1,121 Jobs Analysed",
+    )
 
-    # Basic metrics (pre-computed headline figures)
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Jobs", "1,121")
-    m2.metric("Unique Skills", "352")
-    m3.metric("Total Skill Rows", "6,948")
-    m4.metric("UK Regions", "4")
+    kpi_cols = st.columns(4)
+    with kpi_cols[0]:
+        kpi_card("1,121", "Gaming Job Ads", "UK only · Jul–Oct 2025", "#0D9488")
+    with kpi_cols[1]:
+        kpi_card("352", "Unique Skills", "Identified across all listings", "#6D28D9")
+    with kpi_cols[2]:
+        kpi_card("6,948", "Skill Rows", "After cleaning & exploding", "#F59E0B")
+    with kpi_cols[3]:
+        kpi_card("4", "UK Regions", "England · Scotland · Wales · NI", "#10B981")
 
-    # Clean step_a data before aggregations
     df = df_a.copy()
     if "Skills" in df.columns:
         df = df[df["Skills"] != "game-texts"]
@@ -439,9 +1031,8 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     if "UK Region" in df.columns:
         df = df[df["UK Region"].astype(str).str.strip() != "Unknown"]
 
-    st.markdown("---")
-    st.markdown("### 📊 Job Demand Analysis — Skills vs Actual Job Ads")
-    st.markdown("*How many unique job ads demand each skill — not just how many times it appears*")
+    section_header("Top Skills by Demand", "UK Gaming")
+    st.caption("How many unique job ads demand each skill — not just how many times it appears")
 
     demand_data = pd.DataFrame(
         {
@@ -506,7 +1097,7 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             height=500,
             transition_duration=600,
         )
-        plotly_show(fig_demand)
+        plotly_show_in_card(fig_demand, title, "Ranked by volume in UK gaming job data", height=500)
 
     with col_right:
         fig_coverage = px.bar(
@@ -527,19 +1118,25 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             coloraxis_showscale=False,
             transition_duration=600,
         )
-        plotly_show(fig_coverage)
+        plotly_show_in_card(
+            fig_coverage,
+            "Skill coverage — % of all 1,121 UK gaming jobs",
+            "Share of distinct job ads listing each skill",
+            height=500,
+        )
 
-    st.info(
-        "**Key insight:** Communication appears in **610 skill mentions** across "
-        "**348 unique job ads** — meaning **31.0% of all UK gaming jobs** require "
-        "communication skills. This is the highest coverage of any skill in the dataset. "
-        "Unity appears in **133 mentions** across **68 unique job ads** (6.1% coverage) "
-        "— confirming it is a specialist gaming-only skill."
+    insight(
+        "Communication appears in 610 skill mentions across 348 unique job ads — "
+        "31.0% of all UK gaming jobs require communication skills (highest coverage). "
+        "Unity appears in 133 mentions across 68 unique job ads (6.1% coverage) — "
+        "a specialist gaming-only skill.",
+        "Key insight",
+        "default",
+        "💡",
     )
 
-    st.markdown("---")
-    st.markdown("### 🎯 Job Ads by Category")
-    st.markdown("*How many job ads exist per job category across UK gaming companies*")
+    section_header("Job ads by category", "Composition")
+    st.caption("How many job ads exist per job category across UK gaming companies")
 
     category_data = pd.DataFrame(
         {
@@ -580,7 +1177,7 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             height=450,
             transition_duration=600,
         )
-        plotly_show(fig_cat)
+        plotly_show_in_card(fig_cat, "UK gaming job ads by category", "Sorted by posting volume", height=450)
 
     with col2:
         fig_cat_pie = px.pie(
@@ -600,7 +1197,7 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             showlegend=False,
             height=450,
         )
-        plotly_show(fig_cat_pie)
+        plotly_show_in_card(fig_cat_pie, "Job category distribution", "1,121 UK gaming jobs", height=450)
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -612,8 +1209,8 @@ def show_tab1(df_a: pd.DataFrame) -> None:
     with col4:
         st.metric("Communication is needed in", "31% of all jobs")
 
-    st.markdown("---")
-    st.markdown("### Skill deep dive — explore one skill")
+    section_header("Skill deep dive", "Time series")
+    st.caption("Explore one skill over time and by region")
     if "Activated Date" in df.columns and "UK Region" in df.columns and "Skills" in df.columns:
         skills_opts = sorted(df["Skills"].dropna().astype(str).str.strip().unique().tolist())
         if skills_opts:
@@ -645,7 +1242,12 @@ def show_tab1(df_a: pd.DataFrame) -> None:
                 )
                 left, right = st.columns(2)
                 with left:
-                    plotly_show(fig_trend, height=420)
+                    plotly_show_in_card(
+                        fig_trend,
+                        f"Weekly trend — {clean_skill_name(selected_skill)}",
+                        "Posts per week",
+                        height=420,
+                    )
 
                 reg = sub["UK Region"].astype(str).str.strip().value_counts().reset_index()
                 reg.columns = ["Region", "Count"]
@@ -657,23 +1259,30 @@ def show_tab1(df_a: pd.DataFrame) -> None:
                     title="Regional breakdown",
                 )
                 with right:
-                    plotly_show(fig_reg, height=420)
+                    plotly_show_in_card(fig_reg, "Regional breakdown", "Count by UK region", height=420)
             else:
-                st.info("No rows for this skill under current filters.")
+                insight("No rows for this skill under current filters.", "No data", "info", "ℹ️")
     else:
         st.caption("Skill deep dive unavailable (missing Activated Date / UK Region / Skills columns).")
 
 
 def show_tab2(df_b: pd.DataFrame) -> None:
-    st.subheader("Regional Analysis")
+    page_header(
+        "Regional Analysis",
+        "How skill demand varies across England, Scotland, Wales & Northern Ireland",
+        "🗺️",
+        "4 UK Regions",
+    )
 
     reg_col = "UK Region"
     sk_col = "Skills"
     df_b2 = df_b.copy()
 
     regions = ["England", "Scotland", "Wales", "Northern Ireland"]
-    st.markdown("### Controls")
+    section_header("Controls", "Filters")
     top_n = st.slider("Top skills to show (heatmap)", min_value=10, max_value=30, value=15, step=5)
+
+    section_header("Regional heatmap", "Normalised /100k")
     per_region_top: dict[str, pd.Series] = {}
     for r in regions:
         sub = df_b2[df_b2[reg_col] == r]
@@ -764,7 +1373,12 @@ def show_tab2(df_b: pd.DataFrame) -> None:
 
     col_hm, col_ref = st.columns([1.85, 0.62])
     with col_hm:
-        plotly_show(fig_hm, height=500)
+        plotly_show_in_card(
+            fig_hm,
+            "Gaming skill demand across UK regions",
+            "Normalised per 100k population",
+            height=500,
+        )
     with col_ref:
         st.markdown(
             "<p style='font-size:12px;font-weight:600;margin:0 0 6px 0;'>Regional top 5</p>",
@@ -795,6 +1409,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
             per100k = cnt / (pop / 100_000.0)
             cluster_rows.append({"Region": r, "Cluster": clus, "per100k": per100k})
 
+    section_header("Cluster composition", "Stacked /100k")
     cdf = pd.DataFrame(cluster_rows)
     fig_stack = px.bar(
         cdf,
@@ -809,8 +1424,14 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         xaxis_title="",
         yaxis_title="Skills per 100k population",
     )
-    plotly_show(fig_stack, height=520)
+    plotly_show_in_card(
+        fig_stack,
+        "Skill cluster composition by UK region",
+        "Stacked demand per 100k population",
+        height=520,
+    )
 
+    section_header("Cluster summary table", "Exact figures")
     exact_tab2 = pd.DataFrame(
         [
             ("England", 3.55, 3.55, 1.49, 1.45, 0.72, 0.71),
@@ -822,6 +1443,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     )
     st.dataframe(exact_tab2, use_container_width=True, hide_index=True, height=240)
 
+    section_header("Top skills by region", "Top 10")
     region_pick = st.selectbox("Filter region — top 10 skills", regions)
     sub_r = df_b2[df_b2[reg_col] == region_pick]
     top10r = sub_r[sk_col].astype(str).str.strip().value_counts().head(10).reset_index()
@@ -838,36 +1460,43 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         title=f"Top 10 skills — {region_pick}",
         showlegend=False,
     )
-    plotly_show(fig_r)
+    plotly_show_in_card(fig_r, f"Top 10 skills — {region_pick}", "By posting count", height=None)
 
 
 def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
-    st.subheader("AI Gap Analysis")
+    page_header(
+        "AI Gap Analysis",
+        "K-Means clustering + Location Quotient gap scoring pipeline",
+        "🤖",
+        "520 Gap Scores",
+    )
 
-    st.markdown("### Controls")
+    section_header("Controls", "Filters")
     regions_o = ["England", "Scotland", "Wales", "Northern Ireland"]
     region_view = st.selectbox("Region (for scatter + recommendations)", ["All"] + regions_o, index=0)
     min_demand = st.slider("Minimum demand (scatter/recs)", min_value=0, max_value=600, value=0, step=10)
     prio_view = st.multiselect("Priorities", options=["HIGH", "MED", "STD"], default=["HIGH", "MED", "STD"])
 
+    section_header("Pipeline steps", "AI")
     s1, s2, s3, s4 = st.columns(4)
     with s1:
-        st.markdown("#### Step A: Data Prep")
-        st.write("6,948 rows, 352 skills, one skill per row")
+        st.markdown("**Step A — Data prep**")
+        st.caption("6,948 rows, 352 skills, one skill per row")
     with s2:
-        st.markdown("#### Step B: K-Means AI")
-        st.write("TF-IDF converts skills to numbers, 6 clusters found")
+        st.markdown("**Step B — K-Means**")
+        st.caption("TF-IDF → numbers, 6 clusters")
     with s3:
-        st.markdown("#### Step C: Gap Scoring")
-        st.write("Location Quotient formula, 520 gap scores")
+        st.markdown("**Step C — Gap scoring**")
+        st.caption("Location Quotient, 520 gap scores")
     with s4:
-        st.markdown("#### Step D: Recommender")
-        st.write("Top 5 per region, 20 total recommendations")
+        st.markdown("**Step D — Recommender**")
+        st.caption("Top 5 per region, 20 recommendations")
 
     dfc = df_c.copy()
     if region_view != "All" and "UK Region" in dfc.columns:
         dfc = dfc[dfc["UK Region"].astype(str).str.strip() == region_view]
 
+    section_header("Gap score analysis", "AI pipeline")
     gap_avg = (
         dfc.groupby(["UK Region", "Cluster_Name"], as_index=False)["Gap_Score"]
         .mean()
@@ -916,7 +1545,12 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
         title="Average Gap Score — Region × Skill Cluster",
         yaxis=dict(autorange="reversed"),
     )
-    plotly_show(fig_gap, height=520)
+    plotly_show_in_card(
+        fig_gap,
+        "Average gap score — region × skill cluster",
+        "Light = lower gap, dark = higher",
+        height=520,
+    )
 
     scatter_src = dfc.copy()
     if "Demand" in scatter_src.columns:
@@ -950,11 +1584,21 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     _gap_scatter_h = 440
     col_sc, col_box = st.columns(2)
     with col_sc:
-        plotly_show(fig_sc, height=_gap_scatter_h)
+        plotly_show_in_card(
+            fig_sc,
+            "Demand vs gap score",
+            "Each point is one skill",
+            height=_gap_scatter_h,
+        )
     with col_box:
-        plotly_show(fig_box, height=_gap_scatter_h)
+        plotly_show_in_card(
+            fig_box,
+            "Gap score distribution by UK region",
+            "Spread of scores within each region",
+            height=_gap_scatter_h,
+        )
 
-    st.markdown("### Workshop recommendations")
+    section_header("Workshop recommendations", "Step D output")
 
     # Load recommendations
     df_rec = load_step_d()
@@ -1000,7 +1644,12 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
 
 
 def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
-    st.markdown("## 🌍 Global Comparison — UK vs World")
+    page_header(
+        "Global Comparison",
+        "UK gaming skill demand vs 81 countries worldwide",
+        "🌍",
+        "81 Countries",
+    )
     st.caption(
         f"**Data file:** `{data_source}` — "
         + (
@@ -1009,15 +1658,12 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
             else "raw workbook; run `python preprocess_combined_for_global.py` to build `Combined_Data_cleaned.xlsx` for cleaner counts."
         )
     )
-    st.markdown(
-        """
-    <div class='callout'>
-    This comparison uses <b>skill share percentage</b> among <b>unique job ads</b> per country
-    (duplicate listing rows removed; null/empty rows dropped). Each share is the percentage of
-    <b>distinct jobs</b> in that country that list the skill — not raw skill-row counts.
-    </div>
-    """,
-        unsafe_allow_html=True,
+    insight(
+        "Skill share % is among unique job ads per country (duplicates removed; null rows dropped). "
+        "Each share is the % of distinct jobs in that country listing the skill — not raw skill-row counts.",
+        "Methodology",
+        "info",
+        "📐",
     )
 
     df_raw = tab5_drop_all_null_columns(df_combined.copy())
@@ -1097,7 +1743,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
         lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
     )
 
-    st.markdown("### 🌐 Top Countries by Gaming Job Listings")
+    section_header("Top countries by gaming job listings", "Global")
     st.caption(
         "Each bar counts **unique job ads** only (null rows removed, duplicates merged). "
         "Skill shares below use the same deduplicated jobs."
@@ -1125,7 +1771,12 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
         height=500,
         transition_duration=600,
     )
-    plotly_show(fig_countries)
+    plotly_show_in_card(
+        fig_countries,
+        "Top 15 countries by unique gaming job listings",
+        "UK highlighted vs other markets",
+        height=500,
+    )
 
     with st.expander("Exact job-listing counts by country (deduplicated)"):
         st.dataframe(
@@ -1148,7 +1799,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
 
     st.markdown("---")
 
-    st.markdown("### 🔍 Skill Explorer — Search Any Skill")
+    section_header("Skill Explorer", "Search")
     skill_input = st.text_input(
         "Type a skill name:",
         value="communication",
@@ -1157,9 +1808,12 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
 
     if skill_input:
         if not df_exploded["Skills"].eq(skill_input).any():
-            st.warning(
+            insight(
                 f"Skill '{clean_skill_name(skill_input)}' not found in any gaming job. "
-                "Try: communication, python, unity, team-management, cpp"
+                "Try: communication, python, unity, team-management, cpp",
+                "Not found",
+                "warning",
+                "⚠️",
             )
         else:
             cnt_skill = (
@@ -1221,7 +1875,12 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                 legend_title="",
                 height=500,
             )
-            plotly_show(fig_skill)
+            plotly_show_in_card(
+                fig_skill,
+                f"Top 15 by skill share — {clean_skill_name(skill_input)}",
+                title_suffix,
+                height=500,
+            )
             if chart_min_note is not None:
                 st.caption(
                     f"Chart excludes locations with fewer than **{chart_min_note}** gaming jobs so one-off ads do not show as **100%**. "
@@ -1249,11 +1908,14 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                 with col3:
                     st.metric("Global avg share %", f"{global_avg_r:.2f}%")
 
-                st.info(
-                    f"**Rank** is out of **{n_countries}** countries with gaming jobs (0% where the skill does not appear). "
-                    f"**'{clean_skill_name(skill_input)}'** appears in **{n_with_skill}** of those countries. "
-                    f"UK share is **{uk_share:.2f}%**; unweighted global average across all **{n_countries}** countries is **{global_avg_r:.2f}%**. "
-                    f"The UK is **{direction}** that average by **{diff_abs:.2f}%**."
+                insight(
+                    f"Rank is out of {n_countries} countries with gaming jobs (0% where the skill does not appear). "
+                    f"'{clean_skill_name(skill_input)}' appears in {n_with_skill} of those countries. "
+                    f"UK share is {uk_share:.2f}%; unweighted global average across all {n_countries} countries is {global_avg_r:.2f}%. "
+                    f"The UK is {direction} that average by {diff_abs:.2f}%.",
+                    "Skill Explorer summary",
+                    "info",
+                    "📊",
                 )
             else:
                 with col1:
@@ -1262,12 +1924,16 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                     st.metric("UK rank", f"N/A / {n_countries}")
                 with col3:
                     st.metric("Global avg share %", f"{global_avg_r:.2f}%")
-                st.warning("United Kingdom has no gaming jobs in this dataset after cleaning.")
+                insight(
+                    "United Kingdom has no gaming jobs in this dataset after cleaning.",
+                    "UK data",
+                    "critical",
+                    "⚠️",
+                )
 
     st.markdown("---")
 
-    # ── ANALYSIS 1 — UK vs Global Skill Gap Comparison ─────────────────────────
-    st.markdown("### 🇬🇧 Analysis 1 — UK vs Global Skill Gap Comparison")
+    section_header("Analysis 1 — UK vs global skill gap", "Comparison")
     st.caption(
         "UK share % and global average share % are **% of unique job ads** in each country that list the skill "
         "(same methodology as the Skill Explorer). Difference = UK share − unweighted mean across all countries."
@@ -1315,7 +1981,12 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
         legend_title="",
         height=560,
     )
-    plotly_show(fig_gap_uk)
+    plotly_show_in_card(
+        fig_gap_uk,
+        "UK vs global — skills ahead or behind",
+        "Difference = UK share − unweighted global mean (% points)",
+        height=560,
+    )
 
     st.dataframe(
         gap_top20,
@@ -1331,22 +2002,22 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
         },
     )
 
-    st.markdown(
-        """
-    <div style="background:#ECFDF5;border-left:4px solid #10B981;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
-    <b style="color:#047857;">Skills where UK is ahead</b> — young people trained in these are globally competitive
-    </div>
-    <div style="background:#FEF2F2;border-left:4px solid #EF4444;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
-    <b style="color:#B91C1C;">Skills where UK is behind</b> — future opportunities the UK gaming industry has not fully developed yet
-    </div>
-    """,
-        unsafe_allow_html=True,
+    insight(
+        "Skills where UK is ahead — young people trained in these are globally competitive.",
+        "UK ahead",
+        "default",
+        "✓",
+    )
+    insight(
+        "Skills where UK is behind — future opportunities the UK gaming industry has not fully developed yet.",
+        "UK behind",
+        "critical",
+        "▼",
     )
 
     st.markdown("---")
 
-    # ── ANALYSIS 2 — Global Skill Universality ────────────────────────────────
-    st.markdown("### 🌐 Analysis 2 — Global Skill Universality")
+    section_header("Analysis 2 — Global skill universality", "Reach")
     st.caption("For each skill: number of countries with **at least one** unique job listing that skill.")
 
     n_countries_total = int(df_jobs_unique["Country"].nunique())
@@ -1378,21 +2049,23 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
         color_continuous_scale=DRK_CONTINUOUS,
     )
     fig_univ.update_layout(yaxis={"categoryorder": "total ascending"}, coloraxis_showscale=False, height=560)
-    plotly_show(fig_univ)
+    plotly_show_in_card(
+        fig_univ,
+        "Most universal gaming skills",
+        "Demanded across the most countries globally",
+        height=560,
+    )
 
-    st.markdown(
-        """
-    <div style="background:#EFF6FF;border-left:4px solid #1D4ED8;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
-    <b style="color:#1E40AF;">Universal skills are the safest to teach</b> — they open doors in gaming industries worldwide not just UK
-    </div>
-    """,
-        unsafe_allow_html=True,
+    insight(
+        "Universal skills are the safest to teach — they open doors in gaming industries worldwide, not just the UK.",
+        "Teaching insight",
+        "info",
+        "🌐",
     )
 
     st.markdown("---")
 
-    # ── ANALYSIS 3 — Countries Most Similar to UK ─────────────────────────────
-    st.markdown("### 🤝 Analysis 3 — Countries Most Similar to UK")
+    section_header("Analysis 3 — Countries most similar to UK", "Cosine")
     st.caption(
         "Top **20** skills by global average share; each country is a vector of skill shares. "
         "Similarity to UK = **cosine similarity** between vectors (excluding UK from the leaderboard)."
@@ -1428,23 +2101,32 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
             color_continuous_scale=DRK_CONTINUOUS,
         )
         fig_sim.update_layout(yaxis={"categoryorder": "total ascending"}, coloraxis_showscale=False, height=420)
-        plotly_show(fig_sim)
+        plotly_show_in_card(
+            fig_sim,
+            "Countries with most similar gaming skill profile to UK",
+            "Cosine similarity on top-20 skills by global share",
+            height=420,
+        )
 
-        st.markdown(
-            """
-    <div style="background:#F5F3FF;border-left:4px solid #6D28D9;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
-    <b style="color:#5B21B6;">Young people trained in UK gaming skills</b> can compete directly in these countries — their employers want the same skills as UK employers
-    </div>
-    """,
-            unsafe_allow_html=True,
+        insight(
+            "Young people trained in UK gaming skills can compete directly in these countries — "
+            "employers want a similar skill mix to the UK.",
+            "Mobility",
+            "default",
+            "🤝",
         )
     else:
-        st.warning("Cannot compute UK similarity (United Kingdom missing from data or no skills).")
+        insight(
+            "Cannot compute UK similarity (United Kingdom missing from data or no skills).",
+            "Similarity unavailable",
+            "warning",
+            "⚠️",
+        )
 
     st.markdown("---")
 
-    st.markdown("### 📊 UK Skill Rankings vs Global Rankings")
-    st.markdown("*Which skills is the UK ahead of or behind the world on?*")
+    section_header("UK skill rankings vs global", "Benchmark")
+    st.caption("Which skills is the UK ahead of or behind the world on?")
 
     uk_skills = skill_country_all[skill_country_all["Country"] == "United Kingdom"].copy()
     uk_skills = uk_skills.sort_values("share_pct", ascending=False).head(20)
@@ -1485,28 +2167,23 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
 
     st.markdown("---")
 
-    st.markdown(
-        """
-    <div class='callout'>
-    <b>What this means for SideFest:</b><br>
-    Skills where the UK ranks <b>above the global average (↑ Ahead)</b> are strong assets —
-    UK young people trained in these skills are globally competitive.<br><br>
-    Skills where the UK ranks <b>below the global average (↓ Behind)</b> represent future
-    opportunities — the UK gaming industry has not yet fully developed these skills,
-    making them valuable to teach now before demand catches up.
-    </div>
-    """,
-        unsafe_allow_html=True,
+    insight(
+        "SideFest: skills where the UK ranks above the global average (↑ Ahead) are strong assets — "
+        "young people trained in them are globally competitive. Skills where the UK ranks below "
+        "the average (↓ Behind) are future opportunities — valuable to teach before demand catches up.",
+        "What this means for SideFest",
+        "info",
+        "🎯",
     )
 
 
-if tab_choice == "TAB 1 — UK Overview":
+if tab_choice == T_OVERVIEW:
     show_tab1(df_a)
-elif tab_choice == "TAB 2 — Regional Analysis":
+elif tab_choice == T_REGIONAL:
     show_tab2(df_b)
-elif tab_choice == "TAB 3 — AI Gap Analysis":
+elif tab_choice == T_GAP:
     show_tab3(df_c, df_d)
-elif tab_choice == "TAB 4 — Global Comparison":
+elif tab_choice == T_GLOBAL:
     try:
         df_global_cmp, global_src = load_excel_global_comparison()
     except FileNotFoundError as e:
@@ -1517,11 +2194,20 @@ elif tab_choice == "TAB 4 — Global Comparison":
         st.stop()
     show_tab5(df_global_cmp, data_source=global_src)
 
-st.markdown("---")
 st.markdown(
-    "<div style='text-align:center;color:#9CA3AF;font-size:12px;'>"
-    "University of Leicester | AI for Business Intelligence | Kabilan | 2025 | "
-    "Data source: UK Gaming Job Listings Jul–Oct 2025"
-    "</div>",
+    """
+<div class="dashboard-footer">
+    <span style="font-weight:600;color:#64748B;">
+        UK Gaming Industry — Skill Intelligence Dashboard
+    </span>
+    &nbsp;·&nbsp; University of Leicester
+    &nbsp;·&nbsp; AI for Business Intelligence
+    &nbsp;·&nbsp; Kabilan · 2025
+    &nbsp;·&nbsp;
+    <span style="color:#0D9488;">
+        Data: UK Gaming Job Listings Jul–Oct 2025
+    </span>
+</div>
+""",
     unsafe_allow_html=True,
 )
