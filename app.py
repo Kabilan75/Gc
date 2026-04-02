@@ -1046,6 +1046,10 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     skill_country_all = skill_country_all.merge(job_totals_all, on="Country")
     skill_country_all["share_pct"] = (skill_country_all["count"] / skill_country_all["total_jobs"] * 100).round(2)
 
+    pivot_share = skill_country_all.pivot_table(
+        index="Country", columns="Skills", values="share_pct", fill_value=0.0, aggfunc="first"
+    )
+
     st.caption(
         f"**{n_countries_all}** countries with gaming jobs · "
         f"**{len(valid_countries)}** with ≥100 unique ads (reference). "
@@ -1230,6 +1234,182 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
 
     st.markdown("---")
 
+    # ── ANALYSIS 1 — UK vs Global Skill Gap Comparison ─────────────────────────
+    st.markdown("### 🇬🇧 Analysis 1 — UK vs Global Skill Gap Comparison")
+    st.caption(
+        "UK share % and global average share % are **% of unique job ads** in each country that list the skill "
+        "(same methodology as the Skill Explorer). Difference = UK share − unweighted mean across all countries."
+    )
+
+    global_mean_by_skill = pivot_share.mean(axis=0)
+    uk_skill_series = (
+        skill_country_all[skill_country_all["Country"] == "United Kingdom"]
+        .set_index("Skills")["share_pct"]
+        if (skill_country_all["Country"] == "United Kingdom").any()
+        else pd.Series(dtype=float)
+    )
+    all_skills_sorted = global_mean_by_skill.sort_values(ascending=False).index.tolist()
+    gap_rows = []
+    for sk in all_skills_sorted:
+        uk_s = float(uk_skill_series.get(sk, 0.0)) if len(uk_skill_series) else 0.0
+        g_avg = float(global_mean_by_skill.get(sk, 0.0))
+        diff = round(uk_s - g_avg, 2)
+        gap_rows.append(
+            {
+                "Skill": sk,
+                "UK Share %": round(uk_s, 2),
+                "Global Avg %": round(g_avg, 2),
+                "Difference %": diff,
+                "Status": "UK Ahead" if diff > 0 else "UK Behind",
+            }
+        )
+    gap_full = pd.DataFrame(gap_rows)
+    gap_top20 = gap_full.assign(_abs=gap_full["Difference %"].abs()).sort_values("_abs", ascending=False).head(20)
+    gap_top20 = gap_top20.drop(columns=["_abs"])
+
+    fig_gap_uk = px.bar(
+        gap_top20.sort_values("Difference %", ascending=True),
+        x="Difference %",
+        y="Skill",
+        orientation="h",
+        color="Status",
+        color_discrete_map={"UK Ahead": COLOURS["green"], "UK Behind": COLOURS["red"]},
+        title="UK vs Global — Which Skills is UK Ahead or Behind On?",
+        labels={"Difference %": "Difference (UK share − global avg, % points)", "Skill": ""},
+    )
+    fig_gap_uk.update_layout(
+        yaxis={"categoryorder": "total ascending"},
+        showlegend=True,
+        legend_title="",
+        height=560,
+    )
+    plotly_show(fig_gap_uk)
+
+    st.dataframe(
+        gap_top20,
+        use_container_width=True,
+        hide_index=True,
+        height=min(520, 36 + 28 * len(gap_top20)),
+        column_config={
+            "Skill": st.column_config.TextColumn("Skill"),
+            "UK Share %": st.column_config.NumberColumn("UK Share %", format="%.2f"),
+            "Global Avg %": st.column_config.NumberColumn("Global Avg %", format="%.2f"),
+            "Difference %": st.column_config.NumberColumn("Difference %", format="%.2f"),
+            "Status": st.column_config.TextColumn("Status"),
+        },
+    )
+
+    st.markdown(
+        """
+    <div style="background:#ECFDF5;border-left:4px solid #10B981;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
+    <b style="color:#047857;">Skills where UK is ahead</b> — young people trained in these are globally competitive
+    </div>
+    <div style="background:#FEF2F2;border-left:4px solid #EF4444;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
+    <b style="color:#B91C1C;">Skills where UK is behind</b> — future opportunities the UK gaming industry has not fully developed yet
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+
+    # ── ANALYSIS 2 — Global Skill Universality ────────────────────────────────
+    st.markdown("### 🌐 Analysis 2 — Global Skill Universality")
+    st.caption("For each skill: number of countries with **at least one** unique job listing that skill.")
+
+    n_countries_total = int(df_jobs_unique["Country"].nunique())
+    countries_per_skill = (
+        skill_country_all[skill_country_all["count"] > 0].groupby("Skills")["Country"].nunique().sort_values(ascending=False)
+    )
+    univ_top20 = countries_per_skill.head(20).reset_index()
+    univ_top20.columns = ["Skill", "Countries"]
+
+    comm_key = "communication"
+    comm_n = int(countries_per_skill.get(comm_key, 0))
+
+    st.metric(
+        label="Communication across countries",
+        value=f"{comm_n} / {n_countries_total}",
+        help="Countries with ≥1 unique gaming job listing communication, out of all countries in the dataset.",
+    )
+    st.caption(f"**Communication** is demanded in **{comm_n}** out of **{n_countries_total}** countries globally.")
+
+    fig_univ = px.bar(
+        univ_top20.sort_values("Countries", ascending=True),
+        x="Countries",
+        y="Skill",
+        orientation="h",
+        title="Most Universal Gaming Skills — Demanded Across Most Countries Globally",
+        labels={"Countries": "Number of countries demanding skill", "Skill": ""},
+        color="Countries",
+        color_continuous_scale=DRK_CONTINUOUS,
+    )
+    fig_univ.update_layout(yaxis={"categoryorder": "total ascending"}, coloraxis_showscale=False, height=560)
+    plotly_show(fig_univ)
+
+    st.markdown(
+        """
+    <div style="background:#EFF6FF;border-left:4px solid #1D4ED8;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
+    <b style="color:#1E40AF;">Universal skills are the safest to teach</b> — they open doors in gaming industries worldwide not just UK
+    </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    st.markdown("---")
+
+    # ── ANALYSIS 3 — Countries Most Similar to UK ─────────────────────────────
+    st.markdown("### 🤝 Analysis 3 — Countries Most Similar to UK")
+    st.caption(
+        "Top **20** skills by global average share; each country is a vector of skill shares. "
+        "Similarity to UK = **cosine similarity** between vectors (excluding UK from the leaderboard)."
+    )
+
+    top20_for_sim = global_mean_by_skill.sort_values(ascending=False).head(20).index.tolist()
+    if "United Kingdom" in pivot_share.index and len(top20_for_sim):
+        M = pivot_share[top20_for_sim].fillna(0.0).astype(float)
+        uk_vec = M.loc["United Kingdom"].to_numpy()
+        uk_norm = np.linalg.norm(uk_vec)
+
+        def _cosine_to_uk(row: np.ndarray) -> float:
+            nb = np.linalg.norm(row)
+            if uk_norm == 0 or nb == 0:
+                return 0.0
+            return float(np.dot(uk_vec, row) / (uk_norm * nb))
+
+        sim_scores = []
+        for cty in M.index:
+            if cty == "United Kingdom":
+                continue
+            sim_scores.append({"Country": cty, "Similarity": _cosine_to_uk(M.loc[cty].to_numpy())})
+        sim_df = pd.DataFrame(sim_scores).sort_values("Similarity", ascending=False).head(10)
+
+        fig_sim = px.bar(
+            sim_df.sort_values("Similarity", ascending=True),
+            x="Similarity",
+            y="Country",
+            orientation="h",
+            title="Countries with Most Similar Gaming Skill Profile to UK",
+            labels={"Similarity": "Cosine similarity (skill share vs UK)", "Country": ""},
+            color="Similarity",
+            color_continuous_scale=DRK_CONTINUOUS,
+        )
+        fig_sim.update_layout(yaxis={"categoryorder": "total ascending"}, coloraxis_showscale=False, height=420)
+        plotly_show(fig_sim)
+
+        st.markdown(
+            """
+    <div style="background:#F5F3FF;border-left:4px solid #6D28D9;padding:14px 18px;border-radius:0 10px 10px 0;margin:12px 0;">
+    <b style="color:#5B21B6;">Young people trained in UK gaming skills</b> can compete directly in these countries — their employers want the same skills as UK employers
+    </div>
+    """,
+            unsafe_allow_html=True,
+        )
+    else:
+        st.warning("Cannot compute UK similarity (United Kingdom missing from data or no skills).")
+
+    st.markdown("---")
+
     st.markdown("### 📊 UK Skill Rankings vs Global Rankings")
     st.markdown("*Which skills is the UK ahead of or behind the world on?*")
 
@@ -1237,9 +1417,6 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     uk_skills = uk_skills.sort_values("share_pct", ascending=False).head(20)
     uk_skills = uk_skills.rename(columns={"share_pct": "uk_share"})
 
-    pivot_share = skill_country_all.pivot_table(
-        index="Country", columns="Skills", values="share_pct", fill_value=0.0, aggfunc="first"
-    )
     global_avg_skills = pivot_share.mean(axis=0).reset_index(name="global_share")
     global_avg_skills.columns = ["Skills", "global_share"]
     global_avg_skills = global_avg_skills.sort_values("global_share", ascending=False)
