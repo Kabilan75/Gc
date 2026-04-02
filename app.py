@@ -21,6 +21,33 @@ warnings.filterwarnings("ignore")
 APP_DIR = Path(__file__).resolve().parent
 
 
+def clean_skill_name(skill):
+    name_map = {
+        "cpp": "C++",
+        "c#": "C#",
+        "ms-office": "MS Office",
+        "real-time-vfx": "Real-Time VFX",
+        "agile-development": "Agile Development",
+        "talent-acquisition": "Talent Acquisition",
+        "team-management": "Team Management",
+        "cross-functional": "Cross-Functional",
+        "quality-control": "Quality Control",
+        "budget-management": "Budget Management",
+        "problem-solving": "Problem Solving",
+        "data-analytics": "Data Analytics",
+        "machine-learning": "Machine Learning",
+        "user-experience-ux": "UX / User Experience",
+        "ci-cd": "CI/CD",
+        "timeline-management": "Timeline Management",
+        "lighting-shading": "Lighting & Shading",
+        "saas-business-models": "SaaS Business Models",
+    }
+    return name_map.get(
+        str(skill).lower(),
+        str(skill).replace("-", " ").title(),
+    )
+
+
 def _find_file(*candidates: str) -> Path | None:
     for name in candidates:
         for base in (APP_DIR, APP_DIR / "Step files"):
@@ -442,6 +469,7 @@ def show_tab1(df_a: pd.DataFrame) -> None:
 
     demand_data["Avg_Skills_Per_Job"] = (demand_data["Skill_Occurrences"] / demand_data["Unique_Job_Ads"]).round(2)
     demand_data["Coverage_%"] = (demand_data["Unique_Job_Ads"] / 1121 * 100).round(1)
+    demand_data["Skill"] = demand_data["Skill"].apply(clean_skill_name)
 
     view_type = st.radio(
         "View by:",
@@ -592,7 +620,12 @@ def show_tab1(df_a: pd.DataFrame) -> None:
             default_skill = (
                 next((s for s in skills_opts if s.lower() == "communication"), skills_opts[0])
             )
-            selected_skill = st.selectbox("Select a skill", skills_opts, index=skills_opts.index(default_skill))
+            selected_skill = st.selectbox(
+                "Select a skill",
+                skills_opts,
+                index=skills_opts.index(default_skill),
+                format_func=clean_skill_name,
+            )
         else:
             selected_skill = ""
 
@@ -603,7 +636,13 @@ def show_tab1(df_a: pd.DataFrame) -> None:
 
             if not sub.empty:
                 weekly = sub.set_index("_date").resample("W").size().rename("Count").reset_index()
-                fig_trend = px.line(weekly, x="_date", y="Count", markers=True, title=f"Weekly trend — {selected_skill}")
+                fig_trend = px.line(
+                    weekly,
+                    x="_date",
+                    y="Count",
+                    markers=True,
+                    title=f"Weekly trend — {clean_skill_name(selected_skill)}",
+                )
                 left, right = st.columns(2)
                 with left:
                     plotly_show(fig_trend, height=420)
@@ -680,7 +719,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
         data=go.Heatmap(
             z=z,
             x=regions,
-            y=top_union,
+            y=[clean_skill_name(s) for s in top_union],
             text=text,
             texttemplate="%{text}",
             colorscale="YlOrRd",
@@ -787,6 +826,7 @@ def show_tab2(df_b: pd.DataFrame) -> None:
     sub_r = df_b2[df_b2[reg_col] == region_pick]
     top10r = sub_r[sk_col].astype(str).str.strip().value_counts().head(10).reset_index()
     top10r.columns = ["Skill", "Count"]
+    top10r["Skill"] = top10r["Skill"].apply(clean_skill_name)
     fig_r = px.bar(
         top10r.sort_values("Count", ascending=True),
         x="Count",
@@ -882,13 +922,18 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
     if "Demand" in scatter_src.columns:
         scatter_src = scatter_src[pd.to_numeric(scatter_src["Demand"], errors="coerce").fillna(0) >= float(min_demand)]
 
+    scatter_disp = scatter_src.copy()
+    if "Skills" in scatter_disp.columns:
+        scatter_disp["_skill_lbl"] = scatter_disp["Skills"].apply(clean_skill_name)
+    else:
+        scatter_disp["_skill_lbl"] = ""
     fig_sc = px.scatter(
-        scatter_src,
+        scatter_disp,
         x="Demand",
         y="Gap_Score",
         color="Cluster_Name",
         size="Demand",
-        hover_name="Skills",
+        hover_name="_skill_lbl",
         color_discrete_map=CLUSTER_COLOURS_DARK,
         title="Demand vs Gap Score — (each dot = one skill)",
     )
@@ -940,6 +985,9 @@ def show_tab3(df_c: pd.DataFrame, df_d: pd.DataFrame) -> None:
 
     if "Gap Score" in df_show.columns:
         df_show["Priority"] = df_show["Gap Score"].apply(get_priority)
+
+    if "Skill" in df_show.columns:
+        df_show["Skill"] = df_show["Skill"].apply(clean_skill_name)
 
     st.dataframe(df_show, use_container_width=True, hide_index=True, height=360)
 
@@ -1110,7 +1158,8 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     if skill_input:
         if not df_exploded["Skills"].eq(skill_input).any():
             st.warning(
-                f"Skill '{skill_input}' not found in any gaming job. Try: communication, python, unity, team-management, cpp"
+                f"Skill '{clean_skill_name(skill_input)}' not found in any gaming job. "
+                "Try: communication, python, unity, team-management, cpp"
             )
         else:
             cnt_skill = (
@@ -1161,7 +1210,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                 orientation="h",
                 color="highlight",
                 color_discrete_map={"United Kingdom": "#EF4444", "Other": "#0D9488"},
-                title=f"Top 15 by skill share — {skill_input} ({title_suffix})",
+                title=f"Top 15 by skill share — {clean_skill_name(skill_input)} ({title_suffix})",
                 labels={"share_pct": "Skill Share (%)", "Country": ""},
                 text="share_pct",
             )
@@ -1202,7 +1251,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
 
                 st.info(
                     f"**Rank** is out of **{n_countries}** countries with gaming jobs (0% where the skill does not appear). "
-                    f"**'{skill_input}'** appears in **{n_with_skill}** of those countries. "
+                    f"**'{clean_skill_name(skill_input)}'** appears in **{n_with_skill}** of those countries. "
                     f"UK share is **{uk_share:.2f}%**; unweighted global average across all **{n_countries}** countries is **{global_avg_r:.2f}%**. "
                     f"The UK is **{direction}** that average by **{diff_abs:.2f}%**."
                 )
@@ -1239,7 +1288,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
         diff = round(uk_s - g_avg, 2)
         gap_rows.append(
             {
-                "Skill": sk,
+                "Skill": clean_skill_name(sk),
                 "UK Share %": round(uk_s, 2),
                 "Global Avg %": round(g_avg, 2),
                 "Difference %": diff,
@@ -1306,6 +1355,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     )
     univ_top20 = countries_per_skill.head(20).reset_index()
     univ_top20.columns = ["Skill", "Countries"]
+    univ_top20["Skill"] = univ_top20["Skill"].apply(clean_skill_name)
 
     comm_key = "communication"
     comm_n = int(countries_per_skill.get(comm_key, 0))
@@ -1411,12 +1461,17 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
         on="Skills",
         how="left",
     )
+    comparison["Skill"] = comparison["Skills"].apply(clean_skill_name)
+    comparison = comparison.drop(columns=["Skills"])
     comparison["uk_share"] = comparison["uk_share"].round(2)
     comparison["global_share"] = comparison["global_share"].round(2)
     comparison["Trend"] = comparison.apply(
         lambda row: "↑ Ahead" if row["uk_rank"] <= row["global_rank"] else "↓ Behind",
         axis=1,
     )
+    comparison = comparison[
+        ["Skill", "uk_share", "uk_rank", "global_share", "global_rank", "Trend"]
+    ]
     comparison.columns = [
         "Skill",
         "UK Share %",
