@@ -17,7 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from city_to_country_tab5 import CITY_TO_COUNTRY, CITY_TO_COUNTRY_SUPPLEMENT
+from city_to_country_tab5 import normalize_tab5_dataframe_country
 
 APP_DIR = Path(__file__).resolve().parent
 SOURCE_XLSX = APP_DIR / "Updated_27_02_26_-_Kabilan.xlsx"
@@ -80,35 +80,6 @@ def _job_key_column(df: pd.DataFrame) -> pd.Series:
     return np.where(has_url, "url:" + norm_link.to_numpy(dtype=object), fp.to_numpy(dtype=object))
 
 
-def _normalize_countries(df: pd.DataFrame, city_map_ci: dict[str, str]) -> pd.DataFrame:
-    out = df.copy()
-    if "Country" not in out.columns:
-        return out
-
-    def one_country(row: pd.Series) -> str:
-        c = row.get("Country")
-        if not _is_nullish(c):
-            s = str(c).strip()
-            mapped = city_map_ci.get(s.lower(), s)
-        else:
-            mapped = ""
-        if _is_nullish(mapped) or mapped == "":
-            cy = row.get("City")
-            if not _is_nullish(cy):
-                mapped = city_map_ci.get(str(cy).strip().lower(), str(cy).strip())
-        if _is_nullish(mapped):
-            return ""
-        s2 = str(mapped).strip()
-        if s2 in ("US", "USA", "U.S.A", "U.S.", "United States of America"):
-            return "United States"
-        if s2 in ("UK", "Britain", "Great Britain", "England", "Scotland", "Wales", "Northern Ireland"):
-            return "United Kingdom"
-        return s2
-
-    out["Country"] = out.apply(one_country, axis=1)
-    return out
-
-
 def preprocess() -> pd.DataFrame:
     if not SOURCE_XLSX.exists():
         raise FileNotFoundError(f"Missing source workbook: {SOURCE_XLSX}")
@@ -120,10 +91,7 @@ def preprocess() -> pd.DataFrame:
     df = df.dropna(axis=1, how="all")
     df = _strip_all_strings(df)
 
-    city_map = {**CITY_TO_COUNTRY_SUPPLEMENT, **CITY_TO_COUNTRY}
-    city_map_ci = {str(k).strip().lower(): v for k, v in city_map.items()}
-
-    df = _normalize_countries(df, city_map_ci)
+    df = normalize_tab5_dataframe_country(df)
 
     df["_job_key"] = _job_key_column(df)
 

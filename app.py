@@ -14,7 +14,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from city_to_country_tab5 import CITY_TO_COUNTRY, CITY_TO_COUNTRY_SUPPLEMENT
+from city_to_country_tab5 import TAB5_CHART_COUNTRIES, normalize_tab5_dataframe_country
 
 warnings.filterwarnings("ignore")
 
@@ -974,32 +974,13 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
 
     df_raw = tab5_drop_all_null_columns(df_combined.copy())
 
-    # Comprehensive mapping lives in city_to_country_tab5.py; supplement fills keys omitted from user paste.
-    city_to_country = {**CITY_TO_COUNTRY_SUPPLEMENT, **CITY_TO_COUNTRY}
-    city_map_ci = {str(k).strip().lower(): v for k, v in city_to_country.items()}
-
     df_global = df_raw[df_raw["Company Category"].astype(str).str.strip() == "Gaming Company"].copy()
     st.caption(f"Gaming Company rows (after dropping all-null columns): {len(df_global):,}")
 
-    df_global = df_global.dropna(subset=["Country"])
+    df_global = normalize_tab5_dataframe_country(df_global)
     df_global["Country"] = df_global["Country"].astype(str).str.strip()
     df_global = df_global[~_tab5_is_nullish_series(df_global["Country"])]
-
-    df_global["Country"] = df_global["Country"].apply(
-        lambda x: city_map_ci.get(str(x).strip().lower(), x)
-    )
-
-    df_global["Country"] = df_global["Country"].apply(
-        lambda x: "United States"
-        if str(x).strip() in ["US", "USA", "U.S.A", "U.S.", "United States of America"]
-        else x
-    )
-    df_global["Country"] = df_global["Country"].apply(
-        lambda x: "United Kingdom"
-        if str(x).strip()
-        in ["UK", "Britain", "Great Britain", "England", "Scotland", "Wales", "Northern Ireland"]
-        else x
-    )
+    df_global = df_global[df_global["Country"].isin(TAB5_CHART_COUNTRIES)]
 
     sk_col = "Skills" if "Skills" in df_global.columns else "Skill" if "Skill" in df_global.columns else None
     if sk_col is None:
@@ -1156,6 +1137,8 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
             if pool.empty:
                 pool = skill_data.nlargest(15, "count").copy()
                 chart_min_note = None
+
+            pool = pool[pool["Country"].isin(TAB5_CHART_COUNTRIES)]
 
             if chart_min_note is not None:
                 top15 = pool.sort_values(["share_pct", "Country"], ascending=[False, True]).head(15)
