@@ -442,8 +442,11 @@ st.markdown(
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 /* ── Base ── */
-* { font-family: 'Inter', sans-serif !important; }
-.stApp { background: #F0F4F8; }
+/* Do not use * { font-family } — it breaks Streamlit expander/chevron icon fonts (shows _arrow_right_). */
+.stApp {
+    background: #F0F4F8;
+    font-family: 'Inter', sans-serif;
+}
 .main .block-container {
     padding: 2rem 2.5rem;
     max-width: 1400px;
