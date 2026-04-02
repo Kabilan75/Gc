@@ -1305,18 +1305,22 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     df_exploded = df_exploded.dropna(subset=["Skills", "Country"])
 
     job_totals_all = df_jobs_unique.groupby("Country", dropna=False).size().reset_index(name="total_jobs")
+    n_countries_all = len(job_totals_all)
     valid_countries = job_totals_all[job_totals_all["total_jobs"] >= 100]["Country"].tolist()
     if not valid_countries:
         valid_countries = job_totals_all.nlargest(min(15, len(job_totals_all)), "total_jobs")["Country"].tolist()
 
-    job_totals = job_totals_all[job_totals_all["Country"].isin(valid_countries)].copy()
-    df_exploded_cmp = df_exploded[df_exploded["Country"].isin(valid_countries)]
+    skill_country_all = (
+        df_exploded.groupby(["Country", "Skills"])["_job_uid"].nunique().reset_index(name="count")
+    )
+    skill_country_all = skill_country_all.merge(job_totals_all, on="Country")
+    skill_country_all["share_pct"] = (skill_country_all["count"] / skill_country_all["total_jobs"] * 100).round(2)
 
-    skill_country = df_exploded_cmp.groupby(["Country", "Skills"])["_job_uid"].nunique().reset_index(name="count")
-    skill_country = skill_country.merge(job_totals, on="Country")
-    skill_country["share_pct"] = (skill_country["count"] / skill_country["total_jobs"] * 100).round(2)
-
-    st.caption(f"Countries in comparison (≥100 unique job ads, or top 15 if none qualify): {len(valid_countries)}")
+    st.caption(
+        f"**{n_countries_all}** countries with gaming jobs · "
+        f"**{len(valid_countries)}** with ≥100 unique ads (reference). "
+        f"Skill ranks and averages use **all {n_countries_all}** countries (0% where a skill does not appear)."
+    )
 
     # Count unique job listings per country (deduped), not raw skill-level rows
     job_counts_full = (
@@ -1389,14 +1393,26 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     ).strip().lower()
 
     if skill_input:
-        skill_data = skill_country[skill_country["Skills"] == skill_input].copy()
-        skill_data = skill_data.sort_values("share_pct", ascending=False)
-
-        if len(skill_data) == 0:
+        if not df_exploded["Skills"].eq(skill_input).any():
             st.warning(
-                f"Skill '{skill_input}' not found. Try: communication, python, unity, team-management, cpp"
+                f"Skill '{skill_input}' not found in any gaming job. Try: communication, python, unity, team-management, cpp"
             )
         else:
+            cnt_skill = (
+                df_exploded[df_exploded["Skills"] == skill_input]
+                .groupby("Country")["_job_uid"]
+                .nunique()
+                .reset_index(name="count")
+            )
+            skill_data = job_totals_all.merge(cnt_skill, on="Country", how="left")
+            skill_data["count"] = skill_data["count"].fillna(0).astype(np.int64)
+            skill_data["share_pct"] = (skill_data["count"] / skill_data["total_jobs"] * 100).round(2)
+            skill_data = skill_data.sort_values(["share_pct", "Country"], ascending=[False, True]).reset_index(drop=True)
+            skill_data["rank"] = skill_data["share_pct"].rank(ascending=False, method="min").astype(int)
+
+            n_countries = n_countries_all
+            global_avg_r = round(float(skill_data["share_pct"].mean()), 2)
+
             top15 = skill_data.head(15).copy()
             top15["highlight"] = top15["Country"].apply(
                 lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
@@ -1409,7 +1425,7 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                 orientation="h",
                 color="highlight",
                 color_discrete_map={"United Kingdom": "#EF4444", "Other": "#0D9488"},
-                title=f"Top 15 Countries by Skill Share — {skill_input}",
+                title=f"Top 15 Countries by Skill Share — {skill_input} (of {n_countries} countries)",
                 labels={"share_pct": "Skill Share (%)", "Country": ""},
                 text="share_pct",
             )
@@ -1422,21 +1438,15 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
             )
             plotly_show(fig_skill)
 
-            uk_row = skill_data[skill_data["Country"] == "United Kingdom"]
-            n_countries = len(skill_data)
-            global_avg = float(skill_data["share_pct"].mean())
-            global_avg_r = round(global_avg, 2)
-
+            uk_r = skill_data[skill_data["Country"] == "United Kingdom"]
             col1, col2, col3 = st.columns(3)
-            if len(uk_row) > 0:
-                uk_share = float(uk_row["share_pct"].values[0])
-                skill_ranked = skill_data.sort_values("share_pct", ascending=False).reset_index(drop=True)
-                skill_ranked["rank"] = np.arange(1, len(skill_ranked) + 1)
-                uk_r = skill_ranked[skill_ranked["Country"] == "United Kingdom"]
-                uk_rank_num = int(uk_r["rank"].iloc[0]) if not uk_r.empty else "N/A"
+            if not uk_r.empty:
+                uk_share = float(uk_r["share_pct"].iloc[0])
+                uk_rank_num = int(uk_r["rank"].iloc[0])
                 diff = round(uk_share - global_avg_r, 2)
                 direction = "above" if diff >= 0 else "below"
                 diff_abs = abs(diff)
+                n_with_skill = int((skill_data["count"] > 0).sum())
 
                 with col1:
                     st.metric("UK share %", f"{uk_share:.2f}%")
@@ -1446,30 +1456,33 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
                     st.metric("Global avg share %", f"{global_avg_r:.2f}%")
 
                 st.info(
-                    f"**'{skill_input}'** is demanded in **{n_countries} countries** globally. "
-                    f"UK skill share is **{uk_share:.2f}%**. "
-                    f"The global average is **{global_avg_r:.2f}%**. "
-                    f"The UK is **{direction}** the global average by **{diff_abs:.2f}%**."
+                    f"**Rank** is out of **{n_countries}** countries with gaming jobs (0% where the skill does not appear). "
+                    f"**'{skill_input}'** appears in **{n_with_skill}** of those countries. "
+                    f"UK share is **{uk_share:.2f}%**; unweighted global average across all **{n_countries}** countries is **{global_avg_r:.2f}%**. "
+                    f"The UK is **{direction}** that average by **{diff_abs:.2f}%**."
                 )
             else:
                 with col1:
-                    st.metric("UK share %", "Not in top countries")
+                    st.metric("UK share %", "—")
                 with col2:
                     st.metric("UK rank", f"N/A / {n_countries}")
                 with col3:
                     st.metric("Global avg share %", f"{global_avg_r:.2f}%")
-                st.warning(f"United Kingdom does not appear in the data for '{skill_input}'.")
+                st.warning("United Kingdom has no gaming jobs in this dataset after cleaning.")
 
     st.markdown("---")
 
     st.markdown("### 📊 UK Skill Rankings vs Global Rankings")
     st.markdown("*Which skills is the UK ahead of or behind the world on?*")
 
-    uk_skills = skill_country[skill_country["Country"] == "United Kingdom"].copy()
+    uk_skills = skill_country_all[skill_country_all["Country"] == "United Kingdom"].copy()
     uk_skills = uk_skills.sort_values("share_pct", ascending=False).head(20)
     uk_skills = uk_skills.rename(columns={"share_pct": "uk_share"})
 
-    global_avg_skills = skill_country.groupby("Skills")["share_pct"].mean().reset_index()
+    pivot_share = skill_country_all.pivot_table(
+        index="Country", columns="Skills", values="share_pct", fill_value=0.0, aggfunc="first"
+    )
+    global_avg_skills = pivot_share.mean(axis=0).reset_index(name="global_share")
     global_avg_skills.columns = ["Skills", "global_share"]
     global_avg_skills = global_avg_skills.sort_values("global_share", ascending=False)
     global_avg_skills["global_rank"] = range(1, len(global_avg_skills) + 1)
