@@ -26,6 +26,7 @@ T_OVERVIEW = "📊  UK Overview"
 T_REGIONAL = "🗺️  Regional Analysis"
 T_GAP = "🤖  AI Gap Analysis"
 T_GLOBAL = "🌍  Global Comparison"
+T_VISUAL = "🎨  Visual Dashboard"
 
 
 def clean_skill_name(skill):
@@ -923,7 +924,7 @@ with st.sidebar:
 
     tab_choice = st.radio(
         "",
-        [T_OVERVIEW, T_REGIONAL, T_GAP, T_GLOBAL],
+        [T_OVERVIEW, T_REGIONAL, T_GAP, T_GLOBAL, T_VISUAL],
         label_visibility="collapsed",
     )
 
@@ -945,6 +946,7 @@ with st.sidebar:
         T_REGIONAL: "4 UK regions · normalised per 100k population",
         T_GAP: "TF-IDF + K-Means + Location Quotient pipeline",
         T_GLOBAL: "81 countries · skill share · UK vs world",
+        T_VISUAL: "Embedded HTML dashboard · curated BI view",
     }
 
     st.markdown(
@@ -2180,6 +2182,18 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     )
 
 
+def show_visual_dashboard():
+    import streamlit.components.v1 as components
+
+    html_path = APP_DIR / "gaming_dashboard.html"
+    if html_path.exists():
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        components.html(html_content, height=950, scrolling=True)
+    else:
+        st.warning("gaming_dashboard.html not found.")
+
+
 if tab_choice == T_OVERVIEW:
     show_tab1(df_a)
 elif tab_choice == T_REGIONAL:
@@ -2196,6 +2210,8 @@ elif tab_choice == T_GLOBAL:
         st.error(f"Error reading global comparison workbook: {e}")
         st.stop()
     show_tab5(df_global_cmp, data_source=global_src)
+elif tab_choice == T_VISUAL:
+    show_visual_dashboard()
 
 st.markdown(
     """
