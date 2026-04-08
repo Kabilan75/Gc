@@ -26,7 +26,6 @@ T_OVERVIEW = "📊  UK Overview"
 T_REGIONAL = "🗺️  Regional Analysis"
 T_GAP = "🤖  AI Gap Analysis"
 T_GLOBAL = "🌍  Global Comparison"
-T_VISUAL = "🎨  Visual Dashboard"
 
 
 def clean_skill_name(skill):
@@ -133,44 +132,48 @@ POPULATION = {
 def apply_plotly_style(fig):
     try:
         fig.update_layout(
-            template="plotly_white",
-            plot_bgcolor="rgba(0,0,0,0)",
-            paper_bgcolor="rgba(0,0,0,0)",
-            font=dict(color="#374151", family="Inter, sans-serif", size=12),
+            template="plotly_dark",
+            plot_bgcolor="#0C1422",
+            paper_bgcolor="#0C1422",
+            font=dict(color="#8A9BB0", family="Outfit, sans-serif", size=12),
             margin=dict(l=20, r=20, t=40, b=20),
-            title_font=dict(color="#0F172A", size=15, family="Inter, sans-serif"),
-            colorway=DARK_COLOURS,
+            title_font=dict(color="#F0F4F8", size=14, family="Outfit, sans-serif"),
+            colorway=["#00E5CC", "#A78BFA", "#34D399", "#F5A623", "#60A5FA", "#FF5572", "#FB923C", "#FCD34D"],
+        )
+    except Exception:
+        pass
+    try:
+        fig.update_layout(
             hoverlabel=dict(
-                bgcolor="white",
-                font_size=12,
-                font_family="Inter",
-                bordercolor="#E2E8F0",
-            ),
+                bgcolor="#111D2E",
+                font_color="#E2E8F0",
+                bordercolor="rgba(255,255,255,0.1)",
+            )
         )
     except Exception:
         pass
     try:
         fig.update_xaxes(
-            gridcolor="#F1F5F9",
-            linecolor="#E2E8F0",
-            tickfont=dict(color="#64748B", size=11, family="Inter"),
-            title_font=dict(color="#475569", size=12),
+            gridcolor="rgba(255,255,255,0.05)",
+            linecolor="rgba(255,255,255,0.08)",
+            tickfont=dict(color="#4A5568", size=11),
+            title_font=dict(color="#4A5568", size=12),
         )
         fig.update_yaxes(
-            gridcolor="#F1F5F9",
-            linecolor="#E2E8F0",
-            tickfont=dict(color="#64748B", size=11, family="Inter"),
-            title_font=dict(color="#475569", size=12),
+            gridcolor="rgba(255,255,255,0.05)",
+            linecolor="rgba(255,255,255,0.08)",
+            tickfont=dict(color="#4A5568", size=11),
+            title_font=dict(color="#4A5568", size=12),
         )
     except Exception:
         pass
     try:
         fig.update_layout(
             legend=dict(
-                bgcolor="rgba(255,255,255,0.95)",
-                bordercolor="#E2E8F0",
+                bgcolor="#0C1422",
+                bordercolor="rgba(255,255,255,0.1)",
                 borderwidth=1,
-                font=dict(color="#374151", size=11, family="Inter"),
+                font=dict(color="#8A9BB0", size=11),
             )
         )
     except Exception:
@@ -438,448 +441,321 @@ st.set_page_config(
 )
 
 st.markdown(
-    r"""
+    """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ── Base ── */
-/* Do not use * { font-family } — it breaks Streamlit expander/chevron icon fonts (shows _arrow_right_). */
 .stApp {
-    background: #F0F4F8;
-    font-family: 'Inter', sans-serif;
+    background: #05090F;
+    font-family: 'Outfit', sans-serif;
 }
 .main .block-container {
     padding: 2rem 2.5rem;
     max-width: 1400px;
+    background: #05090F;
 }
-
-/* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0F1B2D 0%, #1a2d47 100%) !important;
-    border-right: none !important;
-    box-shadow: 4px 0 15px rgba(0,0,0,0.15);
+    background: #0C1422 !important;
+    border-right: 1px solid rgba(255,255,255,0.07) !important;
 }
 [data-testid="stSidebar"] * {
-    color: #94A3B8 !important;
+    color: #8A9BB0 !important;
 }
-[data-testid="stSidebar"] .stRadio > label {
+[data-testid="stSidebar"] .stRadio label {
     color: #CBD5E1 !important;
     font-size: 13px !important;
-    font-weight: 500 !important;
 }
-[data-testid="stSidebar"] .stRadio [data-testid="stMarkdownContainer"] p {
-    font-size: 13px !important;
-}
-
-/* ── Page header ── */
 .page-header {
-    background: linear-gradient(135deg, #0F1B2D 0%, #1E3A5F 50%, #0D9488 100%);
-    border-radius: 16px;
-    padding: 32px 40px;
-    margin-bottom: 28px;
-    color: white;
+    background: linear-gradient(135deg, #0C1422 0%, #111D2E 50%, #0D2540 100%);
+    border: 1px solid rgba(0,229,204,0.15);
+    border-radius: 14px;
+    padding: 28px 36px;
+    margin-bottom: 24px;
     position: relative;
     overflow: hidden;
 }
 .page-header::before {
     content: '';
     position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 70%);
+    top: -40%;
+    right: -5%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(0,229,204,0.08) 0%, transparent 70%);
     border-radius: 50%;
 }
 .page-header h1 {
-    font-size: 28px !important;
+    font-size: 24px !important;
     font-weight: 700 !important;
-    color: white !important;
+    color: #F0F4F8 !important;
     margin: 0 !important;
     letter-spacing: -0.5px;
+    font-family: 'Outfit', sans-serif !important;
 }
 .page-header p {
-    font-size: 14px !important;
-    color: rgba(255,255,255,0.65) !important;
-    margin: 8px 0 0 0 !important;
+    font-size: 13px !important;
+    color: rgba(255,255,255,0.5) !important;
+    margin: 6px 0 0 0 !important;
+    font-family: 'Outfit', sans-serif !important;
 }
-
-/* ── Section headers ── */
 .section-header {
     display: flex;
     align-items: center;
     gap: 10px;
     margin: 28px 0 16px 0;
     padding-bottom: 10px;
-    border-bottom: 2px solid #E2E8F0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
 }
 .section-header h2 {
-    font-size: 18px !important;
+    font-size: 16px !important;
     font-weight: 600 !important;
-    color: #0F172A !important;
+    color: #F0F4F8 !important;
     margin: 0 !important;
+    font-family: 'Outfit', sans-serif !important;
 }
 .section-badge {
-    background: #0D9488;
-    color: white;
+    background: rgba(0,229,204,0.12);
+    color: #00E5CC;
     font-size: 11px;
     font-weight: 600;
     padding: 3px 10px;
     border-radius: 20px;
+    border: 1px solid rgba(0,229,204,0.2);
     letter-spacing: 0.5px;
 }
-
-/* ── KPI Cards ── */
-.kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 28px;
-}
 .kpi-card {
-    background: white;
+    background: #0C1422;
     border-radius: 12px;
     padding: 20px 24px;
-    border: 1px solid #E2E8F0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid rgba(255,255,255,0.07);
     position: relative;
     overflow: hidden;
+    transition: transform 0.2s;
 }
 .kpi-card::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
-    width: 4px;
+    width: 3px;
     height: 100%;
-    background: var(--accent, #0D9488);
+    background: var(--accent, #00E5CC);
 }
 .kpi-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: rgba(0,229,204,0.2);
 }
 .kpi-value {
-    font-size: 32px;
+    font-size: 30px;
     font-weight: 700;
-    color: #0F172A;
+    color: #F0F4F8;
     letter-spacing: -1px;
     line-height: 1;
     margin-bottom: 6px;
-    font-family: 'Inter', sans-serif !important;
+    font-family: 'JetBrains Mono', monospace !important;
 }
 .kpi-label {
-    font-size: 13px;
-    color: #64748B;
-    font-weight: 500;
-    letter-spacing: 0.2px;
+    font-size: 11px;
+    color: #4A5568;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
 }
 .kpi-sub {
     font-size: 11px;
-    color: #94A3B8;
+    color: #8A9BB0;
     margin-top: 4px;
 }
-
-/* ── Chart cards ── */
 .chart-card {
-    background: white;
+    background: #0C1422;
     border-radius: 12px;
     padding: 24px;
-    border: 1px solid #E2E8F0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border: 1px solid rgba(255,255,255,0.07);
     margin-bottom: 20px;
 }
 .chart-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
-    color: #0F172A;
+    color: #F0F4F8;
     margin-bottom: 4px;
+    font-family: 'Outfit', sans-serif;
 }
 .chart-subtitle {
     font-size: 12px;
-    color: #94A3B8;
+    color: #4A5568;
     margin-bottom: 16px;
 }
-
-/* ── Insight boxes ── */
 .insight-box {
-    background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
-    border: 1px solid #86EFAC;
+    background: rgba(0,229,204,0.06);
+    border: 1px solid rgba(0,229,204,0.2);
     border-radius: 10px;
-    padding: 16px 20px;
+    padding: 14px 18px;
     margin: 12px 0;
 }
 .insight-box.warning {
-    background: linear-gradient(135deg, #FFF7ED 0%, #FED7AA 100%);
-    border-color: #FCA678;
+    background: rgba(245,166,35,0.06);
+    border-color: rgba(245,166,35,0.2);
 }
 .insight-box.info {
-    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
-    border-color: #93C5FD;
+    background: rgba(96,165,250,0.06);
+    border-color: rgba(96,165,250,0.2);
 }
 .insight-box.critical {
-    background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%);
-    border-color: #FCA5A5;
+    background: rgba(255,85,114,0.06);
+    border-color: rgba(255,85,114,0.2);
 }
 .insight-title {
     font-size: 13px;
     font-weight: 600;
-    color: #166534;
+    color: #00E5CC;
     margin-bottom: 6px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
-.insight-box.warning .insight-title { color: #92400E; }
-.insight-box.info .insight-title { color: #1E40AF; }
-.insight-box.critical .insight-title { color: #9F1239; }
+.insight-box.warning .insight-title { color: #F5A623; }
+.insight-box.info .insight-title { color: #60A5FA; }
+.insight-box.critical .insight-title { color: #FF5572; }
 .insight-text {
     font-size: 13px;
-    color: #374151;
+    color: #8A9BB0;
     line-height: 1.6;
 }
-
-/* ── Data tables ── */
-.stDataFrame {
-    border-radius: 10px !important;
-    overflow: hidden !important;
-    border: 1px solid #E2E8F0 !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-}
-.stDataFrame thead tr th {
-    background: #F8FAFC !important;
-    color: #475569 !important;
-    font-size: 12px !important;
-    font-weight: 600 !important;
-    text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
-    border-bottom: 2px solid #E2E8F0 !important;
-    padding: 12px 16px !important;
-}
-.stDataFrame tbody tr td {
-    font-size: 13px !important;
-    color: #1E293B !important;
-    padding: 10px 16px !important;
-    border-bottom: 1px solid #F1F5F9 !important;
-}
-.stDataFrame tbody tr:hover td {
-    background: #F8FAFC !important;
-}
-
-/* ── Sidebar navigation ── */
-.nav-item {
-    padding: 10px 14px;
-    border-radius: 8px;
-    margin: 3px 0;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: #94A3B8;
-}
-.nav-item:hover {
-    background: rgba(255,255,255,0.08);
-    color: #E2E8F0;
-}
-.nav-item.active {
-    background: rgba(13,148,136,0.2);
-    color: #5EEAD4;
-    font-weight: 600;
-}
-.nav-label {
-    font-size: 11px;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    padding: 12px 14px 6px 14px;
-    font-weight: 600;
-}
-
-/* ── Metrics ── */
 div[data-testid="metric-container"] {
-    background: white !important;
-    border: 1px solid #E2E8F0 !important;
+    background: #0C1422 !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
     border-radius: 12px !important;
     padding: 20px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
 }
 div[data-testid="metric-container"] [data-testid="stMetricValue"] {
     font-size: 28px !important;
     font-weight: 700 !important;
-    color: #0F172A !important;
-    font-family: 'Inter', sans-serif !important;
+    color: #00E5CC !important;
+    font-family: 'JetBrains Mono', monospace !important;
 }
 div[data-testid="metric-container"] [data-testid="stMetricLabel"] {
-    font-size: 12px !important;
-    color: #64748B !important;
-    font-weight: 500 !important;
+    font-size: 11px !important;
+    color: #4A5568 !important;
+    font-weight: 600 !important;
     text-transform: uppercase !important;
-    letter-spacing: 0.5px !important;
+    letter-spacing: 1px !important;
 }
-
-/* ── Selectbox ── */
+.stDataFrame {
+    border-radius: 10px !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
+    background: #0C1422 !important;
+}
+.stDataFrame thead tr th {
+    background: #111D2E !important;
+    color: #4A5568 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 1px !important;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}
+.stDataFrame tbody tr td {
+    font-size: 13px !important;
+    color: #8A9BB0 !important;
+    border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+    background: #0C1422 !important;
+}
+.stDataFrame tbody tr:hover td {
+    background: #111D2E !important;
+}
 .stSelectbox > div > div {
-    background: white !important;
-    border: 1px solid #E2E8F0 !important;
+    background: #0C1422 !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
     border-radius: 8px !important;
-    font-size: 13px !important;
-    color: #1E293B !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    color: #F0F4F8 !important;
 }
-
-/* ── Text input ── */
 .stTextInput > div > div > input {
-    background: white !important;
-    border: 1px solid #E2E8F0 !important;
+    background: #0C1422 !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
     border-radius: 8px !important;
-    font-size: 13px !important;
-    color: #1E293B !important;
-    padding: 10px 14px !important;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04) !important;
+    color: #F0F4F8 !important;
 }
 .stTextInput > div > div > input:focus {
-    border-color: #0D9488 !important;
-    box-shadow: 0 0 0 3px rgba(13,148,136,0.1) !important;
+    border-color: #00E5CC !important;
+    box-shadow: 0 0 0 3px rgba(0,229,204,0.1) !important;
 }
-
-/* ── Radio buttons ── */
-.stRadio > div {
-    gap: 8px !important;
-}
-.stRadio label {
-    background: white;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-/* ── Expander ── */
 div[data-testid="stExpander"] {
-    background: white !important;
-    border: 1px solid #E2E8F0 !important;
+    background: #0C1422 !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
     border-radius: 12px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
-    overflow: hidden !important;
 }
-div[data-testid="stExpander"] summary {
-    font-weight: 600 !important;
-    font-size: 14px !important;
-    color: #0F172A !important;
-    padding: 16px 20px !important;
-}
-
-/* ── Divider ── */
-hr {
-    border: none !important;
-    border-top: 1px solid #E2E8F0 !important;
-    margin: 24px 0 !important;
-}
-
-/* ── Tabs ── */
 .stTabs [data-baseweb="tab-list"] {
-    background: #F8FAFC;
+    background: #0C1422;
     border-radius: 10px;
     padding: 4px;
-    border: 1px solid #E2E8F0;
-    gap: 2px;
+    border: 1px solid rgba(255,255,255,0.07);
 }
 .stTabs [data-baseweb="tab"] {
     border-radius: 8px;
     font-size: 13px;
-    font-weight: 500;
-    color: #64748B;
+    color: #4A5568;
     padding: 8px 16px;
-    border: none;
 }
 .stTabs [aria-selected="true"] {
-    background: white !important;
-    color: #0D9488 !important;
+    background: #111D2E !important;
+    color: #00E5CC !important;
     font-weight: 600 !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
 }
-
-/* ── Alerts ── */
 div[data-testid="stAlert"] {
+    background: #0C1422 !important;
+    border: 1px solid rgba(255,255,255,0.07) !important;
     border-radius: 10px !important;
-    border: none !important;
-    font-size: 13px !important;
+    color: #8A9BB0 !important;
 }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #F1F5F9; }
-::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
-    border-radius: 3px;
+hr {
+    border-color: rgba(255,255,255,0.07) !important;
 }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
-
-/* ── Footer ── */
-.dashboard-footer {
-    text-align: center;
-    padding: 24px;
-    color: #94A3B8;
-    font-size: 12px;
-    border-top: 1px solid #E2E8F0;
-    margin-top: 40px;
-}
-
-/* ── Priority badges ── */
 .badge-high {
-    background: #FEF2F2;
-    color: #DC2626;
-    border: 1px solid #FCA5A5;
+    background: rgba(255,85,114,0.1);
+    color: #FF5572;
+    border: 1px solid rgba(255,85,114,0.3);
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
 }
 .badge-med {
-    background: #FFFBEB;
-    color: #D97706;
-    border: 1px solid #FCD34D;
+    background: rgba(245,166,35,0.1);
+    color: #F5A623;
+    border: 1px solid rgba(245,166,35,0.3);
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
 }
 .badge-std {
-    background: #F0FDF4;
-    color: #16A34A;
-    border: 1px solid #86EFAC;
+    background: rgba(52,211,153,0.1);
+    color: #34D399;
+    border: 1px solid rgba(52,211,153,0.3);
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 700;
 }
-
-/* ── Skill tags ── */
 .skill-tag {
     display: inline-block;
-    background: #EFF6FF;
-    color: #1D4ED8;
-    border: 1px solid #BFDBFE;
+    background: rgba(0,229,204,0.08);
+    color: #00E5CC;
+    border: 1px solid rgba(0,229,204,0.2);
     padding: 4px 12px;
     border-radius: 20px;
     font-size: 12px;
     font-weight: 500;
     margin: 3px;
 }
-.skill-tag.global {
-    background: #F0FDF4;
-    color: #16A34A;
-    border-color: #86EFAC;
+.dashboard-footer {
+    text-align: center;
+    padding: 24px;
+    color: #4A5568;
+    font-size: 12px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    margin-top: 40px;
 }
-
-/* ── Loading spinner ── */
-.stSpinner > div {
-    border-color: #0D9488 !important;
-}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #05090F; }
+::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 3px; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -897,16 +773,19 @@ except FileNotFoundError as e:
 with st.sidebar:
     st.markdown(
         """
-    <div style="padding: 8px 0 24px 0;">
-        <div style="font-size:20px;font-weight:700;
-                    color:#F1F5F9;letter-spacing:-0.5px;">
-            🎮 Skill Intelligence
-        </div>
-        <div style="font-size:11px;color:#475569;
-                    margin-top:4px;letter-spacing:0.5px;">
-            UK GAMING INDUSTRY
-        </div>
+<div style="padding:8px 0 20px 0;">
+    <div style="font-size:19px;font-weight:700;
+                color:#F0F4F8;letter-spacing:-0.5px;
+                font-family:'Outfit',sans-serif;">
+        🎮 Skill Intelligence
     </div>
+    <div style="font-size:10px;color:#4A5568;
+                margin-top:3px;letter-spacing:1.5px;
+                text-transform:uppercase;
+                font-family:'Outfit',sans-serif;">
+        UK Gaming Industry
+    </div>
+</div>
     """,
         unsafe_allow_html=True,
     )
@@ -924,7 +803,7 @@ with st.sidebar:
 
     tab_choice = st.radio(
         "",
-        [T_OVERVIEW, T_REGIONAL, T_GAP, T_GLOBAL, T_VISUAL],
+        [T_OVERVIEW, T_REGIONAL, T_GAP, T_GLOBAL],
         label_visibility="collapsed",
     )
 
@@ -946,7 +825,6 @@ with st.sidebar:
         T_REGIONAL: "4 UK regions · normalised per 100k population",
         T_GAP: "TF-IDF + K-Means + Location Quotient pipeline",
         T_GLOBAL: "81 countries · skill share · UK vs world",
-        T_VISUAL: "Embedded HTML dashboard · curated BI view",
     }
 
     st.markdown(
@@ -2182,18 +2060,6 @@ def show_tab5(df_combined: pd.DataFrame, *, data_source: str) -> None:
     )
 
 
-def show_visual_dashboard():
-    import streamlit.components.v1 as components
-
-    html_path = APP_DIR / "gaming_dashboard.html"
-    if html_path.exists():
-        with open(html_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
-        components.html(html_content, height=950, scrolling=True)
-    else:
-        st.warning("gaming_dashboard.html not found.")
-
-
 if tab_choice == T_OVERVIEW:
     show_tab1(df_a)
 elif tab_choice == T_REGIONAL:
@@ -2210,8 +2076,6 @@ elif tab_choice == T_GLOBAL:
         st.error(f"Error reading global comparison workbook: {e}")
         st.stop()
     show_tab5(df_global_cmp, data_source=global_src)
-elif tab_choice == T_VISUAL:
-    show_visual_dashboard()
 
 st.markdown(
     """
