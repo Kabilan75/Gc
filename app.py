@@ -3,6 +3,7 @@ UK Gaming Industry — Skill Intelligence Dashboard
 University of Leicester | AI for Business Intelligence | Kabilan 2025
 """
 from __future__ import annotations
+import io
 import warnings
 from pathlib import Path
 
@@ -826,18 +827,54 @@ elif tab == "📄 CV Evaluator":
         st.markdown("**💡 Get Feedback**\n\nPersonalised advice")
 
     st.markdown("---")
-    st.caption("Paste your CV here")
-    st.caption("Include skills, experience, tools and education for best results")
-    cv_text = st.text_area(
-        "CV text",
-        height=220,
+    method = st.radio(
+        "Input method",
+        ["Paste CV text", "Upload PDF/TXT"],
+        horizontal=True,
         label_visibility="collapsed",
-        placeholder=(
-            "Example: I have 3 years Unity and C++ experience, worked in agile teams using "
-            "Jira and GitHub, strong communication and problem-solving skills, proficient in "
-            "Python and SQL, experience with Maya and Photoshop..."
-        ),
     )
+
+    cv_text = ""
+    if method == "Paste CV text":
+        st.caption("Paste your CV here")
+        st.caption("Include skills, experience, tools and education for best results")
+        cv_text = st.text_area(
+            "CV text",
+            height=220,
+            label_visibility="collapsed",
+            placeholder=(
+                "Example: I have 3 years Unity and C++ experience, worked in agile teams using "
+                "Jira and GitHub, strong communication and problem-solving skills, proficient in "
+                "Python and SQL, experience with Maya and Photoshop..."
+            ),
+        )
+    else:
+        st.caption("Upload your CV (PDF or TXT)")
+        up = st.file_uploader("Upload CV", type=["pdf", "txt"], label_visibility="collapsed")
+        if up is not None:
+            try:
+                if getattr(up, "type", "") == "text/plain" or str(up.name).lower().endswith(".txt"):
+                    cv_text = up.read().decode("utf-8", errors="ignore")
+                else:
+                    data = up.read()
+                    try:
+                        import pdfplumber
+
+                        with pdfplumber.open(io.BytesIO(data)) as pdf:
+                            cv_text = "\n".join((p.extract_text() or "") for p in pdf.pages)
+                    except Exception:
+                        try:
+                            import PyPDF2
+
+                            reader = PyPDF2.PdfReader(io.BytesIO(data))
+                            cv_text = "\n".join((pg.extract_text() or "") for pg in reader.pages)
+                        except Exception:
+                            st.warning(
+                                "Could not extract text from this PDF. "
+                                "Install `pdfplumber` or `PyPDF2`, or paste CV text instead."
+                            )
+            except Exception:
+                st.warning("Could not read the uploaded file. Please paste your CV text instead.")
 
     GAMING_SKILLS = [
         "communication",
