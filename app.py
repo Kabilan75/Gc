@@ -4,6 +4,7 @@ University of Leicester | AI for Business Intelligence | Kabilan 2025
 """
 from __future__ import annotations
 import io
+import shutil
 import warnings
 from pathlib import Path
 
@@ -870,17 +871,56 @@ elif tab == "📄 CV Evaluator":
                             reader = PyPDF2.PdfReader(io.BytesIO(data))
                             extracted = "\n".join((pg.extract_text() or "") for pg in reader.pages)
                         except Exception:
-                            st.warning(
-                                "Could not extract text from this PDF. "
-                                "Try exporting it as a text-based PDF, or paste CV text instead."
-                            )
+                            extracted = ""
                     if extracted and extracted.strip():
                         cv_text = extracted
                     elif up is not None:
-                        st.warning(
-                            "This PDF appears to contain little/no selectable text (often scanned image PDFs). "
-                            "Please paste your CV text instead."
-                        )
+                        # OCR fallback for scanned/image PDFs (optional dependencies).
+                        # This keeps the app usable even if OCR isn't available.
+                        ocr_text = ""
+                        can_run_tesseract = bool(shutil.which("tesseract"))
+                        try:
+                            import fitz  # PyMuPDF
+                            import pytesseract
+
+                            if can_run_tesseract:
+                                with st.spinner("Running OCR on the PDF (may take ~10–30s)…"):
+                                    doc = fitz.open(stream=data, filetype="pdf")
+                                    parts: list[str] = []
+                                    max_pages = min(len(doc), 10)
+                                    for i in range(max_pages):
+                                        page = doc.load_page(i)
+                                        pix = page.get_pixmap(dpi=200)
+                                        img_bytes = pix.tobytes("png")
+                                        try:
+                                            from PIL import Image
+
+                                            img = Image.open(io.BytesIO(img_bytes))
+                                            parts.append(pytesseract.image_to_string(img) or "")
+                                        except Exception:
+                                            parts.append("")
+                                    doc.close()
+                                    ocr_text = "\n".join(parts).strip()
+                        except Exception:
+                            ocr_text = ""
+
+                        if ocr_text:
+                            cv_text = ocr_text
+                            st.success("OCR completed — extracted text from the PDF.")
+                        else:
+                            if can_run_tesseract:
+                                st.warning(
+                                    "This PDF appears to contain little/no selectable text (often scanned image PDFs), "
+                                    "and OCR did not produce usable text. Please paste your CV text instead."
+                                )
+                            else:
+                                st.warning(
+                                    "This PDF appears to contain little/no selectable text (often scanned image PDFs). "
+                                    "To support any PDF, install OCR (Tesseract) or paste CV text instead."
+                                )
+                                st.caption(
+                                    "Install OCR on Windows: install **Tesseract OCR**, then `pip install pymupdf pytesseract pillow`."
+                                )
             except Exception:
                 st.warning("Could not read the uploaded file. Please paste your CV text instead.")
 
