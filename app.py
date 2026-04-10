@@ -857,22 +857,30 @@ elif tab == "📄 CV Evaluator":
                     cv_text = up.read().decode("utf-8", errors="ignore")
                 else:
                     data = up.read()
+                    extracted = ""
                     try:
                         import pdfplumber
 
                         with pdfplumber.open(io.BytesIO(data)) as pdf:
-                            cv_text = "\n".join((p.extract_text() or "") for p in pdf.pages)
+                            extracted = "\n".join((p.extract_text() or "") for p in pdf.pages)
                     except Exception:
                         try:
                             import PyPDF2
 
                             reader = PyPDF2.PdfReader(io.BytesIO(data))
-                            cv_text = "\n".join((pg.extract_text() or "") for pg in reader.pages)
+                            extracted = "\n".join((pg.extract_text() or "") for pg in reader.pages)
                         except Exception:
                             st.warning(
                                 "Could not extract text from this PDF. "
-                                "Install `pdfplumber` or `PyPDF2`, or paste CV text instead."
+                                "Try exporting it as a text-based PDF, or paste CV text instead."
                             )
+                    if extracted and extracted.strip():
+                        cv_text = extracted
+                    elif up is not None:
+                        st.warning(
+                            "This PDF appears to contain little/no selectable text (often scanned image PDFs). "
+                            "Please paste your CV text instead."
+                        )
             except Exception:
                 st.warning("Could not read the uploaded file. Please paste your CV text instead.")
 
