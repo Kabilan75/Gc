@@ -33,12 +33,22 @@ st.html(
 # ── Minimal safe CSS  (only colours, no layout overrides) ─────────────────────
 st.markdown("""
 <style>
-section[data-testid="stSidebar"] { background-color: #0C1422; }
+/* Sidebar above main so wide main pane never paints over sidebar text */
+section[data-testid="stSidebar"] {
+  background-color: #0C1422;
+  position: relative;
+  z-index: 100;
+}
 section[data-testid="stSidebar"] .stMarkdown p,
 section[data-testid="stSidebar"] .stRadio label,
 section[data-testid="stSidebar"] .stRadio div { color: #CBD5E1 !important; }
 .stApp { background-color: #05090F; color: #F0F4F8; }
-.block-container { padding-top: 1rem; max-width: 100% !important; }
+.block-container { padding-top: 1rem; }
+/* Scope full-width main content only — global max-width:100% can bleed over sidebar */
+section.main .block-container,
+section[data-testid="stMain"] .block-container {
+  max-width: 100% !important;
+}
 h1, h2, h3 { color: #F0F4F8 !important; }
 p, li { color: #CBD5E1; }
 [data-testid="stHorizontalBlock"] .stRadio label,
