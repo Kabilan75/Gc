@@ -44,10 +44,14 @@ section[data-testid="stSidebar"] .stRadio label,
 section[data-testid="stSidebar"] .stRadio div { color: #CBD5E1 !important; }
 .stApp { background-color: #05090F; color: #F0F4F8; }
 .block-container { padding-top: 1rem; }
-/* Scope full-width main content only — global max-width:100% can bleed over sidebar */
+/*
+ * Main pane only: extra top padding so first widgets (e.g. UK/Regional radio) sit below
+ * Streamlit’s fixed header / deploy toolbar (avoids controls clipped under the black bar).
+ */
 section.main .block-container,
 section[data-testid="stMain"] .block-container {
   max-width: 100% !important;
+  padding-top: 3.75rem !important;
 }
 h1, h2, h3 { color: #F0F4F8 !important; }
 p, li { color: #CBD5E1; }
@@ -648,10 +652,10 @@ letter-spacing:1.5px;font-weight:600;margin:12px 0 8px 0;">Navigation</div>
 # ═════════════════════════════════════════════════════════════════════════════
 if tab == "📊 UK & Regions":
     uk_sub = st.radio(
-        "View",
+        "National vs regional",
         ["UK Overview", "Regional Analysis"],
         horizontal=True,
-        label_visibility="collapsed",
+        label_visibility="visible",
         key="uk_regional_subview",
     )
     st.caption("Switch between national snapshot and per-region demand.")
