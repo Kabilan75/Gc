@@ -579,28 +579,35 @@ def skill_share_diffs(gdf: pd.DataFrame, top_n: int = 7) -> tuple[list[tuple[str
 
 
 # ── Plotly dark theme helper ──────────────────────────────────────────────────
-def _dark(fig, h=None):
+def _dark(fig, h=None, *, margin_patch=None, axis_tick_color=None):
+    tick = axis_tick_color if axis_tick_color is not None else DIM
+    margin = dict(l=20, r=20, t=40, b=20)
+    if margin_patch:
+        margin.update(margin_patch)
     if h:
         fig.update_layout(height=h)
     fig.update_layout(
         template="plotly_dark",
         plot_bgcolor=S1, paper_bgcolor=S1,
         font=dict(color=MUTED, size=12),
-        margin=dict(l=20, r=20, t=40, b=20),
+        margin=margin,
         title_font=dict(color="#F0F4F8", size=14),
         colorway=CHART_COLS,
         hoverlabel=dict(bgcolor=S2, font_color="#E2E8F0"),
     )
     fig.update_xaxes(gridcolor="rgba(255,255,255,0.05)",
                      linecolor="rgba(255,255,255,0.08)",
-                     tickfont=dict(color=DIM))
+                     tickfont=dict(color=tick))
     fig.update_yaxes(gridcolor="rgba(255,255,255,0.05)",
                      linecolor="rgba(255,255,255,0.08)",
-                     tickfont=dict(color=DIM))
+                     tickfont=dict(color=tick))
     return fig
 
-def show(fig, h=None):
-    st.plotly_chart(_dark(fig, h), use_container_width=True)
+def show(fig, h=None, *, margin_patch=None, axis_tick_color=None):
+    st.plotly_chart(
+        _dark(fig, h, margin_patch=margin_patch, axis_tick_color=axis_tick_color),
+        use_container_width=True,
+    )
 
 # ── Load data ─────────────────────────────────────────────────────────────────
 df_a, live_a = load_a()
@@ -861,7 +868,9 @@ elif tab == "🤖 AI Gap Analysis":
 
     st.markdown("---")
     st.subheader("Cluster composition")
-    st.caption("Per 100k population · K-Means grouping (Step B)")
+    st.caption(
+        "Per 100k population · K-Means grouping (Step B) · six AI cluster stacks per UK region"
+    )
     stack_mix, stack_regions = compute_cluster_stack(df_b)
     fig_cl = go.Figure()
     if stack_mix and stack_regions:
@@ -888,10 +897,18 @@ elif tab == "🤖 AI Gap Analysis":
             )
     fig_cl.update_layout(
         barmode="stack",
-        title="6 AI clusters stacked per region",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        legend=dict(
+            orientation="h",
+            yanchor="top",
+            y=-0.28,
+            x=0.5,
+            xanchor="center",
+            font=dict(size=11),
+        ),
+        xaxis_title="Region",
+        yaxis_title="Per 100k",
     )
-    show(fig_cl, 400)
+    show(fig_cl, 440, margin_patch=dict(t=12, b=120), axis_tick_color="#CBD5E1")
     st.caption("Game Dev · Soft Skills · Proj Mgmt · Creative · Biz Tools · Cloud")
 
     st.markdown("---")
