@@ -1,6 +1,7 @@
 """UK Gaming Industry — Skill Intelligence Dashboard (Streamlit)."""
 from __future__ import annotations
 import io
+import re
 import shutil
 import warnings
 from pathlib import Path
@@ -164,6 +165,270 @@ WORKSHOP_HTML = [
     ("Wales", "Azure", 4, "5.10", "STD"),
     ("N.Ireland", "Communication", 7, "5.00", "STD"),
 ]
+
+# ── CV Evaluator — role buckets + aliases (skills gated by Step A vocabulary) ──
+CV_JOB_CATS: dict[str, list[str]] = {
+    "Engineering & Dev": [
+        "cpp",
+        "c#",
+        "python",
+        "java",
+        "javascript",
+        "typescript",
+        "unity",
+        "unreal",
+        "git",
+        "github",
+        "agile-development",
+        "ci-cd",
+        "docker",
+        "kubernetes",
+    ],
+    "Art & Tech Art": [
+        "maya",
+        "photoshop",
+        "blender",
+        "houdini",
+        "real-time-vfx",
+        "rendering",
+    ],
+    "Game Design": [
+        "unity",
+        "unreal",
+        "storytelling",
+        "problem-solving",
+        "communication",
+        "user-experience-ux",
+    ],
+    "UI/UX": ["figma", "photoshop", "javascript", "html", "css", "communication"],
+    "Data & Analytics": [
+        "python",
+        "sql",
+        "data-analytics",
+        "machine-learning",
+        "excel",
+        "aws",
+        "azure",
+        "tableau",
+    ],
+    "Cloud & DevOps": [
+        "aws",
+        "azure",
+        "docker",
+        "kubernetes",
+        "linux",
+        "ci-cd",
+        "python",
+        "networking",
+        "microservices",
+    ],
+    "HR & Recruiting": [
+        "talent-acquisition",
+        "communication",
+        "team-management",
+        "excel",
+        "ms-office",
+    ],
+    "Marketing & Adv": [
+        "communication",
+        "storytelling",
+        "data-analytics",
+        "budget-management",
+    ],
+    "Production": [
+        "agile-development",
+        "jira",
+        "confluence",
+        "team-management",
+        "communication",
+        "budget-management",
+    ],
+    "Biz Dev & Sales": [
+        "communication",
+        "budget-management",
+        "cross-functional",
+        "salesforce",
+    ],
+}
+CV_SKILL_ALIASES: list[tuple[str, str]] = [
+    ("unreal engine", "unreal"),
+    ("unrealengine", "unreal"),
+    ("ue5", "unreal"),
+    ("ue4", "unreal"),
+    ("c plus plus", "cpp"),
+    ("cplusplus", "cpp"),
+    ("c sharp", "c#"),
+    ("csharp", "c#"),
+    ("ms office", "ms-office"),
+    ("machine learning", "machine-learning"),
+    ("node.js", "node"),
+    ("nodejs", "node"),
+    ("ci/cd", "ci-cd"),
+    ("ci cd", "ci-cd"),
+    ("user experience", "user-experience-ux"),
+    ("ux design", "user-experience-ux"),
+]
+_CV_REGEX_SPECIAL: dict[str, str] = {
+    "cpp": r"c\s*\+\s*\+|(?<![a-z0-9])cplusplus(?![a-z0-9])",
+    "c#": r"c\s*#|(?<![a-z0-9])c\s*sharp(?![a-z0-9])",
+    "ci-cd": r"ci\s*/\s*cd|(?<![a-z0-9])ci[-\s]+cd(?![a-z0-9])",
+}
+CV_FALLBACK_VOCAB: list[str] = sorted(
+    {
+        "communication",
+        "team-management",
+        "talent-acquisition",
+        "cross-functional",
+        "problem-solving",
+        "python",
+        "excel",
+        "quality-control",
+        "cpp",
+        "unity",
+        "unreal",
+        "storytelling",
+        "agile-development",
+        "budget-management",
+        "maya",
+        "c#",
+        "ms-office",
+        "real-time-vfx",
+        "photoshop",
+        "data-analytics",
+        "machine-learning",
+        "java",
+        "sql",
+        "aws",
+        "azure",
+        "docker",
+        "kubernetes",
+        "linux",
+        "git",
+        "github",
+        "jira",
+        "confluence",
+        "blender",
+        "houdini",
+        "rendering",
+        "javascript",
+        "typescript",
+        "react",
+        "node",
+        "mongodb",
+        "ci-cd",
+        "user-experience-ux",
+        "product-management",
+        "salesforce",
+        "tableau",
+        "figma",
+        "html",
+        "css",
+        "microservices",
+        "networking",
+        "timeline-management",
+    }
+)
+
+
+def _cv_vocab_from_step_a(df: pd.DataFrame) -> list[str]:
+    if df is None or df.empty or "Skills" not in df.columns:
+        return list(CV_FALLBACK_VOCAB)
+    ser = df["Skills"].dropna().astype(str).str.strip()
+    ser = ser[ser.str.len() > 0]
+    if ser.empty:
+        return list(CV_FALLBACK_VOCAB)
+    return sorted(ser.str.lower().unique())
+
+
+def _cv_slug_regex(slug: str) -> str:
+    parts = slug.split("-")
+    if len(parts) == 1:
+        return r"(?<![a-z0-9+])" + re.escape(slug) + r"(?![a-z0-9+])"
+    return r"(?<![a-z0-9+])" + r"[-\s]+".join(re.escape(p) for p in parts) + r"(?![a-z0-9+])"
+
+
+def _cv_phrase_regex(phrase: str) -> str:
+    phrase = phrase.strip().lower()
+    parts = phrase.split()
+    if len(parts) == 1:
+        return r"(?<![a-z0-9+])" + re.escape(parts[0]) + r"(?![a-z0-9+])"
+    return r"(?<![a-z0-9+])" + r"[-\s]+".join(re.escape(p) for p in parts) + r"(?![a-z0-9+])"
+
+
+def _cv_detect_skills(text: str, vocab: list[str]) -> list[str]:
+    if not text or not vocab:
+        return []
+    t = text.lower()
+    vocab_set = set(vocab)
+    found: set[str] = set()
+    for phrase, slug in sorted(CV_SKILL_ALIASES, key=lambda x: -len(x[0])):
+        if slug not in vocab_set or slug in found:
+            continue
+        if re.search(_cv_phrase_regex(phrase), t):
+            found.add(slug)
+    rest = sorted(vocab_set - found, key=lambda x: (-len(x), x))
+    for slug in rest:
+        if slug in _CV_REGEX_SPECIAL:
+            if re.search(_CV_REGEX_SPECIAL[slug], t, re.IGNORECASE):
+                found.add(slug)
+            continue
+        if re.search(_cv_slug_regex(slug), t, re.IGNORECASE):
+            found.add(slug)
+    return sorted(found)
+
+
+def _cv_top_priority_skills(df: pd.DataFrame, n: int = 10) -> list[str]:
+    if df is None or df.empty or "Skills" not in df.columns:
+        return list(CV_FALLBACK_VOCAB[: min(n, len(CV_FALLBACK_VOCAB))])
+    vc = df["Skills"].dropna().astype(str).str.strip().str.lower().value_counts()
+    if vc.empty:
+        return list(CV_FALLBACK_VOCAB[: min(n, len(CV_FALLBACK_VOCAB))])
+    return list(vc.head(n).index)
+
+
+def _cv_demand_weighted_pct(df: pd.DataFrame, found: set[str]) -> float:
+    if df is None or df.empty or "Skills" not in df.columns or not found:
+        return 0.0
+    ser = df["Skills"].dropna().astype(str).str.strip().str.lower()
+    total = int(len(ser))
+    if total == 0:
+        return 0.0
+    hit = int(ser.isin(found).sum())
+    return round(100.0 * hit / total, 1)
+
+
+def _cv_listing_overlap(df: pd.DataFrame, found: set[str]) -> tuple[float, int, int]:
+    if df is None or df.empty or "Skills" not in df.columns or not found:
+        return 0.0, 0, 0
+    cols = [c for c in df.columns if c != "Skills"]
+    if not cols:
+        return 0.0, 0, 0
+    dedup_keys = df[cols].fillna("").astype(str).apply(lambda r: "||".join(r.values), axis=1)
+    tmp = df.assign(_k=dedup_keys)
+    hits = 0
+    groups = 0
+    for _, g in tmp.groupby("_k", sort=False):
+        groups += 1
+        sk = set(str(x).strip().lower() for x in g["Skills"].dropna().astype(str))
+        if sk & found:
+            hits += 1
+    if groups == 0:
+        return 0.0, 0, 0
+    return round(100.0 * hits / groups, 1), hits, groups
+
+
+def _cv_category_scores(found: set[str], vocab_set: set[str]) -> list[tuple[str, float, int, int]]:
+    scores: list[tuple[str, float, int, int]] = []
+    for cat, skills in CV_JOB_CATS.items():
+        rel = [s for s in skills if s in vocab_set]
+        if not rel:
+            continue
+        matched = [s for s in rel if s in found]
+        score = round(len(matched) / len(rel) * 100, 1)
+        scores.append((cat, score, len(matched), len(rel)))
+    scores.sort(key=lambda x: x[1], reverse=True)
+    return scores
+
 
 # ── File finder ───────────────────────────────────────────────────────────────
 def _find(*names):
@@ -1268,21 +1533,25 @@ elif tab == "🌍 Global Comparison":
 # TAB 5 — CV EVALUATOR
 # ═════════════════════════════════════════════════════════════════════════════
 elif tab == "📄 CV Evaluator":
-    st.markdown("### CV Evaluator · `AI Powered`")
+    st.markdown("### CV Evaluator · `Step A–aligned`")
     st.caption(
-        "Paste your CV · auto-extract skills · match UK gaming jobs · get personalised feedback"
+        "Keyword + phrase matching against **your Step A skill tokens** (not a hosted LLM). "
+        "PDF text or paste — then scores vs the same UK gaming rows as the dashboard."
     )
     st.markdown("---")
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown("**📤 Upload CV**\n\nPaste your CV text")
+        st.markdown("**📤 Input**\n\nPaste or upload PDF/TXT")
     with c2:
-        st.markdown("**🔍 Extract Skills**\n\nAuto-detects skills")
+        st.markdown("**🔍 Detect skills**\n\nWord-boundary match + aliases")
     with c3:
-        st.markdown(f"**📊 Match Jobs**\n\nvs {_job_listing_count(df_a):,} listing groups")
+        st.markdown(
+            f"**📊 Match dataset**\n\n{_job_listing_count(df_a):,} listing groups · "
+            f"{len(_cv_vocab_from_step_a(df_a))} skill tokens"
+        )
     with c4:
-        st.markdown("**💡 Get Feedback**\n\nPersonalised advice")
+        st.markdown("**💡 Feedback**\n\nDemand + listing reach + gaps")
 
     st.markdown("---")
     method = st.radio(
@@ -1388,203 +1657,65 @@ elif tab == "📄 CV Evaluator":
             except Exception:
                 st.warning("Could not read the uploaded file. Please paste your CV text instead.")
 
-    GAMING_SKILLS = [
-        "communication",
-        "team-management",
-        "talent-acquisition",
-        "cross-functional",
-        "problem-solving",
-        "python",
-        "excel",
-        "quality-control",
-        "cpp",
-        "unity",
-        "unreal",
-        "storytelling",
-        "agile-development",
-        "budget-management",
-        "maya",
-        "c#",
-        "ms-office",
-        "real-time-vfx",
-        "photoshop",
-        "data-analytics",
-        "machine-learning",
-        "java",
-        "sql",
-        "aws",
-        "azure",
-        "docker",
-        "kubernetes",
-        "linux",
-        "git",
-        "github",
-        "jira",
-        "confluence",
-        "blender",
-        "houdini",
-        "rendering",
-        "javascript",
-        "typescript",
-        "react",
-        "node",
-        "mongodb",
-        "ci-cd",
-        "user-experience-ux",
-        "product-management",
-        "salesforce",
-        "tableau",
-        "figma",
-        "html",
-        "css",
-        "microservices",
-        "networking",
-        "timeline-management",
-    ]
-    JOB_CATS = {
-        "Engineering & Dev": [
-            "cpp",
-            "c#",
-            "python",
-            "java",
-            "javascript",
-            "typescript",
-            "unity",
-            "unreal",
-            "git",
-            "github",
-            "agile-development",
-            "ci-cd",
-            "docker",
-            "kubernetes",
-        ],
-        "Art & Tech Art": [
-            "maya",
-            "photoshop",
-            "blender",
-            "houdini",
-            "real-time-vfx",
-            "rendering",
-        ],
-        "Game Design": [
-            "unity",
-            "unreal",
-            "storytelling",
-            "problem-solving",
-            "communication",
-            "user-experience-ux",
-        ],
-        "UI/UX": ["figma", "photoshop", "javascript", "html", "css", "communication"],
-        "Data & Analytics": [
-            "python",
-            "sql",
-            "data-analytics",
-            "machine-learning",
-            "excel",
-            "aws",
-            "azure",
-            "tableau",
-        ],
-        "Cloud & DevOps": [
-            "aws",
-            "azure",
-            "docker",
-            "kubernetes",
-            "linux",
-            "ci-cd",
-            "python",
-            "networking",
-            "microservices",
-        ],
-        "HR & Recruiting": [
-            "talent-acquisition",
-            "communication",
-            "team-management",
-            "excel",
-            "ms-office",
-        ],
-        "Marketing & Adv": [
-            "communication",
-            "storytelling",
-            "data-analytics",
-            "budget-management",
-        ],
-        "Production": [
-            "agile-development",
-            "jira",
-            "confluence",
-            "team-management",
-            "communication",
-            "budget-management",
-        ],
-        "Biz Dev & Sales": [
-            "communication",
-            "budget-management",
-            "cross-functional",
-            "salesforce",
-        ],
-    }
-    TOP_P = [
-        "communication",
-        "team-management",
-        "python",
-        "cpp",
-        "unity",
-        "agile-development",
-        "problem-solving",
-        "excel",
-        "talent-acquisition",
-    ]
-
     if st.button("Analyse My CV", type="primary"):
         if not cv_text.strip():
             st.warning("Please paste your CV text first.")
         else:
-            txt = cv_text.lower()
-            found = []
-            for sk in GAMING_SKILLS:
-                variants = [sk, sk.replace("-", " "), cn(sk).lower()]
-                if any(v in txt for v in variants) and sk not in found:
-                    found.append(sk)
-            miss = [
-                s
-                for s in TOP_P
-                if s not in found and s.replace("-", " ") not in txt
-            ]
-            scores = []
-            for cat, skills in JOB_CATS.items():
-                m = [s for s in skills if s in found]
-                score = round(len(m) / len(skills) * 100, 1)
-                scores.append((cat, score, len(m), len(skills)))
-            scores.sort(key=lambda x: x[1], reverse=True)
-            overall = round(len(found) / len(GAMING_SKILLS) * 100, 1)
+            vocab = _cv_vocab_from_step_a(df_a)
+            vocab_set = set(vocab)
+            found = _cv_detect_skills(cv_text, vocab)
+            found_set = set(found)
+            top_p = _cv_top_priority_skills(df_a, 10)
+            miss = [s for s in top_p if s not in found_set]
+            mention_pct = _cv_demand_weighted_pct(df_a, found_set)
+            list_pct, list_hits, list_n = _cv_listing_overlap(df_a, found_set)
+            cov_pct = round(len(found) / len(vocab) * 100, 1) if vocab else 0.0
+            scores = _cv_category_scores(found_set, vocab_set)
+            if not scores:
+                scores = [("—", 0.0, 0, 0)]
+
+            with st.expander("Text used for matching (check PDF/OCR quality)", expanded=False):
+                st.text(cv_text[:6000] + ("…" if len(cv_text) > 6000 else ""))
 
             st.markdown("---")
             st.subheader("Your analysis results")
-            st.caption("CV match")
+            st.caption(
+                f"Step A source: **{'live CSV' if live_a else 'demo sample'}** · "
+                f"vocabulary = distinct skill tokens in that file"
+            )
 
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Skills Found", str(len(found)), f"of {len(GAMING_SKILLS)} tracked")
-            c2.metric("Gaming Match", f"{overall}%", "Industry relevance")
-            c3.metric("Best Job Fit", scores[0][0].split("&")[0].strip(), f"{scores[0][1]:.0f}% match")
-            c4.metric("Priority Gaps", str(len(miss)), "Missing top skills")
+            c1.metric("Skills matched", str(len(found)), f"of {len(vocab)} in dataset · {cov_pct}% coverage")
+            c2.metric(
+                "Dataset mention %",
+                f"{mention_pct}%",
+                "Share of all skill rows that hit your CV tokens",
+            )
+            c3.metric(
+                "Listing reach",
+                f"{list_pct}%",
+                f"{list_hits} / {list_n} listing groups share ≥1 skill",
+            )
+            c4.metric("Priority gaps", str(len(miss)), "Top Step A skills not detected")
 
             st.markdown("---")
             cl, cr = st.columns(2)
             with cl:
-                st.caption(f"{len(found)} gaming skills detected in your CV")
+                st.caption(f"{len(found)} skills from the Step A vocabulary detected in your CV")
                 if found:
-                    st.success(" · ".join(cn(s) for s in sorted(found)))
+                    st.success(" · ".join(cn(s) for s in found))
                 else:
-                    st.caption("No skills detected — add specific tool names")
-                st.markdown("**Missing high-priority skills**")
-                st.caption("Most demanded UK gaming skills not in your CV")
+                    st.caption("No vocabulary matches — try exact tool names from job ads in your file.")
+                st.markdown("**Missing high-demand skills (Step A top 10)**")
+                st.caption("Frequent tokens in your loaded dataset that did not match your CV")
                 if miss:
                     st.error(" · ".join(cn(s) for s in miss))
                 else:
-                    st.success("All high-priority skills present!")
+                    st.success("You cover the current top-10 demand tokens.")
             with cr:
-                st.caption("Job category match scores — how well you fit each gaming role type")
+                st.caption(
+                    "Role-family scores — only skills that exist **both** in Step A and each category list"
+                )
                 df_cm = pd.DataFrame(
                     [(c, s, m, t) for c, s, m, t in scores],
                     columns=["Category", "Score %", "Matched", "Total"],
@@ -1594,7 +1725,7 @@ elif tab == "📄 CV Evaluator":
                     x="Score %",
                     y="Category",
                     orientation="h",
-                    title="Job category match scores",
+                    title="Job category match (dataset-scoped)",
                     color="Score %",
                     color_continuous_scale=[[0, RED], [0.4, AMBER], [1, GREEN]],
                 )
@@ -1603,7 +1734,7 @@ elif tab == "📄 CV Evaluator":
                 show(fig_cm, 380)
 
             st.subheader("Top job recommendations")
-            st.caption("Best-fit roles")
+            st.caption("Highest category coverage (after dataset filter)")
             t1, t2, t3 = st.columns(3)
             for i, (cat, score, matched, total) in enumerate(scores[:3]):
                 col = (t1, t2, t3)[i]
@@ -1611,25 +1742,26 @@ elif tab == "📄 CV Evaluator":
                     st.metric(cat, f"{score:.0f}%", f"{matched} of {total} skills")
 
             st.markdown("---")
-            if overall == 0:
+            if not found:
                 advice = (
-                    "No gaming skills detected. Add tools like Unity, Python, C++, Unreal to your "
-                    "CV using exact industry terms."
+                    "No Step A skill tokens matched. Use wording that appears in your job dataset "
+                    "(e.g. Unity, Python, C++, communication) or paste cleaner text if the PDF was scanned."
                 )
-            elif overall >= 60:
+            elif mention_pct >= 35 or list_pct >= 50:
                 advice = (
-                    f"Excellent gaming profile! You match best for {scores[0][0]}. Focus on boosting "
-                    f"your {cn(miss[0]) if miss else 'portfolio'} to reach senior roles."
+                    f"Strong overlap with loaded UK rows ({mention_pct}% of skill mentions · "
+                    f"{list_pct}% of listing groups). Best category: **{scores[0][0]}**. "
+                    f"Next: add {cn(miss[0]) if miss else 'depth on your strongest stack'} if still missing from top demand."
                 )
-            elif overall >= 30:
+            elif mention_pct >= 15 or list_pct >= 25:
                 advice = (
-                    f"Good foundation. Strengthen by adding {', '.join(cn(s) for s in miss[:3])} "
-                    f"— these appear in the most UK gaming job ads."
+                    f"Moderate fit. Adding {', '.join(cn(s) for s in miss[:3])} would align you with "
+                    f"the most common tokens in this Step A file."
                 )
             else:
                 advice = (
-                    f"Add more gaming-specific skills. Top recommendations: "
-                    f"{', '.join(cn(s) for s in miss[:4])}. Consider SideFest workshops."
+                    f"Low overlap with current listings. Prioritise: {', '.join(cn(s) for s in miss[:4])} "
+                    f"— these are among the most repeated skills in the loaded dataset."
                 )
             st.info(f"💡 **Career advice** — {advice}")
 
