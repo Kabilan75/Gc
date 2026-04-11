@@ -90,32 +90,6 @@ def cn(s):
     return _NM.get(str(s).lower(), str(s).replace("-", " ").title())
 
 # ── Static datasets (aligned to uk_gaming_skill_intelligence_dashboard.html) ──
-TOP15_HTML = [
-    ("Communication", 610),
-    ("Team Management", 379),
-    ("Talent Acquisition", 343),
-    ("Cross-Functional", 180),
-    ("Problem Solving", 139),
-    ("Python", 139),
-    ("Excel", 136),
-    ("Quality Control", 135),
-    ("C++", 134),
-    ("Unity", 133),
-    ("Unreal", 130),
-    ("Storytelling", 129),
-    ("Agile Dev", 127),
-    ("Budget Mgmt", 118),
-    ("Maya", 100),
-]
-CAT_PIE_HTML = {
-    "Soft Skills": 2499,
-    "Other": 1457,
-    "Tools": 893,
-    "Programming": 639,
-    "3D Art": 575,
-    "Game Engines": 512,
-    "Cloud": 373,
-}
 REG_HM_ROWS = ["England", "Scotland", "Wales", "N.Ireland"]
 REG_HM_COLS = [
     "Communication",
@@ -390,154 +364,6 @@ def _cluster_counts_for_pie(df_b: pd.DataFrame) -> pd.Series:
     return df_b["Cluster_Name"].astype(str).value_counts()
 
 
-def _non_skill_columns(df: pd.DataFrame) -> list[str]:
-    return [c for c in df.columns if c != "Skills"]
-
-
-def co_occurring_skills(df: pd.DataFrame, skill_slug: str, top_n: int = 15) -> pd.Series:
-    cols = _non_skill_columns(df)
-    if not cols or "Skills" not in df.columns:
-        return pd.Series(dtype=int)
-    d = df.copy()
-    d["_lg"] = d.groupby(cols, sort=False).ngroup()
-    sk = str(skill_slug).strip()
-    mask = d["Skills"].astype(str).str.strip() == sk
-    if not mask.any():
-        return pd.Series(dtype=int)
-    gids = set(d.loc[mask, "_lg"])
-    other = d[d["_lg"].isin(gids) & (d["Skills"].astype(str).str.strip() != sk)]
-    if other.empty:
-        return pd.Series(dtype=int)
-    return other["Skills"].astype(str).str.strip().value_counts().head(top_n)
-
-
-def skill_mentions_by_month(df: pd.DataFrame, skill_slug: str) -> pd.DataFrame:
-    if "Activated Date" not in df.columns or "Skills" not in df.columns:
-        return pd.DataFrame(columns=["month", "mentions"])
-    sk = str(skill_slug).strip()
-    sub = df[df["Skills"].astype(str).str.strip() == sk].copy()
-    if sub.empty:
-        return pd.DataFrame(columns=["month", "mentions"])
-    sub["_dt"] = pd.to_datetime(sub["Activated Date"], errors="coerce")
-    sub = sub.dropna(subset=["_dt"])
-    if sub.empty:
-        return pd.DataFrame(columns=["month", "mentions"])
-    sub["_m"] = sub["_dt"].dt.to_period("M").astype(str)
-    out = sub.groupby("_m", sort=True).size().reset_index(name="mentions")
-    out = out.rename(columns={"_m": "month"})
-    return out
-
-
-def skill_mentions_by_week(df: pd.DataFrame, skill_slug: str) -> pd.DataFrame:
-    if "Activated Date" not in df.columns or "Skills" not in df.columns:
-        return pd.DataFrame(columns=["week_start", "mentions"])
-    sk = str(skill_slug).strip()
-    sub = df[df["Skills"].astype(str).str.strip() == sk].copy()
-    if sub.empty:
-        return pd.DataFrame(columns=["week_start", "mentions"])
-    sub["_dt"] = pd.to_datetime(sub["Activated Date"], errors="coerce")
-    sub = sub.dropna(subset=["_dt"])
-    if sub.empty:
-        return pd.DataFrame(columns=["week_start", "mentions"])
-    g = (
-        sub.groupby(pd.Grouper(key="_dt", freq="W-MON"))
-        .size()
-        .reset_index(name="mentions")
-    )
-    g = g[g["mentions"] > 0]
-    g["week_start"] = g["_dt"].dt.strftime("%Y-%m-%d")
-    return g.drop(columns=["_dt"], errors="ignore")
-
-
-def top_skills_weekly_trend(df: pd.DataFrame, n: int = 10) -> pd.DataFrame:
-    """Long format: week_start, skill_label, mentions — top n skills by total volume."""
-    empty = pd.DataFrame(columns=["week_start", "skill_label", "mentions"])
-    if df is None or df.empty or "Skills" not in df.columns or "Activated Date" not in df.columns:
-        return empty
-    sk_col = df["Skills"].astype(str).str.strip()
-    top_slugs = sk_col.value_counts().head(n).index.tolist()
-    if not top_slugs:
-        return empty
-    sub = df.loc[sk_col.isin(top_slugs)].copy()
-    sub["_dt"] = pd.to_datetime(sub["Activated Date"], errors="coerce")
-    sub = sub.dropna(subset=["_dt"])
-    if sub.empty:
-        return empty
-    sub["_slug"] = sub["Skills"].astype(str).str.strip()
-    g = (
-        sub.groupby([pd.Grouper(key="_dt", freq="W-MON"), "_slug"], sort=True)
-        .size()
-        .reset_index(name="mentions")
-    )
-    g = g[g["mentions"] > 0]
-    if g.empty:
-        return empty
-    g["week_start"] = g["_dt"].dt.strftime("%Y-%m-%d")
-    g["skill_label"] = g["_slug"].map(lambda s: cn(str(s)))
-    return g[["week_start", "skill_label", "mentions"]]
-
-
-def skill_weekly_by_region(df: pd.DataFrame, skill_slug: str) -> pd.DataFrame:
-    if (
-        "Activated Date" not in df.columns
-        or "Skills" not in df.columns
-        or "UK Region" not in df.columns
-    ):
-        return pd.DataFrame(columns=["UK Region", "week_start", "mentions"])
-    sk = str(skill_slug).strip()
-    sub = df[df["Skills"].astype(str).str.strip() == sk].copy()
-    if sub.empty:
-        return pd.DataFrame(columns=["UK Region", "week_start", "mentions"])
-    sub["_dt"] = pd.to_datetime(sub["Activated Date"], errors="coerce")
-    sub = sub.dropna(subset=["_dt"])
-    if sub.empty:
-        return pd.DataFrame(columns=["UK Region", "week_start", "mentions"])
-    sub["week_start"] = sub["_dt"].dt.to_period("W-MON").dt.start_time.dt.strftime("%Y-%m-%d")
-    sub["_reg"] = sub["UK Region"].astype(str).str.strip()
-    return (
-        sub.groupby(["_reg", "week_start"], sort=True)
-        .size()
-        .reset_index(name="mentions")
-        .rename(columns={"_reg": "UK Region"})
-    )
-
-
-def skill_region_breakdown(df: pd.DataFrame, skill_slug: str) -> pd.DataFrame:
-    if df is None or df.empty or "Skills" not in df.columns or "UK Region" not in df.columns:
-        return pd.DataFrame(
-            columns=["Region", "Mentions", "% of region rows", "/100k pop"]
-        )
-    sk = str(skill_slug).strip()
-    rows: list[dict] = []
-    for reg in ["England", "Scotland", "Wales", "Northern Ireland"]:
-        reg_all = df[df["UK Region"].astype(str).str.strip() == reg]
-        n_reg = len(reg_all)
-        n_skill = int((reg_all["Skills"].astype(str).str.strip() == sk).sum())
-        pct = round(100 * n_skill / n_reg, 2) if n_reg else 0.0
-        pop = float(POP.get(reg, 1))
-        p100 = round(n_skill / pop * 100_000, 2) if pop else 0.0
-        rows.append(
-            {
-                "Region": _reg_display(reg),
-                "Mentions": n_skill,
-                "% of region rows": pct,
-                "/100k pop": p100,
-            }
-        )
-    return pd.DataFrame(rows)
-
-
-def cluster_mode_for_skill(df_b: pd.DataFrame, skill_slug: str) -> str | None:
-    if df_b is None or df_b.empty or "Skills" not in df_b.columns or "Cluster_Name" not in df_b.columns:
-        return None
-    sk = str(skill_slug).strip()
-    sub = df_b[df_b["Skills"].astype(str).str.strip() == sk]
-    if sub.empty:
-        return None
-    m = sub["Cluster_Name"].astype(str).mode()
-    return str(m.iloc[0]) if not m.empty else None
-
-
 def _short_cluster(name: str) -> str:
     m = {
         "Game Development & Programming": "Game Dev",
@@ -804,237 +630,20 @@ letter-spacing:1.5px;font-weight:600;margin:12px 0 8px 0;">Navigation</div>
 # ═════════════════════════════════════════════════════════════════════════════
 if tab == "📊 UK Overview":
     n_rows = len(df_a)
-    n_jobs = _job_listing_count(df_a)
-    n_skills = int(df_a["Skills"].nunique()) if "Skills" in df_a.columns else 0
-    n_regions = (
-        int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
-        if "UK Region" in df_a.columns
-        else 4
-    )
-    src = "Step A CSV" if live_a else "demo sample"
     vc15 = (
         df_a["Skills"].value_counts().head(15)
         if "Skills" in df_a.columns
         else pd.Series(dtype=int)
     )
 
-    st.markdown(f"### UK Overview · `{n_jobs:,} listing groups`")
-    st.caption(
-        f"National snapshot · {n_jobs:,} unique listing rows (deduped on non-skill columns) · "
-        f"{n_rows:,} skill mentions · source: {src}"
-    )
+    st.markdown("### UK Overview")
     st.markdown("---")
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Listing groups", f"{n_jobs:,}", "Deduped job rows in dataset")
-    c2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
-    c3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
-    c4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
-
-    st.markdown("---")
-    st.subheader("Top 10 skills — time trend")
-    st.caption(
-        "Weekly mention counts (Monday week start) from **Activated Date** on Step A rows — "
-        "the ten skills with the highest total mentions in this dataset."
-    )
-    df_trend10 = top_skills_weekly_trend(df_a, n=10)
-    if not df_trend10.empty:
-        fig_t10 = px.line(
-            df_trend10,
-            x="week_start",
-            y="mentions",
-            color="skill_label",
-            markers=True,
-            title="Weekly demand trend — top 10 skills (UK)",
-        )
-        fig_t10.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-            hovermode="x unified",
-        )
-        fig_t10.update_xaxes(tickangle=-35)
-        show(fig_t10, 440)
-    else:
-        st.info(
-            "No dated rows for this chart — Step A needs an **Activated Date** column with "
-            "parseable dates to plot the top-10 weekly trend."
-        )
-
-    st.markdown("---")
-    st.subheader("Skill deep dive")
-    st.caption(
-        "**Type** a skill name or slug (partial match OK), then review **weekly trends** (UK-wide and by region), "
-        "a full **four-region** table, Step B cluster, and **co-skills** in the same listing group."
-    )
-    skills_sorted = (
-        sorted(df_a["Skills"].dropna().astype(str).str.strip().unique())
-        if "Skills" in df_a.columns
-        else []
-    )
-    if not skills_sorted:
-        st.warning("No skills in the current dataset.")
-    else:
-        def _skill_label(s: str) -> str:
-            return f"{cn(s)}  —  {s}"
-
-        q1, q2 = st.columns((3, 2))
-        with q1:
-            typed = st.text_input(
-                "Type a skill",
-                value="",
-                placeholder="e.g. python, communication, cpp, agile…",
-                key="overview_skill_type_search",
-                help="Matches the raw skill token or its display name (case-insensitive).",
-            )
-        with q2:
-            default_slug = str(vc15.index[0]) if len(vc15) else skills_sorted[0]
-            def_idx = skills_sorted.index(default_slug) if default_slug in skills_sorted else 0
-            pick_all = st.selectbox(
-                "Or pick from full list",
-                skills_sorted,
-                index=def_idx,
-                format_func=_skill_label,
-                key="overview_skill_deep_dive_pick",
-            )
-
-        needle = typed.strip().lower()
-        if needle:
-            matches = [
-                s
-                for s in skills_sorted
-                if needle in s.lower() or needle in cn(s).lower()
-            ]
-            if not matches:
-                st.error(f"No skill matches **{typed.strip()}**. Try another spelling or use the list.")
-                chosen = pick_all
-            elif len(matches) == 1:
-                chosen = matches[0]
-                st.success(f"Matched: **{_skill_label(chosen)}**")
-            else:
-                chosen = st.selectbox(
-                    f"Multiple matches ({len(matches)}) — choose one",
-                    matches,
-                    format_func=_skill_label,
-                    key="overview_skill_match_disambig",
-                )
-        else:
-            chosen = pick_all
-
-        sub = df_a[df_a["Skills"].astype(str).str.strip() == str(chosen).strip()]
-        n_mentions = len(sub)
-        st.metric("Mentions of this skill (UK)", f"{n_mentions:,}", "Rows in Step A")
-        if n_mentions < 5:
-            st.warning("Very few mentions — treat trends and regional splits as indicative only.")
-
-        st.subheader("Weekly trend")
-        st.caption("Weeks start Monday (`W-MON`). Uses **Activated Date** on each skill row.")
-        trend_w = skill_mentions_by_week(df_a, chosen)
-        trend_w_r = skill_weekly_by_region(df_a, chosen)
-        if not trend_w.empty:
-            fig_w = px.bar(
-                trend_w,
-                x="week_start",
-                y="mentions",
-                title=f"UK-wide weekly mentions — {cn(chosen)}",
-                color_discrete_sequence=[PURPLE],
-            )
-            fig_w.update_layout(showlegend=False)
-            fig_w.update_traces(texttemplate="%{y}", textposition="outside")
-            fig_w.update_xaxes(tickangle=-35)
-            show(fig_w, 360)
-        else:
-            st.info("No **weekly** series — check dates in **Activated Date** or try another skill.")
-
-        if not trend_w_r.empty:
-            fig_wr = px.line(
-                trend_w_r,
-                x="week_start",
-                y="mentions",
-                color="UK Region",
-                markers=True,
-                title=f"Weekly mentions by UK region — {cn(chosen)}",
-            )
-            fig_wr.update_layout(legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0))
-            fig_wr.update_xaxes(tickangle=-35)
-            show(fig_wr, 400)
-        elif n_mentions and "Activated Date" in df_a.columns:
-            st.caption("No per-region weekly points (dates or region missing on skill rows).")
-
-        with st.expander("Monthly trend (optional)", expanded=False):
-            trend_m = skill_mentions_by_month(df_a, chosen)
-            if not trend_m.empty:
-                fig_m = px.bar(
-                    trend_m,
-                    x="month",
-                    y="mentions",
-                    title=f"Monthly — {cn(chosen)}",
-                    color_discrete_sequence=[BLUE],
-                )
-                fig_m.update_layout(showlegend=False)
-                show(fig_m, 300)
-            else:
-                st.caption("No monthly data for this skill.")
-
-        st.subheader("Each UK region — same skill")
-        reg_full = skill_region_breakdown(df_a, chosen)
-        st.dataframe(reg_full, use_container_width=True, hide_index=True)
-        st.caption(
-            "**% of region rows** = this skill’s mentions ÷ all skill rows in that region. "
-            "**/100k pop** uses ONS-style population weights already in the dashboard."
-        )
-        if n_mentions and "UK Region" in sub.columns:
-            reg_df = reg_full.sort_values("Mentions", ascending=False)
-            fig_reg = px.bar(
-                reg_df,
-                x="Mentions",
-                y="Region",
-                orientation="h",
-                title=f"Mentions by region — {cn(chosen)}",
-                color_discrete_sequence=[TEAL],
-            )
-            fig_reg.update_layout(showlegend=False)
-            fig_reg.update_traces(texttemplate="%{x:,}", textposition="outside")
-            show(fig_reg, 280)
-
-        cl_mode = cluster_mode_for_skill(df_b, chosen)
-        if cl_mode:
-            st.caption(
-                f"**Step B cluster (mode):** {_short_cluster(cl_mode)} — _{cl_mode}_"
-                f"{' · from live Step B CSV' if live_b else ''}"
-            )
-        elif live_b:
-            st.caption("This skill token does not appear in Step B (cluster unknown).")
-        else:
-            st.caption("Step B not loaded — cluster label unavailable.")
-
-        st.caption("Top co-occurring skills (same listing group, excluding the chosen skill)")
-        co = co_occurring_skills(df_a, chosen, top_n=15)
-        if co.empty:
-            st.caption("No co-skills found (single-skill listing groups only, or skill absent).")
-        else:
-            co_df = pd.DataFrame(
-                {"Skill": [cn(str(x)) for x in co.index], "Co-mentions": co.values.astype(int)}
-            )
-            fig_co = px.bar(
-                co_df.sort_values("Co-mentions"),
-                x="Co-mentions",
-                y="Skill",
-                orientation="h",
-                title="Often listed together",
-                color_discrete_sequence=[AMBER],
-            )
-            fig_co.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-            fig_co.update_traces(texttemplate="%{x:,}", textposition="outside")
-            show(fig_co, 380)
-
-    st.markdown("---")
     st.subheader("Top 15 skills by demand")
     st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
-
-    col_l, col_r = st.columns(2)
-
-    with col_l:
+    if len(vc15):
         df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
-        fig = px.bar(
+        fig_ov = px.bar(
             df_top.sort_values("Count"),
             x="Count",
             y="Skill",
@@ -1042,34 +651,13 @@ if tab == "📊 UK Overview":
             title="Skill occurrences",
             color_discrete_sequence=[TEAL],
         )
-        fig.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-        fig.update_traces(texttemplate="%{x:,}", textposition="outside")
-        show(fig, 460)
+        fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
+        fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
+        show(fig_ov, 460)
+    else:
+        st.warning("No skills in the current dataset.")
 
-    with col_r:
-        pie_series = _cluster_counts_for_pie(df_b)
-        if pie_series.empty:
-            pie_series = pd.Series(CAT_PIE_HTML)
-        fig_pie = px.pie(
-            values=pie_series.values,
-            names=[_short_cluster(str(x)) for x in pie_series.index],
-            hole=0.58,
-            title="Rows by AI cluster (Step B)",
-            color_discrete_sequence=[TEAL, DIM, BLUE, PURPLE, AMBER, GREEN, RED],
-        )
-        fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-        fig_pie.update_layout(showlegend=True, legend=dict(font=dict(size=11)))
-        show(fig_pie, 320)
-        if len(pie_series) > 0:
-            i_max = int(pie_series.values.argmax())
-            big = _short_cluster(str(pie_series.index[i_max]))
-            st.caption(
-                f"{'Step B CSV — ' if live_b else 'Demo / fallback — '}"
-                f"{int(pie_series.sum())} clustered skill rows · **{big}** largest segment"
-            )
-        else:
-            st.caption("No cluster data")
-
+    st.markdown("---")
     st.subheader("Top 10 skills — share of demand")
     st.caption("Gaming dataset (Step A); % = share of all skill mentions in this file")
     if "Skills" in df_a.columns and n_rows > 0:
@@ -1084,15 +672,6 @@ if tab == "📊 UK Overview":
     else:
         hier = pd.DataFrame(columns=["Skill", "Occurrences", "% of rows"])
     st.dataframe(hier, use_container_width=True, hide_index=True)
-
-    top15_sum = int(vc15.sum()) if len(vc15) else 0
-    pct_top15 = round(100 * top15_sum / n_rows, 1) if n_rows else 0.0
-    top1 = cn(str(vc15.index[0])) if len(vc15) else "—"
-    top1_n = int(vc15.iloc[0]) if len(vc15) else 0
-    st.info(
-        f"🎯 **Top finding** — **{top1}** leads this dataset ({top1_n:,} mentions). "
-        f"Top 15 skills = **{pct_top15}%** of all skill rows ({top15_sum:,} / {n_rows:,})."
-    )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 2 — REGIONAL ANALYSIS
