@@ -810,39 +810,6 @@ elif tab == "🗺️ Regional Analysis":
     show(fig_hm, 420)
     st.caption("Darker teal = higher demand per 100k population")
 
-    st.subheader("Cluster composition")
-    st.caption("Per 100k population · K-Means grouping (Step B)")
-    fig_cl = go.Figure()
-    if stack_dict and stack_x:
-        for i, (name, vals) in enumerate(stack_dict.items()):
-            fig_cl.add_trace(
-                go.Bar(
-                    name=name,
-                    x=stack_x,
-                    y=vals,
-                    marker_color=CLUSTER_STACK_COLS[i % len(CLUSTER_STACK_COLS)],
-                    marker_line_width=0,
-                )
-            )
-    else:
-        for i, (name, vals) in enumerate(CLUSTER_STACK_SERIES.items()):
-            fig_cl.add_trace(
-                go.Bar(
-                    name=name,
-                    x=CLUSTER_STACK_LABELS,
-                    y=vals,
-                    marker_color=CLUSTER_STACK_COLS[i],
-                    marker_line_width=0,
-                )
-            )
-    fig_cl.update_layout(
-        barmode="stack",
-        title="6 AI clusters stacked per region",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-    )
-    show(fig_cl, 400)
-    st.caption("Game Dev · Soft Skills · Proj Mgmt · Creative · Biz Tools · Cloud")
-
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 3 — AI GAP ANALYSIS
 # ═════════════════════════════════════════════════════════════════════════════
@@ -871,6 +838,41 @@ elif tab == "🤖 AI Gap Analysis":
         st.markdown(f"**C · Gap Scoring**\n\nLoc. Quotient · {n_gap}")
     with p4:
         st.markdown(f"**D · Recommender**\n\nTop picks · {n_rec} rows")
+
+    st.markdown("---")
+    st.subheader("Cluster composition")
+    st.caption("Per 100k population · K-Means grouping (Step B)")
+    stack_mix, stack_regions = compute_cluster_stack(df_b)
+    fig_cl = go.Figure()
+    if stack_mix and stack_regions:
+        for i, (name, vals) in enumerate(stack_mix.items()):
+            fig_cl.add_trace(
+                go.Bar(
+                    name=name,
+                    x=stack_regions,
+                    y=vals,
+                    marker_color=CLUSTER_STACK_COLS[i % len(CLUSTER_STACK_COLS)],
+                    marker_line_width=0,
+                )
+            )
+    else:
+        for i, (name, vals) in enumerate(CLUSTER_STACK_SERIES.items()):
+            fig_cl.add_trace(
+                go.Bar(
+                    name=name,
+                    x=CLUSTER_STACK_LABELS,
+                    y=vals,
+                    marker_color=CLUSTER_STACK_COLS[i],
+                    marker_line_width=0,
+                )
+            )
+    fig_cl.update_layout(
+        barmode="stack",
+        title="6 AI clusters stacked per region",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+    )
+    show(fig_cl, 400)
+    st.caption("Game Dev · Soft Skills · Proj Mgmt · Creative · Biz Tools · Cloud")
 
     st.markdown("---")
     col_l, col_r = st.columns(2)
