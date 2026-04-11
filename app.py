@@ -1062,8 +1062,6 @@ df_b, live_b = load_b()
 df_c, live_c = load_c()
 df_d, live_d = load_d()
 df_global, global_source_name = load_global_workbook()
-all_live = live_a and live_b and live_c and live_d
-live_steps = sum([live_a, live_b, live_c, live_d])
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
 NAV_OPTIONS = [
@@ -1088,18 +1086,6 @@ letter-spacing:1.5px;font-weight:600;margin:12px 0 8px 0;">Navigation</div>
         label_visibility="collapsed",
         key="main_nav_radio",
     )
-    st.markdown("<hr style='border-color:#1E293B;margin:16px 0;'>", unsafe_allow_html=True)
-    if all_live:
-        st.success("📡 Live CSV data loaded")
-    elif live_steps:
-        st.warning(
-            f"⚠️ Partial data — A={live_a} B={live_b} C={live_c} D={live_d}. "
-            "Missing files use built-in demo tables."
-        )
-    else:
-        st.info("📋 Demo mode — CSV files not found; charts use sample data")
-    if global_source_name:
-        st.caption(f"🌍 Global workbook: `{global_source_name}`")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — UK OVERVIEW + REGIONAL (sub-view switcher)
@@ -1120,8 +1106,8 @@ if tab == "📊 UK & Regions":
   (one row can appear several times with different skills).
 - **Skill rows / mentions** — One row per skill tag attached to a listing in Step A.
 - **Per 100k** — Skill counts divided by national population × 100,000, so regions are comparable.
-- **Demo / fallback** — If a CSV is missing, some charts use built-in sample data; check the sidebar
-  data status.
+- **Demo / fallback** — If a CSV is missing, some charts use built-in sample data (Step A–D files
+  under `Step files/`).
             """.strip()
         )
 
