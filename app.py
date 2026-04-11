@@ -599,8 +599,7 @@ live_steps = sum([live_a, live_b, live_c, live_d])
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
 NAV_OPTIONS = [
-    "📊 UK Overview",
-    "🗺️ Regional Analysis",
+    "📊 UK & Regions",
     "🤖 AI Gap Analysis",
     "🌍 Global Comparison",
     "📄 CV Evaluator",
@@ -635,180 +634,187 @@ letter-spacing:1.5px;font-weight:600;margin:12px 0 8px 0;">Navigation</div>
         st.caption(f"🌍 Global workbook: `{global_source_name}`")
 
 # ═════════════════════════════════════════════════════════════════════════════
-# TAB 1 — UK OVERVIEW
+# TAB 1 — UK OVERVIEW + REGIONAL (sub-view switcher)
 # ═════════════════════════════════════════════════════════════════════════════
-if tab == "📊 UK Overview":
-    n_rows = len(df_a)
-    n_jobs = _job_listing_count(df_a)
-    n_skills = int(df_a["Skills"].nunique()) if "Skills" in df_a.columns else 0
-    n_regions = (
-        int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
-        if "UK Region" in df_a.columns
-        else 4
+if tab == "📊 UK & Regions":
+    uk_sub = st.radio(
+        "View",
+        ["UK Overview", "Regional Analysis"],
+        horizontal=True,
+        label_visibility="collapsed",
+        key="uk_regional_subview",
     )
-    src = "Step A CSV" if live_a else "demo sample"
-    vc15 = (
-        df_a["Skills"].value_counts().head(15)
-        if "Skills" in df_a.columns
-        else pd.Series(dtype=int)
-    )
+    st.caption("Switch between national snapshot and per-region demand.")
 
-    st.markdown(f"### UK Overview · `{n_jobs:,} listing groups`")
-    st.caption(
-        f"National snapshot · {n_jobs:,} unique listing rows (deduped on non-skill columns) · "
-        f"{n_rows:,} skill mentions · source: {src}"
-    )
-    st.markdown("---")
-
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Listing groups", f"{n_jobs:,}", "Deduped job rows in dataset")
-    k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
-    k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
-    k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
-
-    st.markdown("---")
-    st.subheader("Top 15 skills by demand")
-    st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
-    col_ov_l, col_ov_r = st.columns(2)
-    with col_ov_l:
-        if len(vc15):
-            df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
-            fig_ov = px.bar(
-                df_top.sort_values("Count"),
-                x="Count",
-                y="Skill",
-                orientation="h",
-                title="Skill occurrences",
-                color_discrete_sequence=[TEAL],
-            )
-            fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-            fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
-            show(fig_ov, 460)
-        else:
-            st.warning("No skills in the current dataset.")
-    with col_ov_r:
-        pie_series = _cluster_counts_for_pie(df_b)
-        if pie_series.empty:
-            pie_series = pd.Series(CAT_PIE_HTML)
-        fig_pie = px.pie(
-            values=pie_series.values,
-            names=[_short_cluster(str(x)) for x in pie_series.index],
-            hole=0.58,
-            title="Rows by AI cluster (Step B)",
-            color_discrete_sequence=[TEAL, DIM, BLUE, PURPLE, AMBER, GREEN, RED],
+    if uk_sub == "UK Overview":
+        n_rows = len(df_a)
+        n_jobs = _job_listing_count(df_a)
+        n_skills = int(df_a["Skills"].nunique()) if "Skills" in df_a.columns else 0
+        n_regions = (
+            int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
+            if "UK Region" in df_a.columns
+            else 4
         )
-        fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-        fig_pie.update_layout(showlegend=True, legend=dict(font=dict(size=11)))
-        show(fig_pie, 320)
-        if len(pie_series) > 0:
-            i_max = int(pie_series.values.argmax())
-            big = _short_cluster(str(pie_series.index[i_max]))
-            st.caption(
-                f"{'Step B CSV — ' if live_b else 'Demo / fallback — '}"
-                f"{int(pie_series.sum())} clustered skill rows · **{big}** largest segment"
+        src = "Step A CSV" if live_a else "demo sample"
+        vc15 = (
+            df_a["Skills"].value_counts().head(15)
+            if "Skills" in df_a.columns
+            else pd.Series(dtype=int)
+        )
+
+        st.markdown(f"### UK Overview · `{n_jobs:,} listing groups`")
+        st.caption(
+            f"National snapshot · {n_jobs:,} unique listing rows (deduped on non-skill columns) · "
+            f"{n_rows:,} skill mentions · source: {src}"
+        )
+        st.markdown("---")
+
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Listing groups", f"{n_jobs:,}", "Deduped job rows in dataset")
+        k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
+        k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
+        k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
+
+        st.markdown("---")
+        st.subheader("Top 15 skills by demand")
+        st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
+        col_ov_l, col_ov_r = st.columns(2)
+        with col_ov_l:
+            if len(vc15):
+                df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
+                fig_ov = px.bar(
+                    df_top.sort_values("Count"),
+                    x="Count",
+                    y="Skill",
+                    orientation="h",
+                    title="Skill occurrences",
+                    color_discrete_sequence=[TEAL],
+                )
+                fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
+                fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
+                show(fig_ov, 460)
+            else:
+                st.warning("No skills in the current dataset.")
+        with col_ov_r:
+            pie_series = _cluster_counts_for_pie(df_b)
+            if pie_series.empty:
+                pie_series = pd.Series(CAT_PIE_HTML)
+            fig_pie = px.pie(
+                values=pie_series.values,
+                names=[_short_cluster(str(x)) for x in pie_series.index],
+                hole=0.58,
+                title="Rows by AI cluster (Step B)",
+                color_discrete_sequence=[TEAL, DIM, BLUE, PURPLE, AMBER, GREEN, RED],
+            )
+            fig_pie.update_traces(textposition="inside", textinfo="percent+label")
+            fig_pie.update_layout(showlegend=True, legend=dict(font=dict(size=11)))
+            show(fig_pie, 320)
+            if len(pie_series) > 0:
+                i_max = int(pie_series.values.argmax())
+                big = _short_cluster(str(pie_series.index[i_max]))
+                st.caption(
+                    f"{'Step B CSV — ' if live_b else 'Demo / fallback — '}"
+                    f"{int(pie_series.sum())} clustered skill rows · **{big}** largest segment"
+                )
+            else:
+                st.caption("No cluster data")
+
+        st.markdown("---")
+        st.subheader("Top 10 skills — share of demand")
+        st.caption("Gaming dataset (Step A); % = share of all skill mentions in this file")
+        if "Skills" in df_a.columns and n_rows > 0:
+            t10 = df_a["Skills"].value_counts().head(10)
+            hier = pd.DataFrame(
+                {
+                    "Skill": [cn(str(s)) for s in t10.index],
+                    "Occurrences": t10.values.astype(int),
+                    "% of rows": [round(100 * int(c) / n_rows, 1) for c in t10.values],
+                }
             )
         else:
-            st.caption("No cluster data")
+            hier = pd.DataFrame(columns=["Skill", "Occurrences", "% of rows"])
+        st.dataframe(hier, use_container_width=True, hide_index=True)
 
-    st.markdown("---")
-    st.subheader("Top 10 skills — share of demand")
-    st.caption("Gaming dataset (Step A); % = share of all skill mentions in this file")
-    if "Skills" in df_a.columns and n_rows > 0:
-        t10 = df_a["Skills"].value_counts().head(10)
-        hier = pd.DataFrame(
-            {
-                "Skill": [cn(str(s)) for s in t10.index],
-                "Occurrences": t10.values.astype(int),
-                "% of rows": [round(100 * int(c) / n_rows, 1) for c in t10.values],
+    else:
+        regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
+        stack_dict, stack_x = compute_cluster_stack(df_b)
+
+        if not regional:
+            regional = {
+                "England": [("—", 0, 0.0)],
+                "Scotland": [("—", 0, 0.0)],
+                "Wales": [("—", 0, 0.0)],
+                "N. Ireland": [("—", 0, 0.0)],
             }
+        eng = regional.get("England", [("—", 0, 0.0)])[0]
+        scot_cpp = next(
+            ((s, p) for s, _c, p in regional.get("Scotland", []) if "c++" in s.lower()),
+            None,
         )
-    else:
-        hier = pd.DataFrame(columns=["Skill", "Occurrences", "% of rows"])
-    st.dataframe(hier, use_container_width=True, hide_index=True)
+        if not scot_cpp and regional.get("Scotland"):
+            scot_cpp = (regional["Scotland"][0][0], regional["Scotland"][0][2])
+        wales_unity = 0.0
+        if z_hm and x_hm:
+            wi = next((i for i, lab in enumerate(x_hm) if "unity" in lab.lower()), None)
+            if wi is not None and len(z_hm) > 2:
+                wales_unity = z_hm[2][wi]
+        ni_cloud = float(stack_dict.get("Cloud", [0.0, 0.0, 0.0, 0.0])[-1]) if stack_dict else 0.0
 
-# ═════════════════════════════════════════════════════════════════════════════
-# TAB 2 — REGIONAL ANALYSIS
-# ═════════════════════════════════════════════════════════════════════════════
-elif tab == "🗺️ Regional Analysis":
-    regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
-    stack_dict, stack_x = compute_cluster_stack(df_b)
+        st.markdown("### Regional Analysis · `4 Regions`")
+        st.caption(
+            "England · Scotland · Wales · Northern Ireland — normalised per 100k population "
+            f"(Step A rows · clusters from Step B)"
+        )
+        st.markdown("---")
 
-    if not regional:
-        regional = {
-            "England": [("—", 0, 0.0)],
-            "Scotland": [("—", 0, 0.0)],
-            "Wales": [("—", 0, 0.0)],
-            "N. Ireland": [("—", 0, 0.0)],
-        }
-    eng = regional.get("England", [("—", 0, 0.0)])[0]
-    scot_cpp = next(
-        ((s, p) for s, _c, p in regional.get("Scotland", []) if "c++" in s.lower()),
-        None,
-    )
-    if not scot_cpp and regional.get("Scotland"):
-        scot_cpp = (regional["Scotland"][0][0], regional["Scotland"][0][2])
-    wales_unity = 0.0
-    if z_hm and x_hm:
-        wi = next((i for i, lab in enumerate(x_hm) if "unity" in lab.lower()), None)
-        if wi is not None and len(z_hm) > 2:
-            wales_unity = z_hm[2][wi]
-    ni_cloud = float(stack_dict.get("Cloud", [0.0, 0.0, 0.0, 0.0])[-1]) if stack_dict else 0.0
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("England /100k", f"{eng[2]:.2f}", str(eng[0]))
+        c2.metric("Scotland /100k", f"{scot_cpp[1]:.2f}" if scot_cpp else "0.00", scot_cpp[0] if scot_cpp else "Top skill")
+        c3.metric("Wales Unity /100k", f"{wales_unity:.2f}", "From heatmap column")
+        c4.metric("NI Cloud /100k", f"{ni_cloud:.2f}", "Cluster stack (Step B)")
 
-    st.markdown("### Regional Analysis · `4 Regions`")
-    st.caption(
-        "England · Scotland · Wales · Northern Ireland — normalised per 100k population "
-        f"(Step A rows · clusters from Step B)"
-    )
-    st.markdown("---")
+        st.markdown("---")
+        st.subheader("Top 5 skills per region")
+        st.caption("Count · per 100k")
+        cols4 = st.columns(4)
+        for i, reg in enumerate(["England", "Scotland", "Wales", "N. Ireland"]):
+            with cols4[i]:
+                st.subheader(reg)
+                skills = regional.get(reg, [])
+                rows = [{"Skill": s, "Count": c, "/100k": p} for s, c, p in skills]
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("England /100k", f"{eng[2]:.2f}", str(eng[0]))
-    c2.metric("Scotland /100k", f"{scot_cpp[1]:.2f}" if scot_cpp else "0.00", scot_cpp[0] if scot_cpp else "Top skill")
-    c3.metric("Wales Unity /100k", f"{wales_unity:.2f}", "From heatmap column")
-    c4.metric("NI Cloud /100k", f"{ni_cloud:.2f}", "Cluster stack (Step B)")
-
-    st.markdown("---")
-    st.subheader("Top 5 skills per region")
-    st.caption("Count · per 100k")
-    cols4 = st.columns(4)
-    for i, reg in enumerate(["England", "Scotland", "Wales", "N. Ireland"]):
-        with cols4[i]:
-            st.subheader(reg)
-            skills = regional.get(reg, [])
-            rows = [{"Skill": s, "Count": c, "/100k": p} for s, c, p in skills]
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-
-    st.subheader("Skill demand heatmap")
-    st.caption("Per 100k population · Top 10 skills × 4 regions (Step A)")
-    if z_hm and x_hm and y_hm:
-        hm_t = [[f"{v:.2f}" for v in row] for row in z_hm]
-        fig_hm = go.Figure(
-            go.Heatmap(
-                z=z_hm,
-                x=x_hm,
-                y=y_hm,
-                text=hm_t,
-                texttemplate="%{text}",
-                colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
-                hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
+        st.subheader("Skill demand heatmap")
+        st.caption("Per 100k population · Top 10 skills × 4 regions (Step A)")
+        if z_hm and x_hm and y_hm:
+            hm_t = [[f"{v:.2f}" for v in row] for row in z_hm]
+            fig_hm = go.Figure(
+                go.Heatmap(
+                    z=z_hm,
+                    x=x_hm,
+                    y=y_hm,
+                    text=hm_t,
+                    texttemplate="%{text}",
+                    colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
+                    hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
+                )
             )
-        )
-    else:
-        hm_t = [[f"{v:.2f}" for v in row] for row in REG_HM_Z]
-        fig_hm = go.Figure(
-            go.Heatmap(
-                z=REG_HM_Z,
-                x=REG_HM_COLS,
-                y=REG_HM_ROWS,
-                text=hm_t,
-                texttemplate="%{text}",
-                colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
-                hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
+        else:
+            hm_t = [[f"{v:.2f}" for v in row] for row in REG_HM_Z]
+            fig_hm = go.Figure(
+                go.Heatmap(
+                    z=REG_HM_Z,
+                    x=REG_HM_COLS,
+                    y=REG_HM_ROWS,
+                    text=hm_t,
+                    texttemplate="%{text}",
+                    colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
+                    hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
+                )
             )
-        )
-    fig_hm.update_layout(title="Top 10 skills × 4 regions", yaxis=dict(autorange="reversed"))
-    show(fig_hm, 420)
-    st.caption("Darker teal = higher demand per 100k population")
+        fig_hm.update_layout(title="Top 10 skills × 4 regions", yaxis=dict(autorange="reversed"))
+        show(fig_hm, 420)
+        st.caption("Darker teal = higher demand per 100k population")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 3 — AI GAP ANALYSIS
