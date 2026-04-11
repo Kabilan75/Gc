@@ -32,7 +32,7 @@ st.html(
 """.strip(),
 )
 
-# ── Minimal safe CSS  (only colours, no layout overrides) ─────────────────────
+# ── Theme CSS (main + sidebar nav pills) ─────────────────────────────────────
 st.markdown("""
 <style>
 /* Sidebar above main so wide main pane never paints over sidebar text */
@@ -40,10 +40,39 @@ section[data-testid="stSidebar"] {
   background-color: #0C1422;
   position: relative;
   z-index: 100;
+  min-width: 17rem;
 }
 section[data-testid="stSidebar"] .stMarkdown p,
 section[data-testid="stSidebar"] .stRadio label,
 section[data-testid="stSidebar"] .stRadio div { color: #CBD5E1 !important; }
+/* Nav pills (sidebar radio only) */
+section[data-testid="stSidebar"] .stRadio [role="radiogroup"] {
+  gap: 8px !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+section[data-testid="stSidebar"] .stRadio label {
+  border: 1px solid #1E293B !important;
+  border-radius: 10px !important;
+  padding: 0.6rem 0.85rem !important;
+  margin: 0 !important;
+  background: rgba(17, 29, 46, 0.9) !important;
+  cursor: pointer !important;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+section[data-testid="stSidebar"] .stRadio label:hover {
+  border-color: #334155 !important;
+  background: rgba(30, 41, 59, 0.95) !important;
+}
+section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
+  border-color: #00E5CC !important;
+  background: rgba(0, 229, 204, 0.1) !important;
+  box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.35);
+}
+section[data-testid="stSidebar"] .stRadio label:has(input:checked) p,
+section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
+  color: #F0F4F8 !important;
+}
 .stApp { background-color: #05090F; color: #F0F4F8; }
 .block-container { padding-top: 1rem; }
 /*
@@ -1066,17 +1095,30 @@ df_global, global_source_name = load_global_workbook()
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
 NAV_OPTIONS = [
     "📊 UK & Regions",
-    "🤖 AI Gap Analysis",
-    "🌍 Global Comparison",
-    "📄 CV Evaluator",
+    "🤖 AI Gaps",
+    "🌍 Global",
+    "📄 CV",
 ]
 with st.sidebar:
-    st.markdown("## 🎮 Skill Intelligence")
-    st.markdown("**UK Gaming Industry**")
     st.markdown(
         """
-<div style="font-size:10px;color:#475569;text-transform:uppercase;
-letter-spacing:1.5px;font-weight:600;margin:12px 0 8px 0;">Navigation</div>
+<div style="margin:0 0 2px 0;">
+  <span style="font-size:1.35rem;font-weight:700;color:#F0F4F8;letter-spacing:-0.02em;">
+    🎮 Skill Intelligence
+  </span>
+</div>
+<div style="width:52px;height:3px;border-radius:2px;margin:10px 0 14px 0;
+  background:linear-gradient(90deg,#00E5CC 0%,#A78BFA 100%);"></div>
+<div style="font-size:0.82rem;color:#94A3B8;font-weight:600;margin:0 0 4px 0;">
+  UK Gaming Industry
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        """
+<div style="font-size:10px;color:#64748B;text-transform:uppercase;
+letter-spacing:2px;font-weight:600;margin:14px 0 10px 0;">Navigate</div>
 """,
         unsafe_allow_html=True,
     )
@@ -1289,7 +1331,7 @@ if tab == "📊 UK & Regions":
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 3 — AI GAP ANALYSIS
 # ═════════════════════════════════════════════════════════════════════════════
-elif tab == "🤖 AI Gap Analysis":
+elif tab == "🤖 AI Gaps":
     n_gap = len(df_c)
     n_rec = len(df_d)
     n_a_rows = len(df_a)
@@ -1530,7 +1572,7 @@ elif tab == "🤖 AI Gap Analysis":
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 4 — GLOBAL COMPARISON
 # ═════════════════════════════════════════════════════════════════════════════
-elif tab == "🌍 Global Comparison":
+elif tab == "🌍 Global":
     gdf = gaming_global_frame(df_global) if df_global is not None else pd.DataFrame()
     use_live_global = not gdf.empty and "Country" in gdf.columns
 
@@ -1794,7 +1836,7 @@ elif tab == "🌍 Global Comparison":
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 5 — CV EVALUATOR
 # ═════════════════════════════════════════════════════════════════════════════
-elif tab == "📄 CV Evaluator":
+elif tab == "📄 CV":
     st.markdown("### CV Evaluator · `Step A–aligned`")
     st.caption(
         "Keyword + phrase matching against **your Step A skill tokens** (not a hosted LLM). "
@@ -2047,7 +2089,7 @@ elif tab == "📄 CV Evaluator":
                 expanded=False,
             ):
                 st.caption(
-                    "Same signals as **AI Gap Analysis**: Step C = gap score; Step D = workshop recommender. "
+                    "Same signals as **AI Gaps**: Step C = gap score; Step D = workshop recommender. "
                     "Add honest keywords to your CV if these truly apply."
                 )
                 if miss_gaps:
@@ -2063,5 +2105,5 @@ elif tab == "📄 CV Evaluator":
                 elif step_d_dataframe_ok(df_d):
                     st.caption("Step D has no extra workshop skills for this region that you are missing.")
                 else:
-                    st.caption("Step D file missing or wrong columns — open **AI Gap Analysis** after fixing `step_d_workshop_recommendations.csv`.")
+                    st.caption("Step D file missing or wrong columns — open **AI Gaps** after fixing `step_d_workshop_recommendations.csv`.")
 
