@@ -623,18 +623,24 @@ def _prior_from_rec(text: object) -> str:
     return "STD"
 
 
-def gap_england_chart_df(df_c: pd.DataFrame, n: int = 12) -> pd.DataFrame:
-    if df_c is None or df_c.empty:
-        return pd.DataFrame(columns=["Skill", "Demand", "Gap"])
-    eng = df_c[df_c["UK Region"].astype(str).str.strip() == "England"].copy()
-    if eng.empty:
-        return pd.DataFrame(columns=["Skill", "Demand", "Gap"])
-    eng = eng.sort_values("Gap_Score", ascending=False).head(n)
+def gap_region_chart_df(df_c: pd.DataFrame, region: str, n: int = 12) -> pd.DataFrame:
+    """Top-n skills in one UK region by gap score (Step C)."""
+    out_cols = ["Skill", "Demand", "Gap"]
+    if df_c is None or df_c.empty or not region:
+        return pd.DataFrame(columns=out_cols)
+    need = {"UK Region", "Skills", "Demand", "Gap_Score"}
+    if not need.issubset(df_c.columns):
+        return pd.DataFrame(columns=out_cols)
+    r = str(region).strip()
+    sub = df_c[df_c["UK Region"].astype(str).str.strip() == r].copy()
+    if sub.empty:
+        return pd.DataFrame(columns=out_cols)
+    sub = sub.sort_values("Gap_Score", ascending=False).head(n)
     return pd.DataFrame(
         {
-            "Skill": eng["Skills"].map(lambda s: cn(str(s))),
-            "Demand": eng["Demand"].astype(int),
-            "Gap": eng["Gap_Score"].astype(float),
+            "Skill": sub["Skills"].map(lambda s: cn(str(s))),
+            "Demand": sub["Demand"].astype(int),
+            "Gap": sub["Gap_Score"].astype(float),
         }
     )
 
@@ -1313,46 +1319,69 @@ elif tab == "🤖 AI Gap Analysis":
             )
         st.dataframe(ws_df, use_container_width=True, hide_index=True)
 
-    st.subheader("Demand vs gap score — England")
-    st.caption("Each row = one skill in England (Step C) · gap score out of 10")
-    df_eng = gap_england_chart_df(df_c, n=12)
-    if df_eng.empty:
-        df_eng = pd.DataFrame(
+    st.subheader("Demand vs gap score — by region")
+    _gap_regions = ["England", "Scotland", "Wales", "Northern Ireland"]
+    _present = _gap_regions
+    if len(df_c) and "UK Region" in df_c.columns:
+        have = set(df_c["UK Region"].astype(str).str.strip().unique())
+        _present = [x for x in _gap_regions if x in have] or _gap_regions
+    gap_pick = st.selectbox(
+        "UK region",
+        _present,
+        index=0,
+        key="gap_demand_region_select",
+        help="Step C gap scores and demand per skill for the chosen region.",
+    )
+    st.caption(f"Each row = one skill in **{gap_pick}** (Step C) · gap score out of 10")
+    df_reg_gap = gap_region_chart_df(df_c, gap_pick, n=12)
+    used_fallback = False
+    if df_reg_gap.empty and gap_pick == "England":
+        df_reg_gap = pd.DataFrame(
             [(a, b, c) for a, b, c, _ in GAP_ENG_BARS], columns=["Skill", "Demand", "Gap"]
         )
-    df_eng = df_eng.sort_values("Gap", ascending=False)
-    if len(df_eng):
-        top_eng = df_eng.iloc[0]
+        used_fallback = True
+    df_reg_gap = df_reg_gap.sort_values("Gap", ascending=False)
+    if len(df_reg_gap):
+        top_r = df_reg_gap.iloc[0]
         st.caption(
-            f"**{top_eng['Skill']}** — demand {int(top_eng['Demand'])}, gap {float(top_eng['Gap']):.2f}."
+            f"**{top_r['Skill']}** — demand {int(top_r['Demand'])}, gap {float(top_r['Gap']):.2f}."
+            + (" _(demo fallback — no England rows in Step C)_" if used_fallback else "")
         )
     else:
-        st.caption("No England gap rows to highlight.")
-    fig_b = px.bar(
-        df_eng.sort_values("Gap"),
-        x="Gap",
-        y="Skill",
-        orientation="h",
-        color="Gap",
-        color_continuous_scale=[[0, S2], [1, TEAL]],
-        title="England — demand vs gap (gap score)",
-    )
-    fig_b.update_layout(coloraxis_showscale=False, yaxis_categoryorder="total ascending")
-    fig_b.update_traces(texttemplate="%{x:.2f}", textposition="outside")
-    show(fig_b, 420)
+        st.info(f"No Step C rows for **{gap_pick}**. Check **UK Region** spelling in `step_c_gap_scores.csv`.")
+    if len(df_reg_gap):
+        fig_b = px.bar(
+            df_reg_gap.sort_values("Gap"),
+            x="Gap",
+            y="Skill",
+            orientation="h",
+            color="Gap",
+            color_continuous_scale=[[0, S2], [1, TEAL]],
+            title=f"{gap_pick} — demand vs gap (gap score)",
+        )
+        fig_b.update_layout(coloraxis_showscale=False, yaxis_categoryorder="total ascending")
+        fig_b.update_traces(texttemplate="%{x:.2f}", textposition="outside")
+        show(fig_b, 420)
 
     _comm_ser = (
         df_c.loc[
-            (df_c["UK Region"].astype(str).str.strip() == "England")
+            (df_c["UK Region"].astype(str).str.strip() == gap_pick)
             & (df_c["Skills"].astype(str).str.lower() == "communication"),
             "Gap_Score",
         ]
         if len(df_c) and "Skills" in df_c.columns and "UK Region" in df_c.columns
         else pd.Series(dtype=float)
     )
-    comm_gap = float(_comm_ser.max()) if len(_comm_ser) else 10.0
+    comm_gap = float(_comm_ser.max()) if len(_comm_ser) else None
+    _reg_tag = {"England": "ENG", "Scotland": "SCO", "Wales": "WAL", "Northern Ireland": "NI"}.get(
+        gap_pick, gap_pick[:3].upper()
+    )
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Communication gap (ENG)", f"{comm_gap:.2f}", "From Step C")
+    k1.metric(
+        f"Communication gap ({_reg_tag})",
+        f"{comm_gap:.2f}" if comm_gap is not None else "—",
+        f"Step C · {gap_pick}",
+    )
     k2.metric("Recommendations", str(n_rec), "Step D rows")
     k3.metric("Top workshop skill", str(ws_df.iloc[0]["Skill"]) if len(ws_df) else "—", "1st row Step D")
     k4.metric("Clusters (Step C)", str(n_cl), "Distinct cluster names")
