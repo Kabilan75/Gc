@@ -56,10 +56,14 @@ Requires `Updated_27_02_26_-_Kabilan.xlsx` at project root with sheet **`Combine
 
 ## `app.py` — behavior summary
 
-- **Constants:** Tab labels are `T_OVERVIEW`, `T_REGIONAL`, `T_GAP`, `T_GLOBAL` (emoji + text). **Must match** `st.radio` / `st.sidebar.radio` options exactly.
-- **Navigation:** Sidebar radio with four tabs only (no separate “Visual” tab in code).
-- **Data loading:** Helpers like `load_step_a()` … `load_step_d()` read from `Step files/`. Global data uses `_find_file()` to locate **`Combined_Data_cleaned.xlsx`** first, else **`Updated_27_02_26_-_Kabilan.xlsx`**, with user-friendly errors if missing.
-- **Imports from `city_to_country_tab5`:** `TAB5_CHART_COUNTRIES`, `normalize_tab5_dataframe_country` for the global comparison tab.
+- **Navigation:** Sidebar `st.radio` — `NAV_OPTIONS` (must stay in sync if you rename sections):
+  - `📊 UK & Regions` — UK Overview / Regional Analysis; metric definitions expander; regional hero tiles use the same “top skill /100k” rule; heatmap warns when using static fallback.
+  - `🤖 AI Gap Analysis` — pipeline, cluster stack, heatmaps, Step D table, per-region bars; suggested reading order; Step D validated against required columns; sparse-region caption for low Step C row counts.
+  - `🌍 Global Comparison` — live workbook drives country bars and ahead/behind; ranking table + cosine similarity computed from data when possible; static blocks labelled as reference when no workbook.
+  - `📄 CV Evaluator` — lexical/alias matching only; region picker links high-gap Step C / Step D skills not matched on the CV.
+- **Data loading:** `load_a()` … `load_d()` plus `_find()` for CSVs under `Step files/` (or repo root). Global: `load_global_workbook()` prefers **`Combined_Data_cleaned.xlsx`**, else **`Updated_27_02_26_-_Kabilan.xlsx`** (sheet **`Combined Data`**).
+- **Step D contract:** Live workshop table requires columns `UK_Region`, `Skill`, `Demand_Count`, `Gap_Score` (optional `Workshop_Recommendation`). See `step_d_workshop_recommendations.csv`.
+- **Imports from `city_to_country_tab5`:** `normalize_tab5_dataframe_country` for the global workbook path.
 - **Styling:** Plotly `template="plotly_dark"` (and custom layout) for consistency.
 - **Docstring** states: all charts from CSV/Excel only, no static chart images in-app.
 

@@ -6,6 +6,7 @@ import shutil
 import warnings
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -843,6 +844,187 @@ def skill_share_diffs(gdf: pd.DataFrame, top_n: int = 7) -> tuple[list[tuple[str
     return ahead, behind
 
 
+STEP_D_REQUIRED_COLS = frozenset({"UK_Region", "Skill", "Demand_Count", "Gap_Score"})
+
+
+def step_d_dataframe_ok(df: pd.DataFrame) -> bool:
+    return df is not None and not df.empty and STEP_D_REQUIRED_COLS.issubset(df.columns)
+
+
+def _norm_skill_token(s: object) -> str:
+    return str(s).strip().lower().replace(" ", "-").replace("_", "-")
+
+
+def cv_text_covers_skill_token(cv_found_slugs: set[str], skill_label: object) -> bool:
+    """True if Step C/D skill label matches a slug detected on the CV (fuzzy on spaces/hyphens)."""
+    t = _norm_skill_token(skill_label)
+    if not t:
+        return False
+    if t in cv_found_slugs:
+        return True
+    if t.replace("-", "") in {x.replace("-", "") for x in cv_found_slugs}:
+        return True
+    for slug in cv_found_slugs:
+        if slug == t or slug.replace("-", "") == t.replace("-", ""):
+            return True
+    return False
+
+
+def top_gap_skills_not_in_cv(
+    df_c: pd.DataFrame, region: str, found_slugs: set[str], n: int = 5
+) -> list[tuple[str, float]]:
+    """High-gap Step C skills in `region` whose slugs were not detected on the CV."""
+    if df_c is None or df_c.empty:
+        return []
+    need = {"UK Region", "Skills", "Gap_Score"}
+    if not need.issubset(df_c.columns):
+        return []
+    sub = df_c[df_c["UK Region"].astype(str).str.strip() == region].copy()
+    if sub.empty:
+        return []
+    sub = sub.sort_values("Gap_Score", ascending=False)
+    out: list[tuple[str, float]] = []
+    for _, r in sub.iterrows():
+        sk = str(r["Skills"]).strip().lower()
+        if sk in found_slugs:
+            continue
+        out.append((cn(sk), float(r["Gap_Score"])))
+        if len(out) >= n:
+            break
+    return out
+
+
+def top_workshop_skills_not_in_cv(
+    df_d: pd.DataFrame, region: str, found_slugs: set[str], n: int = 3
+) -> list[str]:
+    if not step_d_dataframe_ok(df_d):
+        return []
+    sub = df_d[df_d["UK_Region"].astype(str).str.strip() == region].copy()
+    if sub.empty:
+        return []
+    sub = sub.sort_values("Gap_Score", ascending=False)
+    out: list[str] = []
+    for _, r in sub.iterrows():
+        if cv_text_covers_skill_token(found_slugs, r["Skill"]):
+            continue
+        out.append(str(r["Skill"]).strip())
+        if len(out) >= n:
+            break
+    return out
+
+
+def uk_vs_global_skill_table(gdf: pd.DataFrame, n_show: int = 12) -> pd.DataFrame | None:
+    """UK vs world skill shares and ranks from live gaming rows (exploded comma skills)."""
+    if gdf is None or gdf.empty or "Skills" not in gdf.columns or "Country" not in gdf.columns:
+        return None
+    uk_mask = _is_uk_country_mask(gdf["Country"])
+    uk = gdf.loc[uk_mask]
+    n_uk = int(len(uk))
+    n_w = int(len(gdf))
+    if n_uk < 1 or n_w < 1:
+        return None
+    long_w = explode_job_skills(gdf)
+    long_u = explode_job_skills(uk)
+    if long_w.empty:
+        return None
+    wc = long_w.groupby("Skill").size()
+    uc = long_u.groupby("Skill").size()
+    skills_all = wc.index.union(uc.index)
+    uk_rates = {s: float(uc.get(s, 0)) / n_uk * 100.0 for s in skills_all}
+    world_rates = {s: float(wc.get(s, 0)) / n_w * 100.0 for s in skills_all}
+    uk_order = sorted(skills_all, key=lambda s: -uk_rates[s])
+    world_order = sorted(skills_all, key=lambda s: -world_rates[s])
+    r_uk = {s: i + 1 for i, s in enumerate(uk_order)}
+    r_w = {s: i + 1 for i, s in enumerate(world_order)}
+    display_skills = list(wc.nlargest(n_show).index)
+    rows: list[list[object]] = []
+    for sk in display_skills:
+        ur = uk_rates[sk]
+        wr = world_rates[sk]
+        if ur > wr + 0.05:
+            trend = "↑ Ahead"
+        elif ur < wr - 0.05:
+            trend = "↓ Behind"
+        else:
+            trend = "≈ Parity"
+        rows.append(
+            [
+                cn(str(sk)),
+                round(ur, 2),
+                r_uk[sk],
+                round(wr, 2),
+                r_w[sk],
+                trend,
+            ]
+        )
+    return pd.DataFrame(
+        rows,
+        columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"],
+    )
+
+
+def country_cosine_similarity_to_uk(
+    gdf: pd.DataFrame, top_n: int = 50, max_countries: int = 12
+) -> tuple[list[tuple[str, float]], str | None]:
+    """Cosine similarity of per-country skill mention-rate vectors vs UK (same vocabulary)."""
+    long = explode_job_skills(gdf)
+    if long.empty or "Country" not in gdf.columns:
+        return [], None
+    vc = long["Skill"].value_counts()
+    if vc.empty:
+        return [], None
+    skill_vocab = list(vc.head(min(top_n, int(vc.shape[0]))).index)
+    if not skill_vocab:
+        return [], None
+    skill_i = {s: i for i, s in enumerate(skill_vocab)}
+    countries = gdf["Country"].astype(str).str.strip()
+    n_by = gdf.groupby(countries).size()
+    country_list = [c for c in n_by.index.astype(str)]
+    mat = np.zeros((len(country_list), len(skill_vocab)), dtype=float)
+    cidx = {c: i for i, c in enumerate(country_list)}
+    for _, r in long.iterrows():
+        co = str(r["Country"]).strip()
+        sk = r["Skill"]
+        if sk not in skill_i or co not in cidx:
+            continue
+        mat[cidx[co], skill_i[sk]] += 1.0
+    for i in range(len(country_list)):
+        d = float(n_by.iloc[i])
+        if d <= 0:
+            d = 1.0
+        mat[i, :] /= d
+    uk_key: str | None = None
+    for co in country_list:
+        if bool(_is_uk_country_mask(pd.Series([co])).iloc[0]):
+            uk_key = co
+            break
+    if uk_key is None or uk_key not in cidx:
+        return [], None
+    u = mat[cidx[uk_key]]
+    nu = float(np.linalg.norm(u))
+    out: list[tuple[str, float]] = []
+    for i, co in enumerate(country_list):
+        if co == uk_key:
+            continue
+        v = mat[i]
+        nv = float(np.linalg.norm(v))
+        if nu <= 0 or nv <= 0:
+            continue
+        sim = float(np.dot(u, v) / (nu * nv))
+        out.append((co, sim))
+    out.sort(key=lambda x: -x[1])
+    return out[:max_countries], uk_key
+
+
+def step_c_row_counts_by_region(df_c: pd.DataFrame) -> dict[str, int]:
+    """Step C row counts per UK region (one row ≈ one skill line in that region)."""
+    if df_c is None or df_c.empty or "UK Region" not in df_c.columns:
+        return {}
+    sub = df_c.copy()
+    sub["_reg"] = sub["UK Region"].astype(str).str.strip()
+    return sub.groupby("_reg").size().astype(int).to_dict()
+
+
 # ── Plotly dark theme helper ──────────────────────────────────────────────────
 def _dark(fig, h=None, *, margin_patch=None, axis_tick_color=None):
     tick = axis_tick_color if axis_tick_color is not None else DIM
@@ -931,6 +1113,17 @@ if tab == "📊 UK & Regions":
         key="uk_regional_subview",
     )
     st.caption("Switch between national snapshot and per-region demand.")
+    with st.expander("Metric definitions (how to read this tab)", expanded=False):
+        st.markdown(
+            """
+- **Listing groups** — Unique job rows after deduplicating on every column except `Skills`
+  (one row can appear several times with different skills).
+- **Skill rows / mentions** — One row per skill tag attached to a listing in Step A.
+- **Per 100k** — Skill counts divided by national population × 100,000, so regions are comparable.
+- **Demo / fallback** — If a CSV is missing, some charts use built-in sample data; check the sidebar
+  data status.
+            """.strip()
+        )
 
     if uk_sub == "UK Overview":
         n_rows = len(df_a)
@@ -1023,7 +1216,6 @@ if tab == "📊 UK & Regions":
 
     else:
         regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
-        stack_dict, stack_x = compute_cluster_stack(df_b)
 
         if not regional:
             regional = {
@@ -1032,19 +1224,16 @@ if tab == "📊 UK & Regions":
                 "Wales": [("—", 0, 0.0)],
                 "N. Ireland": [("—", 0, 0.0)],
             }
-        eng = regional.get("England", [("—", 0, 0.0)])[0]
-        scot_cpp = next(
-            ((s, p) for s, _c, p in regional.get("Scotland", []) if "c++" in s.lower()),
-            None,
-        )
-        if not scot_cpp and regional.get("Scotland"):
-            scot_cpp = (regional["Scotland"][0][0], regional["Scotland"][0][2])
-        wales_unity = 0.0
-        if z_hm and x_hm:
-            wi = next((i for i, lab in enumerate(x_hm) if "unity" in lab.lower()), None)
-            if wi is not None and len(z_hm) > 2:
-                wales_unity = z_hm[2][wi]
-        ni_cloud = float(stack_dict.get("Cloud", [0.0, 0.0, 0.0, 0.0])[-1]) if stack_dict else 0.0
+        def _top_regional_row(reg_name: str) -> tuple[str, int, float]:
+            rows = regional.get(reg_name, [])
+            if rows:
+                return rows[0]
+            return ("—", 0, 0.0)
+
+        eng = _top_regional_row("England")
+        sco = _top_regional_row("Scotland")
+        wal = _top_regional_row("Wales")
+        n_ir = _top_regional_row("N. Ireland")
 
         st.markdown("### Regional Analysis · `4 Regions`")
         st.caption(
@@ -1054,10 +1243,14 @@ if tab == "📊 UK & Regions":
         st.markdown("---")
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("England /100k", f"{eng[2]:.2f}", str(eng[0]))
-        c2.metric("Scotland /100k", f"{scot_cpp[1]:.2f}" if scot_cpp else "0.00", scot_cpp[0] if scot_cpp else "Top skill")
-        c3.metric("Wales Unity /100k", f"{wales_unity:.2f}", "From heatmap column")
-        c4.metric("NI Cloud /100k", f"{ni_cloud:.2f}", "Cluster stack (Step B)")
+        c1.metric("England — top /100k", f"{eng[2]:.2f}", str(eng[0]))
+        c2.metric("Scotland — top /100k", f"{sco[2]:.2f}", str(sco[0]))
+        c3.metric("Wales — top /100k", f"{wal[2]:.2f}", str(wal[0]))
+        c4.metric("N. Ireland — top /100k", f"{n_ir[2]:.2f}", str(n_ir[0]))
+        st.caption(
+            "Each tile shows the **highest-demand skill in that region** among the top five "
+            "(by count), expressed as mentions per 100k population — same rule for all four regions."
+        )
 
         st.markdown("---")
         st.subheader("Top 5 skills per region")
@@ -1072,7 +1265,8 @@ if tab == "📊 UK & Regions":
 
         st.subheader("Skill demand heatmap")
         st.caption("Per 100k population · Top 10 skills × 4 regions (Step A)")
-        if z_hm and x_hm and y_hm:
+        hm_live = bool(z_hm and x_hm and y_hm)
+        if hm_live:
             hm_t = [[f"{v:.2f}" for v in row] for row in z_hm]
             fig_hm = go.Figure(
                 go.Heatmap(
@@ -1086,6 +1280,10 @@ if tab == "📊 UK & Regions":
                 )
             )
         else:
+            st.warning(
+                "**Demo heatmap** — Step A has no usable regional heatmap (missing file, empty data, "
+                "or required columns). Values below are static placeholders, not your CSV."
+            )
             hm_t = [[f"{v:.2f}" for v in row] for row in REG_HM_Z]
             fig_hm = go.Figure(
                 go.Heatmap(
@@ -1116,6 +1314,11 @@ elif tab == "🤖 AI Gap Analysis":
     st.caption(
         "TF-IDF · K-Means clustering · Location Quotient gap scoring · Workshop recommender "
         f"(Step C: {n_gap} rows · Step D: {n_rec} recommendations)"
+    )
+    st.info(
+        "**Suggested reading order:** (1) Cluster stack and region × cluster heatmap for where pressure sits, "
+        "(2) workshop recommendation table for concrete priorities, "
+        "(3) pick a **UK region** below for skill-level demand vs gap bars."
     )
     st.markdown("---")
 
@@ -1235,8 +1438,12 @@ elif tab == "🤖 AI Gap Analysis":
     with col_r:
         st.caption("Workshop recommendations")
         st.caption("Step D output — ranked by gap score · priority coded")
-        _d_cols = {"UK_Region", "Skill", "Demand_Count", "Gap_Score"}
-        if not df_d.empty and _d_cols.issubset(df_d.columns):
+        if live_d and not step_d_dataframe_ok(df_d):
+            st.error(
+                "Step D file is loaded but required columns are missing. Expected at least: "
+                f"`{', '.join(sorted(STEP_D_REQUIRED_COLS))}`. Showing demo workshop table until the CSV matches."
+            )
+        if step_d_dataframe_ok(df_d):
             ws_df = pd.DataFrame(
                 {
                     "Region": df_d["UK_Region"],
@@ -1254,6 +1461,18 @@ elif tab == "🤖 AI Gap Analysis":
                 columns=["Region", "Skill", "Demand", "Gap", "Priority"],
             )
         st.dataframe(ws_df, use_container_width=True, hide_index=True)
+
+    c_row_counts = step_c_row_counts_by_region(df_c) if len(df_c) and "UK Region" in df_c.columns else {}
+    thin = [
+        f"{reg} ({c_row_counts[reg]} rows)"
+        for reg in ("Wales", "Northern Ireland")
+        if c_row_counts.get(reg, 0) > 0 and c_row_counts.get(reg, 0) < 25
+    ]
+    if thin:
+        st.caption(
+            "Small Step C samples for some regions can make gap scores noisy; treat Wales / N.Ireland "
+            f"cells with extra caution when row counts are low ({'; '.join(thin)})."
+        )
 
     st.subheader("Demand vs gap score — by region")
     _gap_regions = ["England", "Scotland", "Wales", "Northern Ireland"]
@@ -1436,6 +1655,11 @@ elif tab == "🌍 Global Comparison":
         st.caption("UK highlighted · reference chart when no workbook is loaded")
 
     st.subheader("UK ahead / behind the world")
+    if not use_live_global:
+        st.info(
+            "**Reference charts** — Bars below are static illustrations. Load the global workbook for "
+            "live ahead/behind skill spreads from your data."
+        )
     col_a, col_b = st.columns(2)
     ahead_plot = ahead if ahead else ahead_static
     behind_plot = behind if behind else behind_static
@@ -1443,7 +1667,7 @@ elif tab == "🌍 Global Comparison":
         cap_a = (
             "UK ahead — skill mention rate in UK job rows minus global rate (workbook)."
             if ahead
-            else "UK ahead of the world — UK share % above global average (reference)"
+            else "UK ahead of the world — UK share % above global average (reference only)"
         )
         st.caption(cap_a)
         fa = px.bar(
@@ -1461,7 +1685,7 @@ elif tab == "🌍 Global Comparison":
         cap_b = (
             "UK behind — lower mention rate vs all gaming rows (workbook)."
             if behind
-            else "UK behind the world — future curriculum opportunities (reference)"
+            else "UK behind the world — future curriculum opportunities (reference only)"
         )
         st.caption(cap_b)
         fb = px.bar(
@@ -1477,56 +1701,108 @@ elif tab == "🌍 Global Comparison":
         show(fb, 360)
 
     st.subheader("UK skill rankings vs global")
-    st.caption("Full comparison")
-    rnk = pd.DataFrame(
-        [
-            ["Communication", 52.12, 1, 55.06, 1, "↑ Ahead"],
-            ["Talent Acquisition", 37.11, 2, 18.38, 4, "↑ Ahead"],
-            ["Team Management", 33.67, 3, 25.45, 2, "↓ Behind"],
-            ["Storytelling", 13.07, 6, 4.66, 37, "↑ Ahead"],
-            ["Python", 12.99, 7, 19.85, 3, "↓ Behind"],
-            ["C++", 12.71, 8, 6.36, 25, "↑ Ahead"],
-            ["Unreal", 12.56, 9, 5.15, 31, "↑ Ahead"],
-            ["CI/CD", 5.60, 18, 13.85, 6, "↓ Behind"],
-        ],
-        columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"],
-    )
-    st.dataframe(rnk, use_container_width=True, hide_index=True)
+    rnk_live = uk_vs_global_skill_table(gdf, n_show=12) if use_live_global else None
+    if rnk_live is not None and not rnk_live.empty:
+        st.caption(
+            "Computed from your workbook — top global-demand skills; % = share of gaming rows per country "
+            "mentioning each skill (comma-separated tokens)."
+        )
+        st.dataframe(rnk_live, use_container_width=True, hide_index=True)
+    else:
+        if use_live_global:
+            st.warning(
+                "Could not build a live UK vs global table (needs UK-labelled rows and a `Skills` column). "
+                "Showing static reference table."
+            )
+        else:
+            st.info("**Reference table** — Illustrative numbers only; not computed from your machine.")
+        st.caption("Full comparison (reference)")
+        rnk = pd.DataFrame(
+            [
+                ["Communication", 52.12, 1, 55.06, 1, "↑ Ahead"],
+                ["Talent Acquisition", 37.11, 2, 18.38, 4, "↑ Ahead"],
+                ["Team Management", 33.67, 3, 25.45, 2, "↓ Behind"],
+                ["Storytelling", 13.07, 6, 4.66, 37, "↑ Ahead"],
+                ["Python", 12.99, 7, 19.85, 3, "↓ Behind"],
+                ["C++", 12.71, 8, 6.36, 25, "↑ Ahead"],
+                ["Unreal", 12.56, 9, 5.15, 31, "↑ Ahead"],
+                ["CI/CD", 5.60, 18, 13.85, 6, "↓ Behind"],
+            ],
+            columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"],
+        )
+        st.dataframe(rnk, use_container_width=True, hide_index=True)
 
     st.subheader("Countries most similar to UK")
-    st.caption("Cosine similarity")
-    sim = [
-        ("France", 0.96),
-        ("Japan", 0.95),
-        ("USA", 0.94),
-        ("Sweden", 0.93),
-        ("Brazil", 0.93),
-        ("Spain", 0.93),
-        ("Malta", 0.92),
-        ("Netherlands", 0.92),
-    ]
-    df_sim = pd.DataFrame(sim, columns=["Country", "Similarity"]).sort_values("Similarity")
-    fig_sim = px.bar(
-        df_sim,
-        x="Similarity",
-        y="Country",
-        orientation="h",
-        title="Countries with most similar skill profile to UK",
-        color="Similarity",
-        color_continuous_scale=[[0, DIM], [1, PURPLE]],
+    sim_pairs, _uk_ref_name = (
+        country_cosine_similarity_to_uk(gdf, top_n=50, max_countries=12)
+        if use_live_global
+        else ([], None)
     )
-    fig_sim.update_layout(coloraxis_showscale=False, xaxis_range=[0.88, 1.0])
-    show(fig_sim, 360)
-    st.caption("Cosine similarity — 1.0 = identical skill profile")
+    if sim_pairs:
+        st.caption(
+            "Cosine similarity on the top 50 global skill tokens — each country vector is mention rate "
+            "per job row vs the UK vector."
+        )
+        df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values("Similarity")
+        lo = max(0.0, float(df_sim["Similarity"].min()) - 0.05)
+        hi = min(1.0, float(df_sim["Similarity"].max()) + 0.02)
+        fig_sim = px.bar(
+            df_sim,
+            x="Similarity",
+            y="Country",
+            orientation="h",
+            title="Countries with most similar skill profile to UK (workbook)",
+            color="Similarity",
+            color_continuous_scale=[[0, DIM], [1, PURPLE]],
+        )
+        fig_sim.update_layout(coloraxis_showscale=False, xaxis_range=[lo, hi])
+        show(fig_sim, 360)
+        st.caption("1.0 = identical direction on this skill subset; not a labour-market size comparison.")
+    else:
+        if use_live_global:
+            st.warning(
+                "Could not compute live similarity (no UK country match in `Country`, or no skill mentions). "
+                "Showing reference ranking."
+            )
+        else:
+            st.info("**Reference chart** — Static ranking; load the workbook for cosine similarity from your data.")
+        st.caption("Cosine similarity (reference)")
+        sim = [
+            ("France", 0.96),
+            ("Japan", 0.95),
+            ("USA", 0.94),
+            ("Sweden", 0.93),
+            ("Brazil", 0.93),
+            ("Spain", 0.93),
+            ("Malta", 0.92),
+            ("Netherlands", 0.92),
+        ]
+        df_sim = pd.DataFrame(sim, columns=["Country", "Similarity"]).sort_values("Similarity")
+        fig_sim = px.bar(
+            df_sim,
+            x="Similarity",
+            y="Country",
+            orientation="h",
+            title="Countries with most similar skill profile to UK (reference)",
+            color="Similarity",
+            color_continuous_scale=[[0, DIM], [1, PURPLE]],
+        )
+        fig_sim.update_layout(coloraxis_showscale=False, xaxis_range=[0.88, 1.0])
+        show(fig_sim, 360)
+        st.caption("Cosine similarity — 1.0 = identical skill profile (illustrative values)")
 
     if ahead:
         lead = ", ".join(f"{s} +{p:.1f}%" for s, p in ahead[:3])
         st.success(f"🏆 **From your workbook** — UK leads on: {lead}. Compare countries using the bar chart above.")
+    elif use_live_global:
+        st.success(
+            "🏆 **Workbook loaded** — Use the ahead/behind bars and similarity chart to compare the UK "
+            "to other countries in this extract."
+        )
     else:
         st.success(
-            "🏆 **Global conclusion** — UK world-class in creative skills — Storytelling +8.41%, "
-            "Unreal +7.41%, C++ +6.35%. France, Japan and USA have the most similar profiles — "
-            "UK skills open doors globally."
+            "🏆 **Reference narrative** — Illustrative story only until the global workbook is loaded; "
+            "then metrics and similarity are derived from your file."
         )
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1538,6 +1814,12 @@ elif tab == "📄 CV Evaluator":
         "Keyword + phrase matching against **your Step A skill tokens** (not a hosted LLM). "
         "PDF text or paste — then scores vs the same UK gaming rows as the dashboard."
     )
+    st.info(
+        "**Lexical matching only** — The tool looks for exact tokens and known aliases (e.g. “C++”, “CI/CD”) "
+        "in your text. It does not infer skills from job titles or paraphrases. Wording that matches your "
+        "Step A job data works best."
+    )
+    st.caption("Uploaded or pasted CV text stays in this browser session; it is not sent to an external API.")
     st.markdown("---")
 
     c1, c2, c3, c4 = st.columns(4)
@@ -1554,6 +1836,13 @@ elif tab == "📄 CV Evaluator":
         st.markdown("**💡 Feedback**\n\nDemand + listing reach + gaps")
 
     st.markdown("---")
+    cv_gap_region = st.selectbox(
+        "UK region for gap cross-check",
+        ["England", "Scotland", "Wales", "Northern Ireland"],
+        index=0,
+        key="cv_gap_region_select",
+        help="Highlights high-gap skills from Step C / Step D for this region that your CV did not match.",
+    )
     method = st.radio(
         "Input method",
         ["Paste CV text", "Upload PDF/TXT"],
@@ -1764,4 +2053,29 @@ elif tab == "📄 CV Evaluator":
                     f"— these are among the most repeated skills in the loaded dataset."
                 )
             st.info(f"💡 **Career advice** — {advice}")
+
+            miss_gaps = top_gap_skills_not_in_cv(df_c, cv_gap_region, found_set, n=5)
+            miss_ws = top_workshop_skills_not_in_cv(df_d, cv_gap_region, found_set, n=3)
+            with st.expander(
+                f"🔗 AI Gap tab — high-priority skills for **{cv_gap_region}** you did not match",
+                expanded=False,
+            ):
+                st.caption(
+                    "Same signals as **AI Gap Analysis**: Step C = gap score; Step D = workshop recommender. "
+                    "Add honest keywords to your CV if these truly apply."
+                )
+                if miss_gaps:
+                    lines = [f"- **{s}** (gap score {g:.2f})" for s, g in miss_gaps]
+                    st.markdown("**From Step C (top gaps not on your CV)**\n" + "\n".join(lines))
+                else:
+                    st.caption("No extra Step C gap rows for this region, or your CV already covers the top gaps.")
+                if miss_ws:
+                    st.markdown(
+                        "**From Step D (workshop picks not on your CV)**\n"
+                        + "\n".join(f"- {s}" for s in miss_ws)
+                    )
+                elif step_d_dataframe_ok(df_d):
+                    st.caption("Step D has no extra workshop skills for this region that you are missing.")
+                else:
+                    st.caption("Step D file missing or wrong columns — open **AI Gap Analysis** after fixing `step_d_workshop_recommendations.csv`.")
 
