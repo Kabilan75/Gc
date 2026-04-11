@@ -119,6 +119,15 @@ CLUSTER_STACK_SERIES = {
     "Cloud": [0.71, 0.18, 0.28, 0.00],
 }
 CLUSTER_STACK_COLS = ["#60A5FA", "#A78BFA", "#34D399", "#F472B6", "#F5A623", "#00E5CC"]
+CAT_PIE_HTML = {
+    "Soft Skills": 2499,
+    "Other": 1457,
+    "Tools": 893,
+    "Programming": 639,
+    "3D Art": 575,
+    "Game Engines": 512,
+    "Cloud": 373,
+}
 GAP_ENG_BARS = [
     ("Communication", 527, 10.0, TEAL),
     ("Team Management", 318, 7.99, PURPLE),
@@ -630,32 +639,76 @@ letter-spacing:1.5px;font-weight:600;margin:12px 0 8px 0;">Navigation</div>
 # ═════════════════════════════════════════════════════════════════════════════
 if tab == "📊 UK Overview":
     n_rows = len(df_a)
+    n_jobs = _job_listing_count(df_a)
+    n_skills = int(df_a["Skills"].nunique()) if "Skills" in df_a.columns else 0
+    n_regions = (
+        int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
+        if "UK Region" in df_a.columns
+        else 4
+    )
+    src = "Step A CSV" if live_a else "demo sample"
     vc15 = (
         df_a["Skills"].value_counts().head(15)
         if "Skills" in df_a.columns
         else pd.Series(dtype=int)
     )
 
-    st.markdown("### UK Overview")
+    st.markdown(f"### UK Overview · `{n_jobs:,} listing groups`")
+    st.caption(
+        f"National snapshot · {n_jobs:,} unique listing rows (deduped on non-skill columns) · "
+        f"{n_rows:,} skill mentions · source: {src}"
+    )
     st.markdown("---")
 
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Listing groups", f"{n_jobs:,}", "Deduped job rows in dataset")
+    k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
+    k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
+    k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
+
+    st.markdown("---")
     st.subheader("Top 15 skills by demand")
     st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
-    if len(vc15):
-        df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
-        fig_ov = px.bar(
-            df_top.sort_values("Count"),
-            x="Count",
-            y="Skill",
-            orientation="h",
-            title="Skill occurrences",
-            color_discrete_sequence=[TEAL],
+    col_ov_l, col_ov_r = st.columns(2)
+    with col_ov_l:
+        if len(vc15):
+            df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
+            fig_ov = px.bar(
+                df_top.sort_values("Count"),
+                x="Count",
+                y="Skill",
+                orientation="h",
+                title="Skill occurrences",
+                color_discrete_sequence=[TEAL],
+            )
+            fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
+            fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
+            show(fig_ov, 460)
+        else:
+            st.warning("No skills in the current dataset.")
+    with col_ov_r:
+        pie_series = _cluster_counts_for_pie(df_b)
+        if pie_series.empty:
+            pie_series = pd.Series(CAT_PIE_HTML)
+        fig_pie = px.pie(
+            values=pie_series.values,
+            names=[_short_cluster(str(x)) for x in pie_series.index],
+            hole=0.58,
+            title="Rows by AI cluster (Step B)",
+            color_discrete_sequence=[TEAL, DIM, BLUE, PURPLE, AMBER, GREEN, RED],
         )
-        fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-        fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
-        show(fig_ov, 460)
-    else:
-        st.warning("No skills in the current dataset.")
+        fig_pie.update_traces(textposition="inside", textinfo="percent+label")
+        fig_pie.update_layout(showlegend=True, legend=dict(font=dict(size=11)))
+        show(fig_pie, 320)
+        if len(pie_series) > 0:
+            i_max = int(pie_series.values.argmax())
+            big = _short_cluster(str(pie_series.index[i_max]))
+            st.caption(
+                f"{'Step B CSV — ' if live_b else 'Demo / fallback — '}"
+                f"{int(pie_series.sum())} clustered skill rows · **{big}** largest segment"
+            )
+        else:
+            st.caption("No cluster data")
 
     st.markdown("---")
     st.subheader("Top 10 skills — share of demand")
