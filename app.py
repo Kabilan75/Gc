@@ -177,6 +177,8 @@ CAT_PIE_HTML = {
     "Game Engines": 512,
     "Cloud": 373,
 }
+# Excluded from UK Overview donut (mirrors dropping Biz Tools + Cloud on live Step B)
+CAT_PIE_HTML_OVERVIEW = {k: v for k, v in CAT_PIE_HTML.items() if k not in ("Cloud", "Tools")}
 GAP_ENG_BARS = [
     ("Communication", 527, 10.0, TEAL),
     ("Team Management", 318, 7.99, PURPLE),
@@ -671,10 +673,16 @@ def load_global_workbook() -> tuple[pd.DataFrame | None, str | None]:
         return None, None
 
 
+_PIE_EXCLUDE_CLUSTERS = frozenset(
+    {"Business Tools & Productivity", "Cloud, Infrastructure & DevOps"}
+)
+
+
 def _cluster_counts_for_pie(df_b: pd.DataFrame) -> pd.Series:
     if df_b is None or df_b.empty or "Cluster_Name" not in df_b.columns:
         return pd.Series(dtype=float)
-    return df_b["Cluster_Name"].astype(str).value_counts()
+    s = df_b["Cluster_Name"].astype(str).value_counts()
+    return s[~s.index.isin(_PIE_EXCLUDE_CLUSTERS)]
 
 
 def _short_cluster(name: str) -> str:
@@ -1199,7 +1207,7 @@ if tab == "📊 UK & Regions":
         with col_ov_r:
             pie_series = _cluster_counts_for_pie(df_b)
             if pie_series.empty:
-                pie_series = pd.Series(CAT_PIE_HTML)
+                pie_series = pd.Series(CAT_PIE_HTML_OVERVIEW)
             fig_pie = px.pie(
                 values=pie_series.values,
                 names=[_short_cluster(str(x)) for x in pie_series.index],
@@ -1221,10 +1229,10 @@ if tab == "📊 UK & Regions":
                 st.caption("No cluster data")
 
         st.markdown("---")
-        st.subheader("Top 10 skills — share of demand")
+        st.subheader("Top 8 skills — share of demand")
         st.caption("Gaming dataset (Step A); % = share of all skill mentions in this file")
         if "Skills" in df_a.columns and n_rows > 0:
-            t10 = df_a["Skills"].value_counts().head(10)
+            t10 = df_a["Skills"].value_counts().head(8)
             hier = pd.DataFrame(
                 {
                     "Skill": [cn(str(s)) for s in t10.index],
