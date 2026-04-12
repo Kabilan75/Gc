@@ -1165,9 +1165,14 @@ if tab == "📊 UK & Regions":
         st.subheader("Top 15 skills by demand")
         st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
         if len(vc15):
-            df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
+            df_top = pd.DataFrame(
+                {"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values.astype(int)}
+            )
+            denom = n_rows if n_rows > 0 else 1
+            df_top["Share_pct"] = (df_top["Count"] / denom * 100).round(1)
+            df_sorted = df_top.sort_values("Count")
             fig_ov = px.bar(
-                df_top.sort_values("Count"),
+                df_sorted,
                 x="Count",
                 y="Skill",
                 orientation="h",
@@ -1175,7 +1180,15 @@ if tab == "📊 UK & Regions":
                 color_discrete_sequence=[TEAL],
             )
             fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-            fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
+            fig_ov.update_traces(
+                texttemplate="%{x:,}",
+                textposition="outside",
+                hovertext=[
+                    f"Count={int(c):,}<br>{float(p):.1f}% of {n_rows:,} skill rows"
+                    for c, p in zip(df_sorted["Count"], df_sorted["Share_pct"])
+                ],
+                hovertemplate="<b>%{y}</b><br>%{hovertext}<extra></extra>",
+            )
             show(fig_ov, 460)
         else:
             st.warning("No skills in the current dataset.")
