@@ -168,17 +168,6 @@ CLUSTER_STACK_SERIES = {
     "Cloud": [0.71, 0.18, 0.28, 0.00],
 }
 CLUSTER_STACK_COLS = ["#60A5FA", "#A78BFA", "#34D399", "#F472B6", "#F5A623", "#00E5CC"]
-CAT_PIE_HTML = {
-    "Soft Skills": 2499,
-    "Other": 1457,
-    "Tools": 893,
-    "Programming": 639,
-    "3D Art": 575,
-    "Game Engines": 512,
-    "Cloud": 373,
-}
-# Excluded from UK Overview donut (mirrors dropping Biz Tools + Cloud on live Step B)
-CAT_PIE_HTML_OVERVIEW = {k: v for k, v in CAT_PIE_HTML.items() if k not in ("Cloud", "Tools")}
 GAP_ENG_BARS = [
     ("Communication", 527, 10.0, TEAL),
     ("Team Management", 318, 7.99, PURPLE),
@@ -671,18 +660,6 @@ def load_global_workbook() -> tuple[pd.DataFrame | None, str | None]:
         return df, p.name
     except Exception:
         return None, None
-
-
-_PIE_EXCLUDE_CLUSTERS = frozenset(
-    {"Business Tools & Productivity", "Cloud, Infrastructure & DevOps"}
-)
-
-
-def _cluster_counts_for_pie(df_b: pd.DataFrame) -> pd.Series:
-    if df_b is None or df_b.empty or "Cluster_Name" not in df_b.columns:
-        return pd.Series(dtype=float)
-    s = df_b["Cluster_Name"].astype(str).value_counts()
-    return s[~s.index.isin(_PIE_EXCLUDE_CLUSTERS)]
 
 
 def _short_cluster(name: str) -> str:
@@ -1187,62 +1164,21 @@ if tab == "📊 UK & Regions":
         st.markdown("---")
         st.subheader("Top 15 skills by demand")
         st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
-        col_ov_l, col_ov_r = st.columns(2)
-        with col_ov_l:
-            if len(vc15):
-                df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
-                fig_ov = px.bar(
-                    df_top.sort_values("Count"),
-                    x="Count",
-                    y="Skill",
-                    orientation="h",
-                    title="Skill occurrences",
-                    color_discrete_sequence=[TEAL],
-                )
-                fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-                fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
-                show(fig_ov, 460)
-            else:
-                st.warning("No skills in the current dataset.")
-        with col_ov_r:
-            pie_series = _cluster_counts_for_pie(df_b)
-            if pie_series.empty:
-                pie_series = pd.Series(CAT_PIE_HTML_OVERVIEW)
-            fig_pie = px.pie(
-                values=pie_series.values,
-                names=[_short_cluster(str(x)) for x in pie_series.index],
-                hole=0.58,
-                title="Rows by AI cluster (Step B)",
-                color_discrete_sequence=[TEAL, DIM, BLUE, PURPLE, AMBER, GREEN, RED],
+        if len(vc15):
+            df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values})
+            fig_ov = px.bar(
+                df_top.sort_values("Count"),
+                x="Count",
+                y="Skill",
+                orientation="h",
+                title="Skill occurrences",
+                color_discrete_sequence=[TEAL],
             )
-            fig_pie.update_traces(textposition="inside", textinfo="percent+label")
-            fig_pie.update_layout(showlegend=True, legend=dict(font=dict(size=11)))
-            show(fig_pie, 320)
-            if len(pie_series) > 0:
-                i_max = int(pie_series.values.argmax())
-                big = _short_cluster(str(pie_series.index[i_max]))
-                st.caption(
-                    f"{'Step B CSV — ' if live_b else 'Demo / fallback — '}"
-                    f"{int(pie_series.sum())} clustered skill rows · **{big}** largest segment"
-                )
-            else:
-                st.caption("No cluster data")
-
-        st.markdown("---")
-        st.subheader("Top 8 skills — share of demand")
-        st.caption("Gaming dataset (Step A); % = share of all skill mentions in this file")
-        if "Skills" in df_a.columns and n_rows > 0:
-            t10 = df_a["Skills"].value_counts().head(8)
-            hier = pd.DataFrame(
-                {
-                    "Skill": [cn(str(s)) for s in t10.index],
-                    "Occurrences": t10.values.astype(int),
-                    "% of rows": [round(100 * int(c) / n_rows, 1) for c in t10.values],
-                }
-            )
+            fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
+            fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
+            show(fig_ov, 460)
         else:
-            hier = pd.DataFrame(columns=["Skill", "Occurrences", "% of rows"])
-        st.dataframe(hier, use_container_width=True, hide_index=True)
+            st.warning("No skills in the current dataset.")
 
     else:
         regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
