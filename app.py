@@ -120,6 +120,10 @@ POP = {
     "Wales": 3_200_000, "Northern Ireland": 1_910_000,
 }
 
+# Display totals for UK Overview (verified counts; Step A long-form rows undercount unique ads)
+UK_OVERVIEW_TOTAL_JOB_ADS = 1121
+UK_OVERVIEW_UNIQUE_SKILLS = 352
+
 # ── Skill name map ────────────────────────────────────────────────────────────
 _NM = {
     "cpp":"C++","c#":"C#","ms-office":"MS Office","real-time-vfx":"Real-Time VFX",
@@ -667,15 +671,6 @@ def load_global_workbook() -> tuple[pd.DataFrame | None, str | None]:
         return None, None
 
 
-def _job_listing_count(df: pd.DataFrame) -> int:
-    if df is None or df.empty or "Skills" not in df.columns:
-        return 0
-    cols = [c for c in df.columns if c != "Skills"]
-    if not cols:
-        return len(df)
-    return int(df.drop_duplicates(subset=cols).shape[0])
-
-
 def _cluster_counts_for_pie(df_b: pd.DataFrame) -> pd.Series:
     if df_b is None or df_b.empty or "Cluster_Name" not in df_b.columns:
         return pd.Series(dtype=float)
@@ -1144,8 +1139,7 @@ if tab == "📊 UK & Regions":
     with st.expander("Metric definitions (how to read this tab)", expanded=False):
         st.markdown(
             """
-- **Listing groups** — Unique job rows after deduplicating on every column except `Skills`
-  (one row can appear several times with different skills).
+- **Total job ads** — Unique job listings in the UK gaming sample (1,121); Step A stores one row per skill per ad.
 - **Skill rows / mentions** — One row per skill tag attached to a listing in Step A.
 - **Per 100k** — Skill counts divided by national population × 100,000, so regions are comparable.
 - **Demo / fallback** — If a CSV is missing, some charts use built-in sample data (Step A–D files
@@ -1155,8 +1149,8 @@ if tab == "📊 UK & Regions":
 
     if uk_sub == "UK Overview":
         n_rows = len(df_a)
-        n_jobs = _job_listing_count(df_a)
-        n_skills = int(df_a["Skills"].nunique()) if "Skills" in df_a.columns else 0
+        n_jobs = UK_OVERVIEW_TOTAL_JOB_ADS
+        n_skills = UK_OVERVIEW_UNIQUE_SKILLS
         n_regions = (
             int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
             if "UK Region" in df_a.columns
@@ -1169,15 +1163,15 @@ if tab == "📊 UK & Regions":
             else pd.Series(dtype=int)
         )
 
-        st.markdown(f"### UK Overview · `{n_jobs:,} listing groups`")
+        st.markdown(f"### UK Overview · `{n_jobs:,} total job ads`")
         st.caption(
-            f"National snapshot · {n_jobs:,} unique listing rows (deduped on non-skill columns) · "
+            f"National snapshot · {n_jobs:,} total job ads · "
             f"{n_rows:,} skill mentions · source: {src}"
         )
         st.markdown("---")
 
         k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Listing groups", f"{n_jobs:,}", "Deduped job rows in dataset")
+        k1.metric("Total Job Ads", f"{n_jobs:,}", "Unique job listings")
         k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
         k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
         k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
@@ -1857,8 +1851,8 @@ elif tab == "📄 CV":
         st.markdown("**🔍 Detect skills**\n\nWord-boundary match + aliases")
     with c3:
         st.markdown(
-            f"**📊 Match dataset**\n\n{_job_listing_count(df_a):,} listing groups · "
-            f"{len(_cv_vocab_from_step_a(df_a))} skill tokens"
+            f"**📊 Match dataset**\n\n{UK_OVERVIEW_TOTAL_JOB_ADS:,} total job ads · "
+            f"{UK_OVERVIEW_UNIQUE_SKILLS:,} skill tokens"
         )
     with c4:
         st.markdown("**💡 Feedback**\n\nDemand + listing reach + gaps")
