@@ -84,8 +84,36 @@ section[data-testid="stMain"] .block-container {
   max-width: 100% !important;
   padding-top: 3.75rem !important;
 }
-h1, h2, h3 { color: #F0F4F8 !important; }
+h1, h2, h3, h4 { color: #F0F4F8 !important; }
 p, li { color: #CBD5E1; }
+/* Compact metrics + expanders (main pane only; sidebar unchanged) */
+section[data-testid="stMain"] div[data-testid="metric-container"] {
+  padding: 0.45rem 0.65rem !important;
+  min-height: 0 !important;
+}
+section[data-testid="stMain"] div[data-testid="metric-container"] [data-testid="stMetricLabel"] p {
+  font-size: 0.72rem !important;
+  line-height: 1.2 !important;
+  margin-bottom: 0.1rem !important;
+}
+section[data-testid="stMain"] div[data-testid="metric-container"] [data-testid="stMetricValue"] {
+  font-size: 1.35rem !important;
+  line-height: 1.15 !important;
+}
+section[data-testid="stMain"] div[data-testid="metric-container"] [data-testid="stMetricDelta"] {
+  font-size: 0.78rem !important;
+  line-height: 1.2 !important;
+  margin-top: 0.15rem !important;
+}
+section[data-testid="stMain"] [data-testid="stExpander"] details > summary {
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+  min-height: 0 !important;
+}
+section[data-testid="stMain"] [data-testid="stExpander"] [data-testid="stVerticalBlockBorderWrapper"] {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.35rem !important;
+}
 [data-testid="stHorizontalBlock"] .stRadio label,
 [data-testid="stHorizontalBlock"] .stRadio div { color: #CBD5E1 !important; }
 /*
@@ -1127,6 +1155,7 @@ if tab == "📊 UK & Regions":
 - **Total job ads** — Unique job listings in the UK gaming sample (1,121); Step A stores one row per skill per ad.
 - **Skill rows / mentions** — One row per skill tag attached to a listing in Step A.
 - **Per 100k** — Skill counts divided by national population × 100,000, so regions are comparable.
+- **Regional top tile** — Highest-demand skill in each region among its top five by count, as mentions per 100k (same rule for all four).
 - **Demo / fallback** — If a CSV is missing, some charts use built-in sample data (Step A–D files
   under `Step files/`).
             """.strip()
@@ -1214,22 +1243,16 @@ if tab == "📊 UK & Regions":
         wal = _top_regional_row("Wales")
         n_ir = _top_regional_row("N. Ireland")
 
-        st.markdown("### Regional Analysis · `4 Regions`")
+        st.markdown("#### Regional Analysis · `4 Regions`")
         st.caption(
-            "England · Scotland · Wales · Northern Ireland — normalised per 100k population "
-            f"(Step A rows · clusters from Step B)"
+            "England · Scotland · Wales · N. Ireland — per 100k · Step A · Step B clusters"
         )
-        st.markdown("---")
 
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("England — top /100k", f"{eng[2]:.2f}", str(eng[0]))
         c2.metric("Scotland — top /100k", f"{sco[2]:.2f}", str(sco[0]))
         c3.metric("Wales — top /100k", f"{wal[2]:.2f}", str(wal[0]))
         c4.metric("N. Ireland — top /100k", f"{n_ir[2]:.2f}", str(n_ir[0]))
-        st.caption(
-            "Each tile shows the **highest-demand skill in that region** among the top five "
-            "(by count), expressed as mentions per 100k population — same rule for all four regions."
-        )
 
         st.markdown("---")
         st.subheader("Top 5 skills per region")
