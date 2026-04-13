@@ -1177,12 +1177,10 @@ if tab == "📊 UK & Regions":
             else pd.Series(dtype=int)
         )
 
-        st.markdown(f"### UK Overview · `{n_jobs:,} total job ads`")
+        st.markdown(f"#### UK Overview · `{n_jobs:,} total job ads`")
         st.caption(
-            f"National snapshot · {n_jobs:,} total job ads · "
-            f"{n_rows:,} skill mentions · source: {src}"
+            f"{n_jobs:,} job ads · {n_rows:,} skill rows · source: {src}"
         )
-        st.markdown("---")
 
         k1, k2, k3, k4 = st.columns(4)
         k1.metric("Total Job Ads", f"{n_jobs:,}", "Unique job listings")
@@ -1312,17 +1310,16 @@ elif tab == "🤖 AI Gaps":
     n_a_skills = int(df_a["Skills"].nunique()) if "Skills" in df_a.columns else 0
     n_cl = int(df_c["Cluster_Name"].nunique()) if live_c and "Cluster_Name" in df_c.columns else 6
 
-    st.markdown(f"### AI Gap Analysis · `{n_gap} gap rows`")
+    st.markdown(f"#### AI Gap Analysis · `{n_gap} gap rows`")
     st.caption(
-        "TF-IDF · K-Means clustering · Location Quotient gap scoring · Workshop recommender "
-        f"(Step C: {n_gap} rows · Step D: {n_rec} recommendations)"
+        f"TF-IDF · K-Means · LQ gaps · workshops · Step C {n_gap} rows · Step D {n_rec} recs"
     )
-    st.info(
-        "**Suggested reading order:** (1) Cluster stack and region × cluster heatmap for where pressure sits, "
-        "(2) workshop recommendation table for concrete priorities, "
-        "(3) pick a **UK region** below for skill-level demand vs gap bars."
-    )
-    st.markdown("---")
+    with st.expander("Suggested reading order", expanded=False):
+        st.markdown(
+            "1. Cluster stack and region × cluster heatmap — where pressure sits.  \n"
+            "2. Workshop recommendation table — concrete priorities.  \n"
+            "3. Pick a **UK region** below — skill-level demand vs gap bars."
+        )
 
     st.subheader("The AI pipeline")
     st.caption("Step A → B → C → D")
@@ -1586,18 +1583,17 @@ elif tab == "🌍 Global":
             in {"united kingdom", "uk", "u.k.", "gb", "great britain"}
         )
         ahead, behind = skill_share_diffs(gdf, top_n=7)
-        st.markdown(f"### Global Comparison · `{n_ct} countries`")
+        st.markdown(f"#### Global Comparison · `{n_ct} countries`")
         st.caption(
-            f"Loaded from **`{global_source_name}`** — gaming-company rows; "
-            f"skill mix = % of rows mentioning each skill token (comma-separated skills)."
+            f"`{global_source_name}` · gaming rows · skill mix = % of rows per token"
         )
     else:
         by_c = None
         ahead, behind = [], []
-        st.markdown("### Global Comparison · `81 Countries`")
+        st.markdown("#### Global Comparison · `81 countries`")
         st.caption(
-            "Reference dataset — place **`Combined_Data_cleaned.xlsx`** or **`Updated_27_02_26_-_Kabilan.xlsx`** "
-            "in the project (sheet *Combined Data*) for live country counts and skill-mix bars."
+            "Reference data — add **`Combined_Data_cleaned.xlsx`** or **`Updated_27_02_26_-_Kabilan.xlsx`** "
+            "(sheet *Combined Data*) for live counts and skill-mix bars."
         )
         ctries = [
             ("United States", 5604, False),
@@ -1614,8 +1610,6 @@ elif tab == "🌍 Global":
         df_ct = pd.DataFrame(ctries, columns=["Country", "Jobs", "is_uk"])
         n_ct = 81
         uk_rank, uk_jobs = 4, 1634
-
-    st.markdown("---")
 
     c1, c2, c3, c4 = st.columns(4)
     if use_live_global and by_c is not None and len(by_c) > 0:
@@ -1658,10 +1652,11 @@ elif tab == "🌍 Global":
 
     st.subheader("UK ahead / behind the world")
     if not use_live_global:
-        st.info(
-            "**Reference charts** — Bars below are static illustrations. Load the global workbook for "
-            "live ahead/behind skill spreads from your data."
-        )
+        with st.expander("Reference charts (no workbook loaded)", expanded=False):
+            st.markdown(
+                "Bars below are **static illustrations**. Load the global workbook for live ahead/behind "
+                "skill spreads from your data."
+            )
     col_a, col_b = st.columns(2)
     ahead_plot = ahead if ahead else ahead_static
     behind_plot = behind if behind else behind_static
@@ -1811,18 +1806,16 @@ elif tab == "🌍 Global":
 # TAB 5 — CV EVALUATOR
 # ═════════════════════════════════════════════════════════════════════════════
 elif tab == "📄 CV":
-    st.markdown("### CV Evaluator · `Step A–aligned`")
+    st.markdown("#### CV Evaluator · `Step A–aligned`")
     st.caption(
-        "Keyword + phrase matching against **your Step A skill tokens** (not a hosted LLM). "
-        "PDF text or paste — then scores vs the same UK gaming rows as the dashboard."
+        "Lexical match vs **Step A** tokens · paste or PDF — same UK gaming rows as the dashboard"
     )
-    st.info(
-        "**Lexical matching only** — The tool looks for exact tokens and known aliases (e.g. “C++”, “CI/CD”) "
-        "in your text. It does not infer skills from job titles or paraphrases. Wording that matches your "
-        "Step A job data works best."
-    )
-    st.caption("Uploaded or pasted CV text stays in this browser session; it is not sent to an external API.")
-    st.markdown("---")
+    with st.expander("How matching works · privacy", expanded=False):
+        st.markdown(
+            "**Lexical only** — Exact tokens and aliases (e.g. C++, CI/CD). No inference from job titles "
+            "or paraphrases; wording that appears in your Step A data works best.  \n\n"
+            "**Privacy** — CV text stays in this browser session; not sent to an external API."
+        )
 
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -1837,7 +1830,6 @@ elif tab == "📄 CV":
     with c4:
         st.markdown("**💡 Feedback**\n\nDemand + listing reach + gaps")
 
-    st.markdown("---")
     cv_gap_region = st.selectbox(
         "UK region for gap cross-check",
         ["England", "Scotland", "Wales", "Northern Ireland"],
@@ -1968,11 +1960,9 @@ elif tab == "📄 CV":
             with st.expander("Text used for matching (check PDF/OCR quality)", expanded=False):
                 st.text(cv_text[:6000] + ("…" if len(cv_text) > 6000 else ""))
 
-            st.markdown("---")
             st.subheader("Your analysis results")
             st.caption(
-                f"Step A source: **{'live CSV' if live_a else 'demo sample'}** · "
-                f"vocabulary = distinct skill tokens in that file"
+                f"Step A: **{'live CSV' if live_a else 'demo sample'}** · vocabulary = distinct tokens in file"
             )
 
             c1, c2, c3, c4 = st.columns(4)
@@ -1989,7 +1979,6 @@ elif tab == "📄 CV":
             )
             c4.metric("Priority gaps", str(len(miss)), "Top Step A skills not detected")
 
-            st.markdown("---")
             cl, cr = st.columns(2)
             with cl:
                 st.caption(f"{len(found)} skills from the Step A vocabulary detected in your CV")
@@ -2032,7 +2021,6 @@ elif tab == "📄 CV":
                 with col:
                     st.metric(cat, f"{score:.0f}%", f"{matched} of {total} skills")
 
-            st.markdown("---")
             if not found:
                 advice = (
                     "No Step A skill tokens matched. Use wording that appears in your job dataset "
