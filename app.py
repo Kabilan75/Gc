@@ -1262,7 +1262,13 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                     if looks_long and id_cols:
                         base = (
                             base.groupby(id_cols, dropna=False)["Skills"]
-                            .apply(lambda x: ",".join(x.astype(str)))
+                            .apply(
+                                lambda x: ",".join(
+                                    p
+                                    for p in (str(v).strip() for v in x if pd.notna(v))
+                                    if p and p.lower() not in ("nan", "none", "null")
+                                )
+                            )
                             .reset_index()
                         )
                 dedup = deduplicate_jobs(base)
