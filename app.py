@@ -1353,7 +1353,7 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                 st.error(f"Error processing global workbook: {str(ex)[:220]}")
 
     if use_live:
-        st.success(f"📡 **Live Data** — `{source_name}` · deduped jobs · binary skill shares.")
+        st.success(f"📡 **Live Data** — `{source_name}` · one row per job listing · binary skill shares.")
     else:
         st.warning(
             "📋 **Reference Data** — Load `Combined_Data_cleaned.xlsx` or `Updated_27_02_26_-_Kabilan.xlsx` "
