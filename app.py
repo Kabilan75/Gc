@@ -1010,10 +1010,12 @@ def make_job_id(row: pd.Series) -> str:
             if v and v.lower() not in {"nan", "none", "null"}:
                 return v
     parts: list[str] = []
-    # Use the actual workbook columns (each job should be stable across exploded skills).
-    for col in ("Company Category", "Country", "State", "Activated Date"):
-        if col in row.index:
-            parts.append(str(row[col]).strip().lower())
+    # After collapsing long-format rows, all non-skill columns describe the job identity.
+    # Hash all columns except `Skills` to avoid collisions when some identity fields are missing.
+    for col in row.index:
+        if col == "Skills":
+            continue
+        parts.append(str(row[col]).strip().lower())
     if not parts:
         parts = [str(v).strip().lower() for v in row.values]
     fp = "|".join(parts)
@@ -1250,6 +1252,19 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                 base["Country"] = base["Country"].apply(normalise_country)
                 base["Country"] = base["Country"].astype(str).str.strip()
                 base = base[base["Country"].str.len() > 0]
+                # If the workbook is in long format (1 skill per row), collapse skills to 1 row per job
+                # by grouping on all columns except `Skills`, then joining skills into one comma string.
+                # Some workbooks may not include `UK Region` even when they're long format, so also
+                # detect long format by checking for duplicates across the non-skill columns.
+                if "Skills" in base.columns:
+                    id_cols = [c for c in base.columns if c != "Skills"]
+                    looks_long = ("UK Region" in base.columns) or (bool(len(id_cols)) and base.duplicated(subset=id_cols).any())
+                    if looks_long and id_cols:
+                        base = (
+                            base.groupby(id_cols, dropna=False)["Skills"]
+                            .apply(lambda x: ",".join(x.astype(str)))
+                            .reset_index()
+                        )
                 dedup = deduplicate_jobs(base)
                 binary_df, top_skills = build_binary_skill_matrix(dedup, min_job_threshold=50, top_n_skills=50)
                 share_df = compute_skill_shares(binary_df, top_skills, min_jobs=50)
