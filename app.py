@@ -1,5 +1,6 @@
 """UK Gaming Industry — Skill Intelligence Dashboard (Streamlit)."""
 from __future__ import annotations
+import hashlib
 import io
 import re
 import shutil
@@ -836,6 +837,554 @@ def _is_uk_country_mask(country_series: pd.Series) -> pd.Series:
     return s.isin({"united kingdom", "uk", "u.k.", "gb", "great britain"})
 
 
+# ── Global tab (improved: dedupe + binary skill shares) ─────────────────────
+SKILL_NORM_MAP = {
+    "cpp": "C++",
+    "c++": "C++",
+    "c plus plus": "C++",
+    "c#": "C#",
+    "csharp": "C#",
+    "c sharp": "C#",
+    "ms-office": "MS Office",
+    "microsoft office": "MS Office",
+    "microsoft-office": "MS Office",
+    "real-time-vfx": "Real-Time VFX",
+    "realtime vfx": "Real-Time VFX",
+    "agile-development": "Agile Development",
+    "agile development": "Agile Development",
+    "agile": "Agile Development",
+    "talent-acquisition": "Talent Acquisition",
+    "team-management": "Team Management",
+    "cross-functional": "Cross-Functional",
+    "quality-control": "Quality Control",
+    "budget-management": "Budget Management",
+    "problem-solving": "Problem Solving",
+    "data-analytics": "Data Analytics",
+    "machine-learning": "Machine Learning",
+    "ml": "Machine Learning",
+    "machine learning": "Machine Learning",
+    "user-experience-ux": "UX / User Experience",
+    "ux": "UX / User Experience",
+    "ci-cd": "CI/CD",
+    "cicd": "CI/CD",
+    "ci/cd": "CI/CD",
+    "timeline-management": "Timeline Management",
+    "back-end": "Back-End Dev",
+    "backend": "Back-End Dev",
+    "lighting-shading": "Lighting & Shading",
+    "aws": "AWS",
+    "amazon web services": "AWS",
+    "azure": "Azure",
+    "microsoft azure": "Azure",
+    "docker": "Docker",
+    "kubernetes": "Kubernetes",
+    "python": "Python",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+    "java": "Java",
+    "sql": "SQL",
+    "nosql": "NoSQL",
+    "unity": "Unity",
+    "unreal": "Unreal Engine",
+    "unreal engine": "Unreal Engine",
+    "communication": "Communication",
+    "storytelling": "Storytelling",
+    "photoshop": "Photoshop",
+    "maya": "Maya",
+    "blender": "Blender",
+    "figma": "Figma",
+    "tableau": "Tableau",
+    "power-bi": "Power BI",
+    "power bi": "Power BI",
+    "excel": "Excel",
+    "git": "Git",
+    "github": "GitHub",
+    "jira": "Jira",
+    "confluence": "Confluence",
+    "linux": "Linux",
+    "salesforce": "Salesforce",
+}
+
+
+def normalise_skill(raw: object) -> str:
+    s = str(raw).strip()
+    if not s:
+        return ""
+    k = s.lower().strip()
+    k_space = k.replace("-", " ").strip()
+    if k_space in SKILL_NORM_MAP:
+        return SKILL_NORM_MAP[k_space]
+    if k in SKILL_NORM_MAP:
+        return SKILL_NORM_MAP[k]
+    return s.replace("-", " ").title()
+
+
+def normalise_country(raw: object) -> str:
+    city_to_country = {
+        "london": "United Kingdom",
+        "manchester": "United Kingdom",
+        "bristol": "United Kingdom",
+        "edinburgh": "United Kingdom",
+        "glasgow": "United Kingdom",
+        "birmingham": "United Kingdom",
+        "leeds": "United Kingdom",
+        "liverpool": "United Kingdom",
+        "brighton": "United Kingdom",
+        "cambridge": "United Kingdom",
+        "oxford": "United Kingdom",
+        "guildford": "United Kingdom",
+        "leicester": "United Kingdom",
+        "sheffield": "United Kingdom",
+        "nottingham": "United Kingdom",
+        "cardiff": "United Kingdom",
+        "belfast": "United Kingdom",
+        "dundee": "United Kingdom",
+        "newcastle": "United Kingdom",
+        "newcastle upon tyne": "United Kingdom",
+        "southampton": "United Kingdom",
+        "england": "United Kingdom",
+        "scotland": "United Kingdom",
+        "wales": "United Kingdom",
+        "northern ireland": "United Kingdom",
+        "uk": "United Kingdom",
+        "u.k.": "United Kingdom",
+        "great britain": "United Kingdom",
+        "britain": "United Kingdom",
+        "united kingdom (uk)": "United Kingdom",
+        "new york": "United States",
+        "san francisco": "United States",
+        "seattle": "United States",
+        "los angeles": "United States",
+        "austin": "United States",
+        "chicago": "United States",
+        "boston": "United States",
+        "usa": "United States",
+        "us": "United States",
+        "bengaluru": "India",
+        "bangalore": "India",
+        "mumbai": "India",
+        "pune": "India",
+        "hyderabad": "India",
+        "chennai": "India",
+        "new delhi": "India",
+        "noida": "India",
+        "gurugram": "India",
+        "delhi": "India",
+        "vancouver": "Canada",
+        "toronto": "Canada",
+        "montreal": "Canada",
+        "calgary": "Canada",
+        "berlin": "Germany",
+        "munich": "Germany",
+        "hamburg": "Germany",
+        "frankfurt": "Germany",
+        "warsaw": "Poland",
+        "krakow": "Poland",
+        "wroclaw": "Poland",
+        "sydney": "Australia",
+        "melbourne": "Australia",
+        "brisbane": "Australia",
+        "perth": "Australia",
+        "paris": "France",
+        "lyon": "France",
+        "tokyo": "Japan",
+        "osaka": "Japan",
+        "stockholm": "Sweden",
+        "gothenburg": "Sweden",
+        "kyiv": "Ukraine",
+        "kiev": "Ukraine",
+    }
+    s = str(raw).strip()
+    if not s:
+        return ""
+    k = s.lower().strip()
+    if k in city_to_country:
+        return city_to_country[k]
+    return s.title()
+
+
+def make_job_id(row: pd.Series) -> str:
+    for id_col in ("Job_ID", "job_id", "ID", "id", "URL", "url"):
+        if id_col in row.index and pd.notna(row[id_col]):
+            v = str(row[id_col]).strip()
+            if v and v.lower() not in {"nan", "none", "null"}:
+                return v
+    parts: list[str] = []
+    for col in ("Title", "Company", "Country", "State", "Activated Date", "Company Category"):
+        if col in row.index:
+            parts.append(str(row[col]).strip().lower())
+    if not parts:
+        parts = [str(v).strip().lower() for v in row.values]
+    fp = "|".join(parts)
+    return hashlib.md5(fp.encode("utf-8", errors="replace")).hexdigest()
+
+
+def deduplicate_jobs(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+    out = df.copy()
+    out["_job_id"] = out.apply(make_job_id, axis=1)
+    out = out.drop_duplicates(subset=["_job_id"], keep="first")
+    return out.reset_index(drop=True)
+
+
+def extract_skills(raw_skills: object) -> list[str]:
+    if raw_skills is None or pd.isna(raw_skills):
+        return []
+    s = str(raw_skills)
+    if not s.strip():
+        return []
+    tokens = re.split(r"[,;/|]+", s)
+    out: list[str] = []
+    for tok in tokens:
+        t = tok.strip()
+        if not t:
+            continue
+        tl = t.lower()
+        if tl in {"nan", "none", "null", "game-texts"}:
+            continue
+        norm = normalise_skill(t)
+        if norm and len(norm) > 1:
+            out.append(norm)
+    return out
+
+
+def build_binary_skill_matrix(
+    df_jobs: pd.DataFrame,
+    *,
+    min_job_threshold: int = 50,
+    top_n_skills: int = 50,
+) -> tuple[pd.DataFrame, list[str]]:
+    if df_jobs is None or df_jobs.empty or "Skills" not in df_jobs.columns:
+        return pd.DataFrame(), []
+    df = df_jobs.copy()
+    if "Country" in df.columns:
+        cc = df["Country"].astype(str).str.strip()
+        counts = cc.value_counts()
+        valid = set(counts[counts >= min_job_threshold].index.astype(str))
+        df = df[cc.isin(valid)]
+    if df.empty:
+        return pd.DataFrame(), []
+    df["Skills"] = df["Skills"].fillna("").astype(str)
+    df["_skills_list"] = df["Skills"].apply(extract_skills)
+
+    skill_counts: dict[str, int] = {}
+    for skills_list in df["_skills_list"]:
+        for sk in set(skills_list):
+            skill_counts[sk] = skill_counts.get(sk, 0) + 1
+    if not skill_counts:
+        return pd.DataFrame(), []
+    top_skills = sorted(skill_counts, key=lambda k: -skill_counts[k])[:top_n_skills]
+
+    records: list[dict[str, object]] = []
+    for _, r in df.iterrows():
+        job_skills = set(r["_skills_list"])
+        rec: dict[str, object] = {sk: (1 if sk in job_skills else 0) for sk in top_skills}
+        rec["Country"] = str(r.get("Country", "")).strip() or "Unknown"
+        records.append(rec)
+    return pd.DataFrame(records), top_skills
+
+
+def compute_skill_shares(binary_df: pd.DataFrame, top_skills: list[str], *, min_jobs: int = 50) -> pd.DataFrame:
+    if binary_df is None or binary_df.empty or not top_skills or "Country" not in binary_df.columns:
+        return pd.DataFrame()
+    out: dict[str, dict[str, float]] = {}
+    for country, grp in binary_df.groupby("Country", sort=False):
+        n = int(len(grp))
+        if n < min_jobs:
+            continue
+        shares: dict[str, float] = {}
+        for sk in top_skills:
+            shares[sk] = float(grp[sk].sum()) / n * 100.0 if sk in grp.columns else 0.0
+        out[str(country)] = shares
+    return pd.DataFrame(out).T if out else pd.DataFrame()
+
+
+def cosine_similarity_to_uk(share_df: pd.DataFrame, *, top_n: int = 12) -> list[tuple[str, float]]:
+    if share_df is None or share_df.empty or "United Kingdom" not in share_df.index:
+        return []
+    uk = share_df.loc["United Kingdom"].to_numpy(dtype=float)
+    uk_norm = float(np.linalg.norm(uk))
+    eps = 1e-9
+    sims: list[tuple[str, float]] = []
+    for c in share_df.index.astype(str):
+        if c == "United Kingdom":
+            continue
+        v = share_df.loc[c].to_numpy(dtype=float)
+        v_norm = float(np.linalg.norm(v))
+        sim = float(np.dot(uk, v) / (uk_norm * v_norm + eps))
+        sim = float(np.clip(sim, -1.0, 1.0))
+        sims.append((c, round(sim, 4)))
+    sims.sort(key=lambda x: -x[1])
+    return sims[:top_n]
+
+
+def compute_uk_vs_world(share_df: pd.DataFrame, *, top_n: int = 7) -> tuple[list[tuple[str, float]], list[tuple[str, float]]]:
+    if share_df is None or share_df.empty or "United Kingdom" not in share_df.index:
+        return [], []
+    uk = share_df.loc["United Kingdom"]
+    world_avg = share_df.mean(axis=0)
+    diff = uk - world_avg
+    ahead_raw = diff[diff > 0.05].sort_values(ascending=False)
+    behind_raw = diff[diff < -0.05].sort_values(ascending=True)
+    ahead = [(str(sk), round(float(v), 2)) for sk, v in ahead_raw.head(top_n).items()]
+    behind = [(str(sk), round(float(abs(v)), 2)) for sk, v in behind_raw.head(top_n).items()]
+    return ahead, behind
+
+
+def build_rankings_table(share_df: pd.DataFrame, *, n_show: int = 12) -> pd.DataFrame:
+    if share_df is None or share_df.empty or "United Kingdom" not in share_df.index:
+        return pd.DataFrame()
+    uk_shares = share_df.loc["United Kingdom"].sort_values(ascending=False)
+    world_avg = share_df.mean(axis=0)
+    uk_rank = uk_shares.rank(ascending=False, method="min")
+    world_rank = world_avg.rank(ascending=False, method="min")
+    rows: list[list[object]] = []
+    for sk in uk_shares.head(n_show).index:
+        uk_pct = round(float(uk_shares[sk]), 2)
+        w_pct = round(float(world_avg.get(sk, 0.0)), 2)
+        uk_r = int(uk_rank[sk])
+        w_r = int(world_rank.get(sk, 0))
+        diff = uk_pct - w_pct
+        trend = "↑ Ahead" if diff > 0.1 else "↓ Behind" if diff < -0.1 else "≈ Parity"
+        rows.append([str(sk), uk_pct, uk_r, w_pct, w_r, trend])
+    return pd.DataFrame(rows, columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"])
+
+
+def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None = None) -> None:
+    st.markdown("#### Global Comparison · `UK vs world`")
+    st.caption("Deduplicated jobs · binary skill presence (% of jobs mentioning skill)")
+    st.markdown("---")
+
+    STATIC_COUNTRIES = [
+        ("United States", 5604),
+        ("India", 2374),
+        ("Canada", 1914),
+        ("United Kingdom", 1634),
+        ("China", 998),
+        ("Poland", 867),
+        ("Germany", 575),
+        ("Japan", 535),
+        ("Australia", 447),
+        ("France", 442),
+    ]
+    STATIC_AHEAD = [
+        ("Talent Acquisition", 18.73),
+        ("Storytelling", 8.41),
+        ("Team Management", 8.22),
+        ("Unreal Engine", 7.41),
+        ("Maya", 6.57),
+        ("C++", 6.35),
+        ("Real-Time VFX", 4.61),
+    ]
+    STATIC_BEHIND = [
+        ("CI/CD", 8.25),
+        ("Python", 6.86),
+        ("SQL", 5.68),
+        ("Docker", 5.10),
+        ("Kubernetes", 4.43),
+        ("Linux", 4.41),
+        ("AWS", 4.41),
+    ]
+    STATIC_RANKINGS = pd.DataFrame(
+        [
+            ["Communication", 52.12, 1, 55.06, 1, "↑ Ahead"],
+            ["Talent Acquisition", 37.11, 2, 18.38, 4, "↑ Ahead"],
+            ["Team Management", 33.67, 3, 25.45, 2, "↓ Behind"],
+            ["Storytelling", 13.07, 6, 4.66, 37, "↑ Ahead"],
+            ["Python", 12.99, 7, 19.85, 3, "↓ Behind"],
+            ["C++", 12.71, 8, 6.36, 25, "↑ Ahead"],
+            ["Unreal Engine", 12.56, 9, 5.15, 31, "↑ Ahead"],
+            ["CI/CD", 5.60, 18, 13.85, 6, "↓ Behind"],
+        ],
+        columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"],
+    )
+    STATIC_SIMILAR = [
+        ("France", 0.96),
+        ("Japan", 0.95),
+        ("United States", 0.94),
+        ("Sweden", 0.93),
+        ("Brazil", 0.93),
+        ("Spain", 0.93),
+        ("Malta", 0.92),
+        ("UAE", 0.92),
+        ("South Korea", 0.92),
+        ("Netherlands", 0.92),
+    ]
+
+    use_live = False
+    share_df = pd.DataFrame()
+    top_countries = None
+    uk_rank = None
+    n_uk_jobs = 0
+    n_countries = 0
+
+    if df_global is not None and not df_global.empty:
+        if "Country" not in df_global.columns:
+            st.error("Workbook loaded but missing required column `Country`.")
+        elif "Skills" not in df_global.columns:
+            st.error("Workbook loaded but missing required column `Skills`.")
+        else:
+            try:
+                base = df_global.copy()
+                if "Company Category" in base.columns:
+                    base = base[base["Company Category"].astype(str).str.strip() == "Gaming Company"].copy()
+                base["Country"] = base["Country"].apply(normalise_country)
+                base["Country"] = base["Country"].astype(str).str.strip()
+                base = base[base["Country"].str.len() > 0]
+                dedup = deduplicate_jobs(base)
+                binary_df, top_skills = build_binary_skill_matrix(dedup, min_job_threshold=50, top_n_skills=50)
+                share_df = compute_skill_shares(binary_df, top_skills, min_jobs=50)
+                if not share_df.empty and "United Kingdom" in share_df.index:
+                    use_live = True
+                    n_countries = int(share_df.shape[0])
+                    n_uk_jobs = int((dedup["Country"] == "United Kingdom").sum())
+                    top_countries = dedup["Country"].value_counts().reset_index()
+                    top_countries.columns = ["Country", "Jobs"]
+                    sorted_countries = dedup["Country"].value_counts()
+                    if "United Kingdom" in sorted_countries.index:
+                        uk_rank = int(sorted_countries.index.tolist().index("United Kingdom") + 1)
+            except Exception as ex:
+                st.error(f"Error processing global workbook: {str(ex)[:220]}")
+
+    if use_live:
+        st.success(f"📡 **Live Data** — `{source_name}` · deduped jobs · binary skill shares.")
+    else:
+        st.warning(
+            "📋 **Reference Data** — Load `Combined_Data_cleaned.xlsx` or `Updated_27_02_26_-_Kabilan.xlsx` "
+            "(sheet: `Combined Data`) to enable live global comparisons."
+        )
+
+    st.markdown("---")
+    c1, c2, c3, c4 = st.columns(4)
+    if use_live:
+        c1.metric("UK Global Rank", f"#{uk_rank}" if uk_rank else "—", f"{n_countries} countries (≥50 jobs)")
+        c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "Deduplicated unique jobs")
+        c3.metric("Countries", f"{n_countries}", "With ≥50 unique jobs")
+        c4.metric("Skills tracked", f"{len(share_df.columns)}", "Top skills vocabulary")
+    else:
+        c1.metric("UK Global Rank", "#4", "By gaming listings")
+        c2.metric("Communication", "80/81", "Countries demand it")
+        c3.metric("UK Comm. Share", "52.12%", "Ranks #1 globally")
+        c4.metric("Most Similar", "France", "0.96 cosine similarity")
+
+    st.subheader("Top countries by gaming job listings")
+    if use_live and top_countries is not None:
+        df_top = top_countries.head(15).copy()
+    else:
+        df_top = pd.DataFrame(STATIC_COUNTRIES, columns=["Country", "Jobs"])
+    df_top["Type"] = df_top["Country"].astype(str).map(lambda x: "United Kingdom" if x == "United Kingdom" else "Other")
+    fig_ct = px.bar(
+        df_top.sort_values("Jobs"),
+        x="Jobs",
+        y="Country",
+        orientation="h",
+        title="Top countries — unique gaming job listings",
+        color="Type",
+        color_discrete_map={"United Kingdom": TEAL, "Other": DIM},
+    )
+    fig_ct.update_traces(texttemplate="%{x:,}", textposition="outside")
+    fig_ct.update_layout(legend_title="")
+    show(fig_ct, 460)
+
+    if use_live and not share_df.empty:
+        st.subheader("Skill Explorer — UK vs world")
+        st.caption("Binary presence: % of unique jobs in each country that mention the skill")
+        skills_available = [str(s) for s in share_df.columns.tolist()]
+        default_skill = "Communication" if "Communication" in skills_available else (skills_available[0] if skills_available else "")
+        skill_in = st.text_input("Search any skill", value=default_skill, key="global_skill_input").strip()
+        if skill_in:
+            cand = [skill_in, normalise_skill(skill_in)]
+            match = None
+            for c in cand:
+                if c in share_df.columns:
+                    match = c
+                    break
+                ci = [col for col in share_df.columns if str(col).lower() == str(c).lower()]
+                if ci:
+                    match = str(ci[0])
+                    break
+            if match:
+                sk_data = share_df[match].dropna().sort_values(ascending=False).reset_index()
+                sk_data.columns = ["Country", "Share %"]
+                top15 = sk_data.head(15).copy()
+                top15["Type"] = top15["Country"].astype(str).map(
+                    lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
+                )
+                fig_sk = px.bar(
+                    top15.sort_values("Share %"),
+                    x="Share %",
+                    y="Country",
+                    orientation="h",
+                    title=f"Top 15 by skill share — {match}",
+                    color="Type",
+                    color_discrete_map={"United Kingdom": TEAL, "Other": DIM},
+                )
+                fig_sk.update_traces(texttemplate="%{x:.1f}%", textposition="outside")
+                fig_sk.update_layout(legend_title="", yaxis_categoryorder="total ascending")
+                show(fig_sk, 460)
+            else:
+                st.warning(f"Skill not found: `{skill_in}`. Try e.g. {', '.join(skills_available[:6])}.")
+
+    st.subheader("UK ahead / behind the world")
+    st.caption("Difference = UK share − global average share (binary % points)")
+    if use_live and not share_df.empty:
+        ahead, behind = compute_uk_vs_world(share_df, top_n=7)
+        rnk = build_rankings_table(share_df, n_show=12)
+        sim_pairs = cosine_similarity_to_uk(share_df, top_n=12)
+    else:
+        ahead, behind = STATIC_AHEAD, STATIC_BEHIND
+        rnk = STATIC_RANKINGS
+        sim_pairs = STATIC_SIMILAR
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.caption("UK ahead")
+        fa = px.bar(
+            pd.DataFrame(ahead, columns=["Skill", "Diff"]).sort_values("Diff"),
+            x="Diff",
+            y="Skill",
+            orientation="h",
+            color_discrete_sequence=[GREEN],
+            title="UK ahead",
+        )
+        fa.update_traces(texttemplate="+%{x:.2f}%", textposition="outside")
+        fa.update_layout(showlegend=False)
+        show(fa, 340)
+    with col_b:
+        st.caption("UK behind")
+        fb = px.bar(
+            pd.DataFrame(behind, columns=["Skill", "Diff"]).sort_values("Diff"),
+            x="Diff",
+            y="Skill",
+            orientation="h",
+            color_discrete_sequence=[RED],
+            title="UK behind",
+        )
+        fb.update_traces(texttemplate="-%{x:.2f}%", textposition="outside")
+        fb.update_layout(showlegend=False)
+        show(fb, 340)
+
+    st.subheader("UK skill rankings vs global")
+    st.dataframe(rnk, use_container_width=True, hide_index=True)
+
+    st.subheader("Countries most similar to UK")
+    if sim_pairs:
+        df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values("Similarity")
+        fig_sim = px.bar(
+            df_sim,
+            x="Similarity",
+            y="Country",
+            orientation="h",
+            title="Countries with most similar skill profile to UK",
+            color="Similarity",
+            color_continuous_scale=[[0, DIM], [1, PURPLE]],
+        )
+        fig_sim.update_layout(coloraxis_showscale=False, xaxis_range=[0.7, 1.0])
+        show(fig_sim, 360)
+        st.caption("Cosine similarity on the tracked skill vocabulary (binary share vectors).")
+
+
 def gaming_global_frame(df: pd.DataFrame) -> pd.DataFrame:
     if df is None or df.empty:
         return pd.DataFrame()
@@ -1562,263 +2111,7 @@ elif tab == "🤖 AI Gaps":
 # TAB 4 — GLOBAL COMPARISON
 # ═════════════════════════════════════════════════════════════════════════════
 elif tab == "🌍 Global":
-    gdf = gaming_global_frame(df_global) if df_global is not None else pd.DataFrame()
-    use_live_global = not gdf.empty and "Country" in gdf.columns
-
-    ahead_static = [
-        ("Talent Acquisition", 18.73),
-        ("Storytelling", 8.41),
-        ("Team Management", 8.22),
-        ("Unreal", 7.41),
-        ("Maya", 6.57),
-        ("C++", 6.35),
-        ("Real-Time VFX", 4.61),
-    ]
-    behind_static = [
-        ("CI/CD", 8.25),
-        ("Python", 6.86),
-        ("SQL", 5.68),
-        ("Docker", 5.10),
-        ("Kubernetes", 4.43),
-        ("Linux", 4.41),
-        ("AWS", 4.41),
-    ]
-
-    if use_live_global:
-        by_c = top_countries_jobs(gdf).sort_values(ascending=False)
-        n_ct = int(len(by_c))
-        uk_jobs, uk_rank = 0, None
-        for i, (country, cnt) in enumerate(by_c.items()):
-            cl = str(country).strip().lower()
-            if cl in {"united kingdom", "uk", "u.k.", "gb", "great britain"}:
-                uk_jobs = int(cnt)
-                uk_rank = i + 1
-                break
-        top10 = by_c.head(10)
-        df_ct = pd.DataFrame({"Country": top10.index.astype(str), "Jobs": top10.values.astype(int)})
-        df_ct["is_uk"] = df_ct["Country"].map(
-            lambda x: str(x).strip().lower()
-            in {"united kingdom", "uk", "u.k.", "gb", "great britain"}
-        )
-        ahead, behind = skill_share_diffs(gdf, top_n=7)
-        st.markdown(f"#### Global Comparison · `{n_ct} countries`")
-        st.caption(
-            f"`{global_source_name}` · gaming rows · skill mix = % of rows per token"
-        )
-    else:
-        by_c = None
-        ahead, behind = [], []
-        st.markdown("#### Global Comparison · `81 countries`")
-        st.caption(
-            "Reference data — add **`Combined_Data_cleaned.xlsx`** or **`Updated_27_02_26_-_Kabilan.xlsx`** "
-            "(sheet *Combined Data*) for live counts and skill-mix bars."
-        )
-        ctries = [
-            ("United States", 5604, False),
-            ("India", 2374, False),
-            ("Canada", 1914, False),
-            ("United Kingdom", 1634, True),
-            ("China", 998, False),
-            ("Poland", 867, False),
-            ("Germany", 575, False),
-            ("Japan", 535, False),
-            ("Australia", 447, False),
-            ("France", 442, False),
-        ]
-        df_ct = pd.DataFrame(ctries, columns=["Country", "Jobs", "is_uk"])
-        n_ct = 81
-        uk_rank, uk_jobs = 4, 1634
-
-    c1, c2, c3, c4 = st.columns(4)
-    if use_live_global and by_c is not None and len(by_c) > 0:
-        c1.metric("UK rank (rows)", f"#{uk_rank}" if uk_rank else "—", f"{n_ct} countries")
-        c2.metric("UK gaming rows", f"{uk_jobs:,}", "In workbook")
-        c3.metric("Countries", f"{n_ct}", "≥1 gaming row")
-        top_nm = str(by_c.index[0])
-        c4.metric("Top country", top_nm[:22] + "…" if len(top_nm) > 22 else top_nm, f"{int(by_c.iloc[0]):,} rows")
-    elif use_live_global and by_c is not None:
-        c1.metric("UK rank (rows)", "—", "No country column data")
-        c2.metric("UK gaming rows", f"{uk_jobs:,}", "In workbook")
-        c3.metric("Countries", "0", "No rows after filter")
-        c4.metric("Top country", "—", "Empty extract")
-    else:
-        c1.metric("UK Global Rank", "#4", "By gaming listings")
-        c2.metric("Communication", "80/81", "Countries demand it")
-        c3.metric("UK Comm. Share", "52.1%", "Ranks #1 globally")
-        c4.metric("Most Similar", "France", "0.96 cosine sim.")
-
-    st.markdown("---")
-    st.subheader("Top countries by gaming job listings")
-    st.caption("UK highlighted when present in top 10")
-    df_ct["Type"] = df_ct["is_uk"].map({True: "United Kingdom", False: "Other"})
-    fig_ct = px.bar(
-        df_ct.sort_values("Jobs"),
-        x="Jobs",
-        y="Country",
-        orientation="h",
-        title="Top 10 countries — gaming job rows",
-        color="Type",
-        color_discrete_map={"United Kingdom": TEAL, "Other": DIM},
-    )
-    fig_ct.update_traces(texttemplate="%{x:,}", textposition="outside")
-    fig_ct.update_layout(legend_title="")
-    show(fig_ct, 420)
-    if use_live_global and uk_rank:
-        st.caption(f"UK at rank **{uk_rank}** with **{uk_jobs:,}** rows in this extract.")
-    else:
-        st.caption("UK highlighted · reference chart when no workbook is loaded")
-
-    st.subheader("UK ahead / behind the world")
-    if not use_live_global:
-        with st.expander("Reference charts (no workbook loaded)", expanded=False):
-            st.markdown(
-                "Bars below are **static illustrations**. Load the global workbook for live ahead/behind "
-                "skill spreads from your data."
-            )
-    col_a, col_b = st.columns(2)
-    ahead_plot = ahead if ahead else ahead_static
-    behind_plot = behind if behind else behind_static
-    with col_a:
-        cap_a = (
-            "UK ahead — skill mention rate in UK job rows minus global rate (workbook)."
-            if ahead
-            else "UK ahead of the world — UK share % above global average (reference only)"
-        )
-        st.caption(cap_a)
-        fa = px.bar(
-            pd.DataFrame(ahead_plot, columns=["Skill", "Diff"]).sort_values("Diff"),
-            x="Diff",
-            y="Skill",
-            orientation="h",
-            color_discrete_sequence=[GREEN],
-            title="UK ahead",
-        )
-        fa.update_traces(texttemplate="+%{x:.2f}%", textposition="outside")
-        fa.update_layout(showlegend=False)
-        show(fa, 360)
-    with col_b:
-        cap_b = (
-            "UK behind — lower mention rate vs all gaming rows (workbook)."
-            if behind
-            else "UK behind the world — future curriculum opportunities (reference only)"
-        )
-        st.caption(cap_b)
-        fb = px.bar(
-            pd.DataFrame(behind_plot, columns=["Skill", "Abs"]).sort_values("Abs", ascending=False),
-            x="Abs",
-            y="Skill",
-            orientation="h",
-            color_discrete_sequence=[RED],
-            title="UK behind",
-        )
-        fb.update_traces(texttemplate="-%{x:.2f}%", textposition="outside")
-        fb.update_layout(showlegend=False)
-        show(fb, 360)
-
-    st.subheader("UK skill rankings vs global")
-    rnk_live = uk_vs_global_skill_table(gdf, n_show=12) if use_live_global else None
-    if rnk_live is not None and not rnk_live.empty:
-        st.caption(
-            "Computed from your workbook — top global-demand skills; % = share of gaming rows per country "
-            "mentioning each skill (comma-separated tokens)."
-        )
-        st.dataframe(rnk_live, use_container_width=True, hide_index=True)
-    else:
-        if use_live_global:
-            st.warning(
-                "Could not build a live UK vs global table (needs UK-labelled rows and a `Skills` column). "
-                "Showing static reference table."
-            )
-        else:
-            st.info("**Reference table** — Illustrative numbers only; not computed from your machine.")
-        st.caption("Full comparison (reference)")
-        rnk = pd.DataFrame(
-            [
-                ["Communication", 52.12, 1, 55.06, 1, "↑ Ahead"],
-                ["Talent Acquisition", 37.11, 2, 18.38, 4, "↑ Ahead"],
-                ["Team Management", 33.67, 3, 25.45, 2, "↓ Behind"],
-                ["Storytelling", 13.07, 6, 4.66, 37, "↑ Ahead"],
-                ["Python", 12.99, 7, 19.85, 3, "↓ Behind"],
-                ["C++", 12.71, 8, 6.36, 25, "↑ Ahead"],
-                ["Unreal", 12.56, 9, 5.15, 31, "↑ Ahead"],
-                ["CI/CD", 5.60, 18, 13.85, 6, "↓ Behind"],
-            ],
-            columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"],
-        )
-        st.dataframe(rnk, use_container_width=True, hide_index=True)
-
-    st.subheader("Countries most similar to UK")
-    sim_pairs, _uk_ref_name = (
-        country_cosine_similarity_to_uk(gdf, top_n=50, max_countries=12)
-        if use_live_global
-        else ([], None)
-    )
-    if sim_pairs:
-        st.caption(
-            "Cosine similarity on the top 50 global skill tokens — each country vector is mention rate "
-            "per job row vs the UK vector."
-        )
-        df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values("Similarity")
-        lo = max(0.0, float(df_sim["Similarity"].min()) - 0.05)
-        hi = min(1.0, float(df_sim["Similarity"].max()) + 0.02)
-        fig_sim = px.bar(
-            df_sim,
-            x="Similarity",
-            y="Country",
-            orientation="h",
-            title="Countries with most similar skill profile to UK (workbook)",
-            color="Similarity",
-            color_continuous_scale=[[0, DIM], [1, PURPLE]],
-        )
-        fig_sim.update_layout(coloraxis_showscale=False, xaxis_range=[lo, hi])
-        show(fig_sim, 360)
-        st.caption("1.0 = identical direction on this skill subset; not a labour-market size comparison.")
-    else:
-        if use_live_global:
-            st.warning(
-                "Could not compute live similarity (no UK country match in `Country`, or no skill mentions). "
-                "Showing reference ranking."
-            )
-        else:
-            st.info("**Reference chart** — Static ranking; load the workbook for cosine similarity from your data.")
-        st.caption("Cosine similarity (reference)")
-        sim = [
-            ("France", 0.96),
-            ("Japan", 0.95),
-            ("USA", 0.94),
-            ("Sweden", 0.93),
-            ("Brazil", 0.93),
-            ("Spain", 0.93),
-            ("Malta", 0.92),
-            ("Netherlands", 0.92),
-        ]
-        df_sim = pd.DataFrame(sim, columns=["Country", "Similarity"]).sort_values("Similarity")
-        fig_sim = px.bar(
-            df_sim,
-            x="Similarity",
-            y="Country",
-            orientation="h",
-            title="Countries with most similar skill profile to UK (reference)",
-            color="Similarity",
-            color_continuous_scale=[[0, DIM], [1, PURPLE]],
-        )
-        fig_sim.update_layout(coloraxis_showscale=False, xaxis_range=[0.88, 1.0])
-        show(fig_sim, 360)
-        st.caption("Cosine similarity — 1.0 = identical skill profile (illustrative values)")
-
-    if ahead:
-        lead = ", ".join(f"{s} +{p:.1f}%" for s, p in ahead[:3])
-        st.success(f"🏆 **From your workbook** — UK leads on: {lead}. Compare countries using the bar chart above.")
-    elif use_live_global:
-        st.success(
-            "🏆 **Workbook loaded** — Use the ahead/behind bars and similarity chart to compare the UK "
-            "to other countries in this extract."
-        )
-    else:
-        st.success(
-            "🏆 **Reference narrative** — Illustrative story only until the global workbook is loaded; "
-            "then metrics and similarity are derived from your file."
-        )
+    render_global_tab(df_global, source_name=global_source_name)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 5 — CV EVALUATOR
