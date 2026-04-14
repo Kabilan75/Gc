@@ -798,19 +798,36 @@ def gap_region_chart_df(df_c: pd.DataFrame, region: str, n: int = 12) -> pd.Data
 
 
 def gap_cluster_heatmap(df_c: pd.DataFrame) -> tuple[list, list[str], list[str]]:
-    if df_c is None or df_c.empty:
+    """Mean Gap_Score per UK Region × Cluster_Name from Step C (live CSV)."""
+    need = {"UK Region", "Cluster_Name", "Gap_Score"}
+    if df_c is None or df_c.empty or not need.issubset(df_c.columns):
         return [], [], []
-    g = df_c.groupby(["UK Region", "Cluster_Name"], as_index=False)["Gap_Score"].mean()
+    df = df_c.copy()
+    df["UK Region"] = df["UK Region"].astype(str).str.strip()
+    df["Cluster_Name"] = df["Cluster_Name"].astype(str).str.strip()
+    df["Gap_Score"] = pd.to_numeric(df["Gap_Score"], errors="coerce")
+    df = df.dropna(subset=["Gap_Score"])
+    if df.empty:
+        return [], [], []
+    g = df.groupby(["UK Region", "Cluster_Name"], as_index=False)["Gap_Score"].mean()
     pivot = g.pivot(index="UK Region", columns="Cluster_Name", values="Gap_Score")
+    cluster_order = [
+        "Game Development & Programming",
+        "Soft Skills & Business Development",
+        "Project & Development Management",
+        "Soft Skills & Creative Production",
+        "Business Tools & Productivity",
+        "Cloud, Infrastructure & DevOps",
+    ]
+    pivot = pivot.reindex(columns=cluster_order)
     row_order = ["England", "Scotland", "Wales", "Northern Ireland"]
     rows = [r for r in row_order if r in pivot.index]
     if not rows:
         return [], [], []
-    pivot = pivot.reindex(rows)
-    cols = list(pivot.columns)
+    pivot = pivot.reindex(index=rows)
     z = pivot.fillna(0).values.tolist()
     y = [_reg_display(r) for r in rows]
-    x = [_short_cluster(str(c)) for c in cols]
+    x = [_short_cluster(str(c)) for c in cluster_order]
     return z, x, y
 
 
@@ -1382,16 +1399,6 @@ elif tab == "🤖 AI Gaps":
     col_l, col_r = st.columns(2)
 
     z_gh, x_gh, y_gh = gap_cluster_heatmap(df_c)
-    if not z_gh:
-        gv = {
-            "England": [5.07, 5.09, 5.09, 5.21, 5.26, 5.09],
-            "Scotland": [4.74, 4.25, 4.62, 4.82, 4.75, 4.82],
-            "Wales": [3.41, 3.50, 3.59, 4.18, 4.64, 4.66],
-            "N.Ireland": [2.77, 0.00, 3.90, 4.63, 4.52, 4.69],
-        }
-        gcl = ["Biz Tools", "Cloud", "Game Dev", "Proj Mgmt", "Soft Skills", "Creative"]
-        z_g = [[gv[r][i] for i in range(6)] for r in gv]
-        x_gh, y_gh, z_gh = gcl, list(gv.keys()), z_g
 
     ni_cloud_zero = False
     if y_gh and x_gh and z_gh:
@@ -1413,26 +1420,37 @@ elif tab == "🤖 AI Gaps":
     with col_l:
         st.caption("Average gap score — region × cluster")
         st.caption("Location Quotient · darker = more urgent · 0.00 = zero demand")
-        fig_ghm = go.Figure(
-            go.Heatmap(
-                z=z_gh,
-                x=x_gh,
-                y=y_gh,
-                text=[[f"{float(v):.2f}" for v in row] for row in z_gh],
-                texttemplate="%{text}",
-                colorscale=[[0, S2], [0.35, "#0D2540"], [1, TEAL]],
-                hovertemplate="<b>%{y} — %{x}</b><br>Gap: %{z:.2f}<extra></extra>",
+        if z_gh and x_gh and y_gh:
+            fig_ghm = go.Figure(
+                go.Heatmap(
+                    z=z_gh,
+                    x=x_gh,
+                    y=y_gh,
+                    text=[[f"{float(v):.2f}" for v in row] for row in z_gh],
+                    texttemplate="%{text}",
+                    colorscale=[[0, S2], [0.35, "#0D2540"], [1, TEAL]],
+                    hovertemplate="<b>%{y} — %{x}</b><br>Gap: %{z:.2f}<extra></extra>",
+                )
             )
-        )
-        fig_ghm.update_layout(title="Region × cluster gap scores", yaxis=dict(autorange="reversed"))
-        show(fig_ghm, 340)
-        if ni_cloud_zero:
+            fig_ghm.update_layout(title="Region × cluster gap scores", yaxis=dict(autorange="reversed"))
+            show(fig_ghm, 340)
+            if ni_cloud_zero:
+                st.warning(
+                    "⚠️ **N. Ireland Cloud ≈ 0** — Little or no Cloud cluster demand in the Step C matrix. "
+                    + (eng_rng or "")
+                )
+            elif eng_rng:
+                st.info(eng_rng)
+        else:
             st.warning(
-                "⚠️ **N. Ireland Cloud ≈ 0** — Little or no Cloud cluster demand in the Step C matrix. "
-                + (eng_rng or "")
+                "Region × cluster gap heatmap needs **Step C** data: load `step_c_gap_scores.csv` with columns "
+                "**UK Region**, **Cluster_Name**, and **Gap_Score** (numeric). "
+                "Values are the **mean Gap_Score** per region × cluster from that file."
             )
-        elif eng_rng:
-            st.info(eng_rng)
+            if not live_c:
+                st.caption(
+                    "Step C CSV was not found — place `step_c_gap_scores.csv` in the project or `Step files/` folder."
+                )
 
     with col_r:
         st.caption("Workshop recommendations")
