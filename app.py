@@ -911,95 +911,68 @@ def normalise_skill(raw: object) -> str:
     if not s:
         return ""
     k = s.lower().strip()
+    # Treat common separators consistently for lookup.
+    k = re.sub(r"\s*/\s*", "-", k)
     k_space = k.replace("-", " ").strip()
     if k_space in SKILL_NORM_MAP:
         return SKILL_NORM_MAP[k_space]
     if k in SKILL_NORM_MAP:
         return SKILL_NORM_MAP[k]
+    if k_space in {"ci cd"} or k in {"ci-cd", "ci/cd"}:
+        return "CI/CD"
+    if k in {"c++", "cplusplus", "c plus plus"} or k_space in {"c++"}:
+        return "C++"
     return s.replace("-", " ").title()
 
 
 def normalise_country(raw: object) -> str:
-    city_to_country = {
-        "london": "United Kingdom",
-        "manchester": "United Kingdom",
-        "bristol": "United Kingdom",
-        "edinburgh": "United Kingdom",
-        "glasgow": "United Kingdom",
-        "birmingham": "United Kingdom",
-        "leeds": "United Kingdom",
-        "liverpool": "United Kingdom",
-        "brighton": "United Kingdom",
-        "cambridge": "United Kingdom",
-        "oxford": "United Kingdom",
-        "guildford": "United Kingdom",
-        "leicester": "United Kingdom",
-        "sheffield": "United Kingdom",
-        "nottingham": "United Kingdom",
-        "cardiff": "United Kingdom",
-        "belfast": "United Kingdom",
-        "dundee": "United Kingdom",
-        "newcastle": "United Kingdom",
-        "newcastle upon tyne": "United Kingdom",
-        "southampton": "United Kingdom",
-        "england": "United Kingdom",
-        "scotland": "United Kingdom",
-        "wales": "United Kingdom",
-        "northern ireland": "United Kingdom",
-        "uk": "United Kingdom",
-        "u.k.": "United Kingdom",
-        "great britain": "United Kingdom",
-        "britain": "United Kingdom",
-        "united kingdom (uk)": "United Kingdom",
-        "new york": "United States",
-        "san francisco": "United States",
-        "seattle": "United States",
-        "los angeles": "United States",
-        "austin": "United States",
-        "chicago": "United States",
-        "boston": "United States",
-        "usa": "United States",
-        "us": "United States",
-        "bengaluru": "India",
-        "bangalore": "India",
-        "mumbai": "India",
-        "pune": "India",
-        "hyderabad": "India",
-        "chennai": "India",
-        "new delhi": "India",
-        "noida": "India",
-        "gurugram": "India",
-        "delhi": "India",
-        "vancouver": "Canada",
-        "toronto": "Canada",
-        "montreal": "Canada",
-        "calgary": "Canada",
-        "berlin": "Germany",
-        "munich": "Germany",
-        "hamburg": "Germany",
-        "frankfurt": "Germany",
-        "warsaw": "Poland",
-        "krakow": "Poland",
-        "wroclaw": "Poland",
-        "sydney": "Australia",
-        "melbourne": "Australia",
-        "brisbane": "Australia",
-        "perth": "Australia",
-        "paris": "France",
-        "lyon": "France",
-        "tokyo": "Japan",
-        "osaka": "Japan",
-        "stockholm": "Sweden",
-        "gothenburg": "Sweden",
-        "kyiv": "Ukraine",
-        "kiev": "Ukraine",
-    }
     s = str(raw).strip()
     if not s:
         return ""
     k = s.lower().strip()
-    if k in city_to_country:
-        return city_to_country[k]
+    k = re.sub(r"\s+", " ", k)
+
+    # UK name variants -> United Kingdom (do not infer from ambiguous cities).
+    uk_variants = {
+        "uk",
+        "u.k.",
+        "great britain",
+        "britain",
+        "england",
+        "scotland",
+        "wales",
+        "northern ireland",
+        "united kingdom (uk)",
+        "uk (united kingdom)",
+        "united kingdom",
+    }
+    if k in uk_variants:
+        return "United Kingdom"
+
+    # Only map cities that are unambiguously UK-only (avoid inflating UK counts).
+    uk_only_cities = {
+        "guildford",
+        "leicester",
+        "dundee",
+        "leamington spa",
+        "royal leamington spa",
+        "newcastle upon tyne",
+    }
+    if k in uk_only_cities:
+        return "United Kingdom"
+
+    # Minimal, explicit country synonyms (non-UK) to keep comparisons consistent.
+    other = {
+        "usa": "United States",
+        "us": "United States",
+        "u.s.": "United States",
+        "united states of america": "United States",
+        "uae": "United Arab Emirates",
+        "u.a.e.": "United Arab Emirates",
+    }
+    if k in other:
+        return other[k]
+
     return s.title()
 
 
@@ -1010,14 +983,19 @@ def make_job_id(row: pd.Series) -> str:
             if v and v.lower() not in {"nan", "none", "null"}:
                 return v
     parts: list[str] = []
-    # After collapsing long-format rows, all non-skill columns describe the job identity.
-    # Hash all columns except `Skills` to avoid collisions when some identity fields are missing.
-    for col in row.index:
-        if col == "Skills":
-            continue
-        parts.append(str(row[col]).strip().lower())
-    if not parts:
-        parts = [str(v).strip().lower() for v in row.values]
+    # Preferred fingerprint for this workbook shape.
+    fp_cols = ["Company Category", "Country", "State", "Activated Date"]
+    if all(c in row.index for c in fp_cols):
+        for c in fp_cols:
+            parts.append(str(row.get(c, "")).strip().lower())
+    else:
+        # Fallback: hash all columns except `Skills` / derived helpers.
+        for col in row.index:
+            if col in {"Skills", "_skills_list"}:
+                continue
+            parts.append(str(row[col]).strip().lower())
+        if not parts:
+            parts = [str(v).strip().lower() for v in row.values]
     fp = "|".join(parts)
     return hashlib.md5(fp.encode("utf-8", errors="replace")).hexdigest()
 
@@ -1037,12 +1015,13 @@ def extract_skills(raw_skills: object) -> list[str]:
     s = str(raw_skills)
     if not s.strip():
         return []
-    # Protect slash-skills like CI/CD so splitting doesn't create garbage tokens.
+    # Protect slash-containing and symbol skills before splitting.
     s = re.sub(r"(?i)\bci\s*/\s*cd\b", "ci-cd", s)
+    s = re.sub(r"(?i)\bc\\+\\+\\b", "cpp-skill", s)
     tokens = re.split(r"[,;|]+", s)
     out: list[str] = []
     for tok in tokens:
-        t = tok.strip()
+        t = tok.strip().replace("cpp-skill", "c++")
         if not t:
             continue
         tl = t.lower()
@@ -1057,18 +1036,12 @@ def extract_skills(raw_skills: object) -> list[str]:
 def build_binary_skill_matrix(
     df_jobs: pd.DataFrame,
     *,
-    min_job_threshold: int = 50,
     top_n_skills: int = 50,
 ) -> tuple[pd.DataFrame, list[str]]:
     if df_jobs is None or df_jobs.empty or "Skills" not in df_jobs.columns:
         return pd.DataFrame(), []
     df = df_jobs.copy()
-    if "Country" in df.columns:
-        cc = df["Country"].astype(str).str.strip()
-        counts = cc.value_counts()
-        valid = set(counts[counts >= min_job_threshold].index.astype(str))
-        df = df[cc.isin(valid)]
-    if df.empty:
+    if "Country" not in df.columns:
         return pd.DataFrame(), []
     df["Skills"] = df["Skills"].fillna("").astype(str)
     df["_skills_list"] = df["Skills"].apply(extract_skills)
@@ -1089,14 +1062,12 @@ def build_binary_skill_matrix(
     return binary_df, top_skills
 
 
-def compute_skill_shares(binary_df: pd.DataFrame, top_skills: list[str], *, min_jobs: int = 50) -> pd.DataFrame:
+def compute_skill_shares(binary_df: pd.DataFrame, top_skills: list[str]) -> pd.DataFrame:
     if binary_df is None or binary_df.empty or not top_skills or "Country" not in binary_df.columns:
         return pd.DataFrame()
     out: dict[str, dict[str, float]] = {}
     for country, grp in binary_df.groupby("Country", sort=False):
         n = int(len(grp))
-        if n < min_jobs:
-            continue
         shares: dict[str, float] = {}
         for sk in top_skills:
             shares[sk] = float(grp[sk].sum()) / n * 100.0 if sk in grp.columns else 0.0
@@ -1127,15 +1098,14 @@ def cosine_similarity_to_uk(share_df: pd.DataFrame, *, top_n: int = 12) -> list[
 
 def compute_uk_vs_world(
     share_df: pd.DataFrame,
-    binary_df: pd.DataFrame,
+    all_job_counts: pd.Series,
     *,
     top_n: int = 7,
 ) -> tuple[list[tuple[str, float]], list[tuple[str, float]]]:
     if share_df is None or share_df.empty or "United Kingdom" not in share_df.index:
         return [], []
     uk = share_df.loc["United Kingdom"]
-    job_counts = binary_df.groupby("Country").size() if binary_df is not None and not binary_df.empty else pd.Series(dtype=float)
-    weights = pd.Series([float(job_counts.get(c, 1)) for c in share_df.index], index=share_df.index)
+    weights = pd.Series([float(all_job_counts.get(c, 1)) for c in share_df.index], index=share_df.index)
     world_avg = share_df.multiply(weights, axis=0).sum() / float(weights.sum() if float(weights.sum()) else 1.0)
     diff = uk - world_avg
     ahead_raw = diff[diff > 0.05].sort_values(ascending=False)
@@ -1147,15 +1117,14 @@ def compute_uk_vs_world(
 
 def build_rankings_table(
     share_df: pd.DataFrame,
-    binary_df: pd.DataFrame,
+    all_job_counts: pd.Series,
     *,
     n_show: int = 12,
 ) -> pd.DataFrame:
     if share_df is None or share_df.empty or "United Kingdom" not in share_df.index:
         return pd.DataFrame()
     uk_shares = share_df.loc["United Kingdom"].sort_values(ascending=False)
-    job_counts = binary_df.groupby("Country").size() if binary_df is not None and not binary_df.empty else pd.Series(dtype=float)
-    weights = pd.Series([float(job_counts.get(c, 1)) for c in share_df.index], index=share_df.index)
+    weights = pd.Series([float(all_job_counts.get(c, 1)) for c in share_df.index], index=share_df.index)
     world_avg = share_df.multiply(weights, axis=0).sum() / float(weights.sum() if float(weights.sum()) else 1.0)
     uk_rank = uk_shares.rank(ascending=False, method="min")
     world_rank = world_avg.rank(ascending=False, method="min")
@@ -1192,7 +1161,7 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         ("Talent Acquisition", 18.73),
         ("Storytelling", 8.41),
         ("Team Management", 8.22),
-        ("Unreal Engine", 7.41),
+        ("Unreal", 7.41),
         ("Maya", 6.57),
         ("C++", 6.35),
         ("Real-Time VFX", 4.61),
@@ -1214,7 +1183,7 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
             ["Storytelling", 13.07, 6, 4.66, 37, "↑ Ahead"],
             ["Python", 12.99, 7, 19.85, 3, "↓ Behind"],
             ["C++", 12.71, 8, 6.36, 25, "↑ Ahead"],
-            ["Unreal Engine", 12.56, 9, 5.15, 31, "↑ Ahead"],
+            ["Unreal", 12.56, 9, 5.15, 31, "↑ Ahead"],
             ["CI/CD", 5.60, 18, 13.85, 6, "↓ Behind"],
         ],
         columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"],
@@ -1233,10 +1202,14 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
 
     use_live = False
     share_df = pd.DataFrame()
+    top_skills: list[str] = []
+    all_job_counts = pd.Series(dtype=int)
+
     top_countries = None
     uk_rank = None
     n_uk_jobs = 0
-    n_countries = 0
+    n_total_countries = 0
+    n_countries_analysed = 0
 
     binary_df = pd.DataFrame()
     if df_global is not None and not df_global.empty:
@@ -1249,40 +1222,50 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                 base = df_global.copy()
                 if "Company Category" in base.columns:
                     base = base[base["Company Category"].astype(str).str.strip() == "Gaming Company"].copy()
-                base["Country"] = base["Country"].apply(normalise_country)
-                base["Country"] = base["Country"].astype(str).str.strip()
-                base = base[base["Country"].str.len() > 0]
-                # If the workbook is in long format (1 skill per row), collapse skills to 1 row per job
-                # by grouping on all columns except `Skills`, then joining skills into one comma string.
-                # Some workbooks may not include `UK Region` even when they're long format, so also
-                # detect long format by checking for duplicates across the non-skill columns.
-                if "Skills" in base.columns:
-                    id_cols = [c for c in base.columns if c != "Skills"]
-                    looks_long = ("UK Region" in base.columns) or (bool(len(id_cols)) and base.duplicated(subset=id_cols).any())
-                    if looks_long and id_cols:
-                        base = (
-                            base.groupby(id_cols, dropna=False)["Skills"]
-                            .apply(
-                                lambda x: ",".join(
-                                    p
-                                    for p in (str(v).strip() for v in x if pd.notna(v))
-                                    if p and p.lower() not in ("nan", "none", "null")
-                                )
+
+                base["Country"] = base["Country"].apply(normalise_country).astype(str).str.strip()
+                base = base[base["Country"].str.len() > 0].copy()
+
+                # ISSUE 4: collapse long-format rows (1 skill per row) BEFORE deduplication.
+                id_cols = [c for c in base.columns if c not in ("Skills", "_skills_list")]
+                if id_cols:
+                    base_collapsed = (
+                        base.groupby(id_cols, dropna=False)["Skills"]
+                        .apply(
+                            lambda x: ",".join(
+                                p
+                                for p in x.dropna().astype(str).str.strip().tolist()
+                                if p and str(p).strip().lower() not in ("nan", "none", "null")
                             )
-                            .reset_index()
                         )
-                dedup = deduplicate_jobs(base)
-                binary_df, top_skills = build_binary_skill_matrix(dedup, min_job_threshold=50, top_n_skills=50)
-                share_df = compute_skill_shares(binary_df, top_skills, min_jobs=50)
-                if not share_df.empty and "United Kingdom" in share_df.index:
-                    use_live = True
-                    n_countries = int(share_df.shape[0])
-                    n_uk_jobs = int((dedup["Country"] == "United Kingdom").sum())
-                    top_countries = dedup["Country"].value_counts().reset_index()
+                        .reset_index()
+                    )
+                else:
+                    base_collapsed = base
+
+                dedup = deduplicate_jobs(base_collapsed)
+                if dedup is not None and not dedup.empty and "Country" in dedup.columns:
+                    all_job_counts = dedup["Country"].astype(str).str.strip().value_counts()
+                    n_total_countries = int(all_job_counts.shape[0])
+                    n_uk_jobs = int(all_job_counts.get("United Kingdom", 0))
+
+                    # ISSUE 2/3: ranking uses ALL countries (>=1 job).
+                    if n_uk_jobs > 0 and "United Kingdom" in all_job_counts.index:
+                        uk_rank = int(all_job_counts.index.tolist().index("United Kingdom") + 1)
+
+                    top_countries = all_job_counts.reset_index()
                     top_countries.columns = ["Country", "Jobs"]
-                    sorted_countries = dedup["Country"].value_counts()
-                    if "United Kingdom" in sorted_countries.index:
-                        uk_rank = int(sorted_countries.index.tolist().index("United Kingdom") + 1)
+
+                    # Skill analysis only: countries with >= 50 jobs.
+                    analysed = set(all_job_counts[all_job_counts >= 50].index.astype(str))
+                    n_countries_analysed = int(len(analysed))
+                    dedup_analysed = dedup[dedup["Country"].astype(str).str.strip().isin(analysed)].copy()
+
+                    binary_df, top_skills = build_binary_skill_matrix(dedup_analysed, top_n_skills=50)
+                    share_df = compute_skill_shares(binary_df, top_skills)
+
+                    if not share_df.empty and "United Kingdom" in share_df.index:
+                        use_live = True
             except Exception as ex:
                 st.error(f"Error processing global workbook: {str(ex)[:220]}")
 
@@ -1292,16 +1275,18 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         st.warning(
             "📋 **Reference Data** — Load `Combined_Data_cleaned.xlsx` or `Updated_27_02_26_-_Kabilan.xlsx` "
             "(sheet: `Combined Data`) to enable live global comparisons. "
+            "Showing 81 countries in reference data. Live mode shows countries with ≥50 jobs "
+            "for skill analysis but all countries for ranking. "
             "Note: static % values use raw token counts — live values use binary presence per job so numbers will differ."
         )
 
     st.markdown("---")
     c1, c2, c3, c4 = st.columns(4)
     if use_live:
-        c1.metric("UK Global Rank", f"#{uk_rank}" if uk_rank else "—", f"{n_countries} countries (≥50 jobs)")
-        c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "Deduplicated unique jobs")
-        c3.metric("Countries", f"{n_countries}", "With ≥50 unique jobs")
-        c4.metric("Skills tracked", f"{len(share_df.columns)}", "Top skills vocabulary")
+        c1.metric("UK Global Rank", f"#{uk_rank}" if uk_rank else "—", f"out of {n_total_countries} total countries")
+        c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "deduplicated unique jobs")
+        c3.metric("Countries analysed", f"{n_countries_analysed}", f"{n_total_countries} total countries found")
+        c4.metric("Skills tracked", f"{len(top_skills):,}", "top skills vocabulary")
     else:
         c1.metric("UK Global Rank", "#4", "By gaming listings")
         c2.metric("Communication", "80/81", "Countries demand it")
@@ -1369,8 +1354,8 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     st.subheader("UK ahead / behind the world")
     st.caption("Difference = UK share − global average share (binary % points)")
     if use_live and not share_df.empty:
-        ahead, behind = compute_uk_vs_world(share_df, binary_df, top_n=7)
-        rnk = build_rankings_table(share_df, binary_df, n_show=12)
+        ahead, behind = compute_uk_vs_world(share_df, all_job_counts, top_n=7)
+        rnk = build_rankings_table(share_df, all_job_counts, n_show=12)
         sim_pairs = cosine_similarity_to_uk(share_df, top_n=12)
     else:
         ahead, behind = STATIC_AHEAD, STATIC_BEHIND
