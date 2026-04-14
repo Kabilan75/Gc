@@ -1010,7 +1010,8 @@ def make_job_id(row: pd.Series) -> str:
             if v and v.lower() not in {"nan", "none", "null"}:
                 return v
     parts: list[str] = []
-    for col in ("Title", "Company", "Country", "State", "Activated Date", "Company Category"):
+    # Use the actual workbook columns (each job should be stable across exploded skills).
+    for col in ("Company Category", "Country", "State", "Activated Date"):
         if col in row.index:
             parts.append(str(row[col]).strip().lower())
     if not parts:
@@ -1034,7 +1035,9 @@ def extract_skills(raw_skills: object) -> list[str]:
     s = str(raw_skills)
     if not s.strip():
         return []
-    tokens = re.split(r"[,;/|]+", s)
+    # Protect slash-skills like CI/CD so splitting doesn't create garbage tokens.
+    s = re.sub(r"(?i)\bci\s*/\s*cd\b", "ci-cd", s)
+    tokens = re.split(r"[,;|]+", s)
     out: list[str] = []
     for tok in tokens:
         t = tok.strip()
@@ -1076,13 +1079,12 @@ def build_binary_skill_matrix(
         return pd.DataFrame(), []
     top_skills = sorted(skill_counts, key=lambda k: -skill_counts[k])[:top_n_skills]
 
-    records: list[dict[str, object]] = []
-    for _, r in df.iterrows():
-        job_skills = set(r["_skills_list"])
-        rec: dict[str, object] = {sk: (1 if sk in job_skills else 0) for sk in top_skills}
-        rec["Country"] = str(r.get("Country", "")).strip() or "Unknown"
-        records.append(rec)
-    return pd.DataFrame(records), top_skills
+    # Faster build than per-row dict construction.
+    binary_df = pd.DataFrame(index=range(len(df)))
+    binary_df["Country"] = df["Country"].astype(str).str.strip().replace({"": "Unknown"}).values
+    for sk in top_skills:
+        binary_df[sk] = df["_skills_list"].apply(lambda skills, s=sk: 1 if s in set(skills) else 0).values
+    return binary_df, top_skills
 
 
 def compute_skill_shares(binary_df: pd.DataFrame, top_skills: list[str], *, min_jobs: int = 50) -> pd.DataFrame:
@@ -1105,6 +1107,8 @@ def cosine_similarity_to_uk(share_df: pd.DataFrame, *, top_n: int = 12) -> list[
         return []
     uk = share_df.loc["United Kingdom"].to_numpy(dtype=float)
     uk_norm = float(np.linalg.norm(uk))
+    if uk_norm < 1e-6:
+        return []
     eps = 1e-9
     sims: list[tuple[str, float]] = []
     for c in share_df.index.astype(str):
@@ -1119,11 +1123,18 @@ def cosine_similarity_to_uk(share_df: pd.DataFrame, *, top_n: int = 12) -> list[
     return sims[:top_n]
 
 
-def compute_uk_vs_world(share_df: pd.DataFrame, *, top_n: int = 7) -> tuple[list[tuple[str, float]], list[tuple[str, float]]]:
+def compute_uk_vs_world(
+    share_df: pd.DataFrame,
+    binary_df: pd.DataFrame,
+    *,
+    top_n: int = 7,
+) -> tuple[list[tuple[str, float]], list[tuple[str, float]]]:
     if share_df is None or share_df.empty or "United Kingdom" not in share_df.index:
         return [], []
     uk = share_df.loc["United Kingdom"]
-    world_avg = share_df.mean(axis=0)
+    job_counts = binary_df.groupby("Country").size() if binary_df is not None and not binary_df.empty else pd.Series(dtype=float)
+    weights = pd.Series([float(job_counts.get(c, 1)) for c in share_df.index], index=share_df.index)
+    world_avg = share_df.multiply(weights, axis=0).sum() / float(weights.sum() if float(weights.sum()) else 1.0)
     diff = uk - world_avg
     ahead_raw = diff[diff > 0.05].sort_values(ascending=False)
     behind_raw = diff[diff < -0.05].sort_values(ascending=True)
@@ -1132,11 +1143,18 @@ def compute_uk_vs_world(share_df: pd.DataFrame, *, top_n: int = 7) -> tuple[list
     return ahead, behind
 
 
-def build_rankings_table(share_df: pd.DataFrame, *, n_show: int = 12) -> pd.DataFrame:
+def build_rankings_table(
+    share_df: pd.DataFrame,
+    binary_df: pd.DataFrame,
+    *,
+    n_show: int = 12,
+) -> pd.DataFrame:
     if share_df is None or share_df.empty or "United Kingdom" not in share_df.index:
         return pd.DataFrame()
     uk_shares = share_df.loc["United Kingdom"].sort_values(ascending=False)
-    world_avg = share_df.mean(axis=0)
+    job_counts = binary_df.groupby("Country").size() if binary_df is not None and not binary_df.empty else pd.Series(dtype=float)
+    weights = pd.Series([float(job_counts.get(c, 1)) for c in share_df.index], index=share_df.index)
+    world_avg = share_df.multiply(weights, axis=0).sum() / float(weights.sum() if float(weights.sum()) else 1.0)
     uk_rank = uk_shares.rank(ascending=False, method="min")
     world_rank = world_avg.rank(ascending=False, method="min")
     rows: list[list[object]] = []
@@ -1206,7 +1224,6 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         ("Sweden", 0.93),
         ("Brazil", 0.93),
         ("Spain", 0.93),
-        ("Malta", 0.92),
         ("UAE", 0.92),
         ("South Korea", 0.92),
         ("Netherlands", 0.92),
@@ -1219,6 +1236,7 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     n_uk_jobs = 0
     n_countries = 0
 
+    binary_df = pd.DataFrame()
     if df_global is not None and not df_global.empty:
         if "Country" not in df_global.columns:
             st.error("Workbook loaded but missing required column `Country`.")
@@ -1252,7 +1270,8 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     else:
         st.warning(
             "📋 **Reference Data** — Load `Combined_Data_cleaned.xlsx` or `Updated_27_02_26_-_Kabilan.xlsx` "
-            "(sheet: `Combined Data`) to enable live global comparisons."
+            "(sheet: `Combined Data`) to enable live global comparisons. "
+            "Note: static % values use raw token counts — live values use binary presence per job so numbers will differ."
         )
 
     st.markdown("---")
@@ -1329,8 +1348,8 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     st.subheader("UK ahead / behind the world")
     st.caption("Difference = UK share − global average share (binary % points)")
     if use_live and not share_df.empty:
-        ahead, behind = compute_uk_vs_world(share_df, top_n=7)
-        rnk = build_rankings_table(share_df, n_show=12)
+        ahead, behind = compute_uk_vs_world(share_df, binary_df, top_n=7)
+        rnk = build_rankings_table(share_df, binary_df, n_show=12)
         sim_pairs = cosine_similarity_to_uk(share_df, top_n=12)
     else:
         ahead, behind = STATIC_AHEAD, STATIC_BEHIND
