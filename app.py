@@ -926,53 +926,135 @@ def normalise_skill(raw: object) -> str:
 
 
 def normalise_country(raw: object) -> str:
+    city_to_country = {
+        # UK-only cities (avoid ambiguous cities like Cambridge/Oxford/Bristol/Newcastle)
+        "guildford": "United Kingdom",
+        "leicester": "United Kingdom",
+        "dundee": "United Kingdom",
+        "leamington spa": "United Kingdom",
+        "royal leamington spa": "United Kingdom",
+        "newcastle upon tyne": "United Kingdom",
+        "glasgow": "United Kingdom",
+        "edinburgh": "United Kingdom",
+        "cardiff": "United Kingdom",
+        "belfast": "United Kingdom",
+        # UK country name variations
+        "uk": "United Kingdom",
+        "u.k.": "United Kingdom",
+        "great britain": "United Kingdom",
+        "britain": "United Kingdom",
+        "england": "United Kingdom",
+        "scotland": "United Kingdom",
+        "wales": "United Kingdom",
+        "northern ireland": "United Kingdom",
+        "united kingdom (uk)": "United Kingdom",
+        # US cities — unambiguous
+        "new york": "United States",
+        "san francisco": "United States",
+        "seattle": "United States",
+        "los angeles": "United States",
+        "austin": "United States",
+        "chicago": "United States",
+        "boston": "United States",
+        "el segundo": "United States",
+        "santa monica": "United States",
+        "san mateo": "United States",
+        "salt lake city": "United States",
+        "bellevue": "United States",
+        "redmond": "United States",
+        "irvine": "United States",
+        "usa": "United States",
+        "us": "United States",
+        # India cities — unambiguous
+        "bengaluru": "India",
+        "bangalore": "India",
+        "mumbai": "India",
+        "pune": "India",
+        "hyderabad": "India",
+        "chennai": "India",
+        "new delhi": "India",
+        "noida": "India",
+        "gurugram": "India",
+        "kolkata": "India",
+        # Canada
+        "vancouver": "Canada",
+        "toronto": "Canada",
+        "montreal": "Canada",
+        "calgary": "Canada",
+        "edmonton": "Canada",
+        "winnipeg": "Canada",
+        # Germany
+        "berlin": "Germany",
+        "munich": "Germany",
+        "hamburg": "Germany",
+        "frankfurt am main": "Germany",
+        "cologne": "Germany",
+        "dusseldorf": "Germany",
+        # Poland
+        "warsaw": "Poland",
+        "krakow": "Poland",
+        "wroclaw": "Poland",
+        "gdansk": "Poland",
+        # Australia
+        "sydney": "Australia",
+        "melbourne": "Australia",
+        "brisbane": "Australia",
+        "perth": "Australia",
+        # France
+        "paris": "France",
+        "lyon": "France",
+        "montpellier": "France",
+        # Japan
+        "tokyo": "Japan",
+        "osaka": "Japan",
+        # Sweden
+        "stockholm": "Sweden",
+        "gothenburg": "Sweden",
+        "malmo": "Sweden",
+        # Ukraine
+        "kyiv": "Ukraine",
+        "kiev": "Ukraine",
+        "kharkiv": "Ukraine",
+        "lviv": "Ukraine",
+        # Netherlands
+        "amsterdam": "Netherlands",
+        "rotterdam": "Netherlands",
+        # Spain
+        "madrid": "Spain",
+        "barcelona": "Spain",
+        # South Korea
+        "seoul": "South Korea",
+        "busan": "South Korea",
+        # Other unambiguous
+        "singapore": "Singapore",
+        "dubai": "United Arab Emirates",
+        "tel aviv": "Israel",
+        "tel aviv-yafo": "Israel",
+        "moscow": "Russia",
+        "istanbul": "Turkey",
+        "prague": "Czech Republic",
+        "budapest": "Hungary",
+        "bucharest": "Romania",
+        "helsinki": "Finland",
+        "oslo": "Norway",
+        "copenhagen": "Denmark",
+        "zurich": "Switzerland",
+        "vienna": "Austria",
+        "lisbon": "Portugal",
+        "dublin": "Ireland",
+        "sao paulo": "Brazil",
+        "mexico city": "Mexico",
+        "buenos aires": "Argentina",
+        "kuala lumpur": "Malaysia",
+        "bangkok": "Thailand",
+        "jakarta": "Indonesia",
+    }
     s = str(raw).strip()
     if not s:
         return ""
-    k = s.lower().strip()
-    k = re.sub(r"\s+", " ", k)
-
-    # UK name variants -> United Kingdom (do not infer from ambiguous cities).
-    uk_variants = {
-        "uk",
-        "u.k.",
-        "great britain",
-        "britain",
-        "england",
-        "scotland",
-        "wales",
-        "northern ireland",
-        "united kingdom (uk)",
-        "uk (united kingdom)",
-        "united kingdom",
-    }
-    if k in uk_variants:
-        return "United Kingdom"
-
-    # Only map cities that are unambiguously UK-only (avoid inflating UK counts).
-    uk_only_cities = {
-        "guildford",
-        "leicester",
-        "dundee",
-        "leamington spa",
-        "royal leamington spa",
-        "newcastle upon tyne",
-    }
-    if k in uk_only_cities:
-        return "United Kingdom"
-
-    # Minimal, explicit country synonyms (non-UK) to keep comparisons consistent.
-    other = {
-        "usa": "United States",
-        "us": "United States",
-        "u.s.": "United States",
-        "united states of america": "United States",
-        "uae": "United Arab Emirates",
-        "u.a.e.": "United Arab Emirates",
-    }
-    if k in other:
-        return other[k]
-
+    k = re.sub(r"\s+", " ", s.lower().strip())
+    if k in city_to_country:
+        return city_to_country[k]
     return s.title()
 
 
@@ -1010,27 +1092,25 @@ def deduplicate_jobs(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def extract_skills(raw_skills: object) -> list[str]:
-    if raw_skills is None or pd.isna(raw_skills):
+    if not raw_skills or pd.isna(raw_skills):
         return []
-    s = str(raw_skills)
-    if not s.strip():
+    s = str(raw_skills).strip()
+    if s.lower() in ("nan", "none", ""):
         return []
-    # Protect slash-containing and symbol skills before splitting.
-    s = re.sub(r"(?i)\bci\s*/\s*cd\b", "ci-cd", s)
-    s = re.sub(r"(?i)\bc\\+\\+\\b", "cpp-skill", s)
-    tokens = re.split(r"[,;|]+", s)
-    out: list[str] = []
+    # Protect slash-containing skills before splitting.
+    s = re.sub(r"(?i)\bci\s*/\s*cd\b", "CICD_PROTECTED", s)
+    # Split on comma and semicolon only (not slash).
+    tokens = re.split(r"[,;]+", s)
+    result: list[str] = []
     for tok in tokens:
-        t = tok.strip().replace("cpp-skill", "c++")
-        if not t:
+        tok = tok.strip()
+        tok = tok.replace("CICD_PROTECTED", "ci-cd")
+        if not tok or tok.lower() in ("nan", "none", "", "game-texts", "null"):
             continue
-        tl = t.lower()
-        if tl in {"nan", "none", "null", "game-texts"}:
-            continue
-        norm = normalise_skill(t)
-        if norm and len(norm) > 1:
-            out.append(norm)
-    return out
+        normalised = normalise_skill(tok)
+        if normalised and len(normalised) > 1:
+            result.append(normalised)
+    return result
 
 
 def build_binary_skill_matrix(
@@ -1140,9 +1220,32 @@ def build_rankings_table(
     return pd.DataFrame(rows, columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"])
 
 
+def prepare_global_data(df_global: pd.DataFrame | None) -> pd.DataFrame:
+    """Prepare Global workbook data.
+
+    Each row is treated as one unique job listing (no collapsing / no deduplication).
+    """
+    if df_global is None or df_global.empty:
+        return pd.DataFrame()
+
+    base = df_global.copy()
+
+    # Filter gaming companies only
+    if "Company Category" in base.columns:
+        base = base[base["Company Category"].astype(str).str.strip() == "Gaming Company"].copy()
+
+    # Normalise country names
+    if "Country" in base.columns:
+        base["Country"] = base["Country"].apply(normalise_country)
+        base = base[base["Country"].astype(str).str.strip().str.len() > 0].copy()
+
+    # Each row = one job. No collapsing. No deduplication.
+    return base.reset_index(drop=True)
+
+
 def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None = None) -> None:
     st.markdown("#### Global Comparison · `UK vs world`")
-    st.caption("Deduplicated jobs · binary skill presence (% of jobs mentioning skill)")
+    st.caption("Unique job listings · binary skill presence (% of jobs mentioning skill)")
     st.markdown("---")
 
     STATIC_COUNTRIES = [
@@ -1219,49 +1322,29 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
             st.error("Workbook loaded but missing required column `Skills`.")
         else:
             try:
-                base = df_global.copy()
-                if "Company Category" in base.columns:
-                    base = base[base["Company Category"].astype(str).str.strip() == "Gaming Company"].copy()
+                # STEP 1: load + filter gaming rows; each row is one job listing.
+                base = prepare_global_data(df_global)
 
-                base["Country"] = base["Country"].apply(normalise_country).astype(str).str.strip()
-                base = base[base["Country"].str.len() > 0].copy()
-
-                # ISSUE 4: collapse long-format rows (1 skill per row) BEFORE deduplication.
-                id_cols = [c for c in base.columns if c not in ("Skills", "_skills_list")]
-                if id_cols:
-                    base_collapsed = (
-                        base.groupby(id_cols, dropna=False)["Skills"]
-                        .apply(
-                            lambda x: ",".join(
-                                p
-                                for p in x.dropna().astype(str).str.strip().tolist()
-                                if p and str(p).strip().lower() not in ("nan", "none", "null")
-                            )
-                        )
-                        .reset_index()
-                    )
-                else:
-                    base_collapsed = base
-
-                dedup = deduplicate_jobs(base_collapsed)
-                if dedup is not None and not dedup.empty and "Country" in dedup.columns:
-                    all_job_counts = dedup["Country"].astype(str).str.strip().value_counts()
+                if base is not None and not base.empty and "Country" in base.columns:
+                    all_job_counts = base["Country"].astype(str).str.strip().value_counts()
                     n_total_countries = int(all_job_counts.shape[0])
                     n_uk_jobs = int(all_job_counts.get("United Kingdom", 0))
 
-                    # ISSUE 2/3: ranking uses ALL countries (>=1 job).
-                    if n_uk_jobs > 0 and "United Kingdom" in all_job_counts.index:
-                        uk_rank = int(all_job_counts.index.tolist().index("United Kingdom") + 1)
+                    # STEP 4: UK rank among ALL countries by job count.
+                    sorted_counts = all_job_counts.sort_values(ascending=False)
+                    if "United Kingdom" in sorted_counts.index:
+                        uk_rank = int(sorted_counts.index.tolist().index("United Kingdom") + 1)
 
-                    top_countries = all_job_counts.reset_index()
+                    # STEP 5: Top countries chart uses ALL countries.
+                    top_countries = sorted_counts.reset_index()
                     top_countries.columns = ["Country", "Jobs"]
 
-                    # Skill analysis only: countries with >= 50 jobs.
-                    analysed = set(all_job_counts[all_job_counts >= 50].index.astype(str))
-                    n_countries_analysed = int(len(analysed))
-                    dedup_analysed = dedup[dedup["Country"].astype(str).str.strip().isin(analysed)].copy()
+                    # STEP 6: 50-job threshold ONLY for skill analysis.
+                    n_countries_analysed = int((all_job_counts >= 50).sum())
+                    analysed_countries = set(all_job_counts[all_job_counts >= 50].index.astype(str))
+                    base_analysed = base[base["Country"].astype(str).str.strip().isin(analysed_countries)].copy()
 
-                    binary_df, top_skills = build_binary_skill_matrix(dedup_analysed, top_n_skills=50)
+                    binary_df, top_skills = build_binary_skill_matrix(base_analysed, top_n_skills=50)
                     share_df = compute_skill_shares(binary_df, top_skills)
 
                     if not share_df.empty and "United Kingdom" in share_df.index:
@@ -1284,9 +1367,9 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     c1, c2, c3, c4 = st.columns(4)
     if use_live:
         c1.metric("UK Global Rank", f"#{uk_rank}" if uk_rank else "—", f"out of {n_total_countries} total countries")
-        c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "deduplicated unique jobs")
-        c3.metric("Countries analysed", f"{n_countries_analysed}", f"{n_total_countries} total countries found")
-        c4.metric("Skills tracked", f"{len(top_skills):,}", "top skills vocabulary")
+        c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "unique job listings")
+        c3.metric("Countries for analysis", f"{n_countries_analysed}", f"{n_total_countries} total countries found")
+        c4.metric("Skills tracked", "50", "top skills vocabulary")
     else:
         c1.metric("UK Global Rank", "#4", "By gaming listings")
         c2.metric("Communication", "80/81", "Countries demand it")
