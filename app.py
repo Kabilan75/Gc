@@ -2063,7 +2063,8 @@ elif tab == "🤖 AI Gaps":
     n_gap = len(df_c)
     n_rec = len(df_d)
     n_a_rows = len(df_a)
-    n_a_skills = int(df_a["Skills"].nunique()) if "Skills" in df_a.columns else 0
+    # Same verified distinct-skill total as UK Overview (not raw CSV nunique — can differ slightly).
+    n_a_skills = UK_OVERVIEW_UNIQUE_SKILLS
     n_cl = int(df_c["Cluster_Name"].nunique()) if live_c and "Cluster_Name" in df_c.columns else 6
 
     st.markdown(f"#### AI Gap Analysis · `{n_gap} gap rows`")
