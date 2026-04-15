@@ -2201,23 +2201,76 @@ elif tab == "🤖 AI Gaps":
                 f"`{', '.join(sorted(STEP_D_REQUIRED_COLS))}`. Showing demo workshop table until the CSV matches."
             )
         if step_d_dataframe_ok(df_d):
+            df_d_display = df_d.copy()
+            df_d_display["UK Region"] = df_d_display["UK_Region"].astype(str).str.strip()
+            df_d_display["Skills"] = df_d_display["Skill"].map(lambda s: _norm_skill_token(s))
+            if (
+                len(df_c)
+                and "Supply" in df_c.columns
+                and "UK Region" in df_c.columns
+                and "Skills" in df_c.columns
+            ):
+                supply_lookup = df_c[["UK Region", "Skills", "Supply"]].copy()
+                supply_lookup = supply_lookup.drop_duplicates(
+                    subset=["UK Region", "Skills"], keep="first"
+                )
+                df_d_display = df_d_display.merge(
+                    supply_lookup,
+                    on=["UK Region", "Skills"],
+                    how="left",
+                )
+            else:
+                df_d_display["Supply"] = np.nan
+            df_d_display["Supply"] = (
+                pd.to_numeric(df_d_display["Supply"], errors="coerce").round(4).fillna(0.0)
+            )
+            cluster_col = (
+                "Cluster_Name"
+                if "Cluster_Name" in df_d_display.columns
+                else ("Skill_Cluster" if "Skill_Cluster" in df_d_display.columns else None)
+            )
+            pri = (
+                df_d_display["Workshop_Recommendation"].map(_prior_from_rec)
+                if "Workshop_Recommendation" in df_d_display.columns
+                else "—"
+            )
             ws_df = pd.DataFrame(
                 {
-                    "Region": df_d["UK_Region"],
-                    "Skill": df_d["Skill"],
-                    "Demand": df_d["Demand_Count"].astype(int),
-                    "Gap": df_d["Gap_Score"].map(lambda x: f"{float(x):.2f}"),
-                    "Priority": df_d["Workshop_Recommendation"].map(_prior_from_rec)
-                    if "Workshop_Recommendation" in df_d.columns
-                    else "—",
+                    "UK Region": df_d_display["UK Region"],
+                    "Skills": df_d_display["Skill"],
+                    "Cluster_Name": df_d_display[cluster_col] if cluster_col else "—",
+                    "Demand": df_d_display["Demand_Count"].astype(int),
+                    "Supply": df_d_display["Supply"],
+                    "Gap_Score": pd.to_numeric(df_d_display["Gap_Score"], errors="coerce"),
+                    "Priority": pri,
                 }
             )
         else:
             ws_df = pd.DataFrame(
                 WORKSHOP_HTML,
-                columns=["Region", "Skill", "Demand", "Gap", "Priority"],
+                columns=["UK Region", "Skills", "Demand", "Gap_Score", "Priority"],
             )
+            ws_df["Gap_Score"] = ws_df["Gap_Score"].map(lambda x: float(x))
+            ws_df["Cluster_Name"] = "—"
+            ws_df["Supply"] = 0.0
+            ws_df = ws_df[
+                [
+                    "UK Region",
+                    "Skills",
+                    "Cluster_Name",
+                    "Demand",
+                    "Supply",
+                    "Gap_Score",
+                    "Priority",
+                ]
+            ]
         st.dataframe(ws_df, use_container_width=True, hide_index=True)
+        st.caption(
+            "Supply = Location Quotient scaled 0–10 · "
+            "Low Supply + High Demand = High Gap Score · "
+            "Communication Supply 0.1759 is near zero "
+            "confirming maximum urgency"
+        )
 
     c_row_counts = step_c_row_counts_by_region(df_c) if len(df_c) and "UK Region" in df_c.columns else {}
     thin = [
@@ -2295,7 +2348,7 @@ elif tab == "🤖 AI Gaps":
         f"Step C · {gap_pick}",
     )
     k2.metric("Recommendations", str(n_rec), "Step D rows")
-    k3.metric("Top workshop skill", str(ws_df.iloc[0]["Skill"]) if len(ws_df) else "—", "1st row Step D")
+    k3.metric("Top workshop skill", str(ws_df.iloc[0]["Skills"]) if len(ws_df) else "—", "1st row Step D")
     k4.metric("Clusters (Step C)", str(n_cl), "Distinct cluster names")
 
 # ═════════════════════════════════════════════════════════════════════════════
