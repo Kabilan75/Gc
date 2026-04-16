@@ -2090,6 +2090,57 @@ if tab == "📊 UK & Regions":
         show(fig_hm, 420)
         st.caption("Darker teal = higher demand per 100k population")
 
+        st.markdown("---")
+        st.subheader("Cluster profile radar (per 100k)")
+        st.caption("Six Step B clusters plotted for all four UK regions (reference profile).")
+
+        clusters = ["Game Dev", "Soft Skills", "Proj Mgmt", "Creative", "Biz Tools", "Cloud"]
+        _theta = clusters + [clusters[0]]
+        radar = {
+            "England": [3.55, 3.55, 1.49, 1.45, 0.72, 0.71],
+            "Scotland": [2.19, 1.60, 0.93, 0.44, 0.47, 0.18],
+            "Wales": [1.06, 0.47, 0.09, 0.16, 0.22, 0.28],
+            "N. Ireland": [1.88, 1.20, 0.58, 0.21, 0.37, 0.00],
+        }
+        radar_cols = {
+            "England": "#60A5FA",
+            "Scotland": "#34D399",
+            "Wales": "#F5A623",
+            "N. Ireland": "#A78BFA",
+        }
+
+        fig_r = go.Figure()
+        for region, vals in radar.items():
+            r = list(vals) + [vals[0]]
+            fig_r.add_trace(
+                go.Scatterpolar(
+                    r=r,
+                    theta=_theta,
+                    mode="lines+markers",
+                    name=region,
+                    line=dict(color=radar_cols.get(region, TEAL), width=2),
+                    marker=dict(size=6),
+                )
+            )
+        fig_r.update_layout(
+            title="Regions × clusters — per 100k",
+            polar=dict(
+                bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(
+                    visible=True,
+                    gridcolor="rgba(255,255,255,0.06)",
+                    tickcolor="rgba(255,255,255,0.12)",
+                ),
+                angularaxis=dict(
+                    gridcolor="rgba(255,255,255,0.06)",
+                    tickcolor="rgba(255,255,255,0.12)",
+                ),
+            ),
+            showlegend=True,
+            legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
+        )
+        show(fig_r, 460, margin_patch=dict(t=40, b=90), axis_tick_color="#CBD5E1")
+
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 3 — AI GAP ANALYSIS
 # ═════════════════════════════════════════════════════════════════════════════
