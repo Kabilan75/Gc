@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0/dist/chartjs-chart-treemap.min.js"></script>
 <style>
 :root {
   --bg: #05090F;
@@ -305,6 +306,14 @@ html, body { min-height:100vh; background:var(--bg); color:var(--text); font-fam
           <p>Top 15 skills = 42.2% of all demand. The remaining 337 skills each average just 0.17% coverage — confirming focussed workshop curriculum is the right approach.</p>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Skill Category Treemap</div>
+    <div class="card-sub">Area shows category size across 6,948 cleaned skill rows</div>
+    <div style="position:relative;height:340px;">
+      <canvas id="treemapChart" role="img" aria-label="Treemap showing skill category breakdown."></canvas>
     </div>
   </div>
 </div>
@@ -678,6 +687,60 @@ new Chart(document.getElementById('catBarChart'), {
   type: 'bar',
   data: { labels: jobCats.labels, datasets: [{ data: jobCats.data, backgroundColor: '#162236', borderColor: '#00E5CC', borderWidth: 1, borderRadius: 4, hoverBackgroundColor: '#00E5CC22' }] },
   options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#ffffff08' }, ticks: { color: '#8A9BB0', font: { size: 11 } } }, y: { grid: { display: false }, ticks: { color: '#8A9BB0', font: { size: 10 } } } } }
+});
+
+// ── CATEGORY TREEMAP ──
+const catTree = [
+  { category: 'Soft Skills', value: 2499, color: '#00E5CC' },
+  { category: 'Other', value: 1457, color: '#4A5568' },
+  { category: 'Tools', value: 893, color: '#60A5FA' },
+  { category: 'Programming', value: 639, color: '#A78BFA' },
+  { category: '3D Art', value: 575, color: '#F5A623' },
+  { category: 'Game Engines', value: 512, color: '#34D399' },
+  { category: 'Cloud', value: 373, color: '#FF5572' },
+];
+
+new Chart(document.getElementById('treemapChart'), {
+  type: 'treemap',
+  data: {
+    datasets: [{
+      label: 'Skill categories',
+      tree: catTree,
+      key: 'value',
+      groups: ['category'],
+      spacing: 1,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.10)',
+      backgroundColor: (ctx) => {
+        const raw = ctx.raw || {};
+        return raw._data && raw._data.color ? (raw._data.color + '22') : '#162236';
+      },
+      hoverBackgroundColor: (ctx) => {
+        const raw = ctx.raw || {};
+        return raw._data && raw._data.color ? (raw._data.color + '55') : '#00E5CC33';
+      },
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: (items) => {
+            const r = items && items[0] ? items[0].raw : null;
+            return r && r.g ? r.g : 'Category';
+          },
+          label: (item) => {
+            const r = item.raw || {};
+            const v = r.v || (r._data ? r._data.value : 0);
+            return ` ${Number(v).toLocaleString()} rows`;
+          }
+        }
+      }
+    }
+  }
 });
 
 // ── HEATMAP ──
