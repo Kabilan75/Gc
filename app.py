@@ -1381,13 +1381,19 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         df_top = top_countries.head(15).copy()
     else:
         df_top = pd.DataFrame(STATIC_COUNTRIES, columns=["Country", "Jobs"])
-    df_top["Type"] = df_top["Country"].astype(str).map(lambda x: "United Kingdom" if x == "United Kingdom" else "Other")
+    df_top["Type"] = df_top["Country"].astype(str).map(
+        lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
+    )
+    df_top = df_top.sort_values("Jobs", ascending=False).reset_index(drop=True)
+    df_top["Rank"] = df_top.index + 1
+    df_top["RankLabel"] = df_top["Rank"].astype(str) + ". " + df_top["Country"].astype(str)
+
     fig_ct = px.bar(
-        df_top.sort_values("Jobs"),
+        df_top,
         x="Jobs",
-        y="Country",
+        y="RankLabel",
         orientation="h",
-        title="Top 15 Countries — Unique Gaming Job Listings",
+        title="Top 15 Countries — Unique Gaming Job Listings (Ranked)",
         color="Type",
         color_discrete_map={
             "United Kingdom": "#00E5CC",
@@ -1403,9 +1409,12 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     fig_ct.update_layout(
         showlegend=False,
         xaxis_title="Number of Job Listings",
-        yaxis_title="",
+        yaxis_title="Rank · Country",
+        yaxis=dict(autorange="reversed"),
     )
-    _uk_rank = int(uk_rank) if (use_live and uk_rank) else 4
+    _uk_rank = int(uk_rank) if (use_live and uk_rank) else int(
+        df_top.loc[df_top["Country"] == "United Kingdom", "Rank"].iloc[0]
+    ) if "United Kingdom" in df_top["Country"].values else 4
     fig_ct.add_annotation(
         text=f"🇬🇧 UK = #{_uk_rank} globally",
         xref="paper",
