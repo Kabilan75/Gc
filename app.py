@@ -1455,9 +1455,8 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                 )
                 fig_sk.update_traces(texttemplate="%{x:.1f}%", textposition="outside")
                 fig_sk.update_layout(legend_title="", yaxis_categoryorder="total ascending")
-                show(fig_sk, 460)
-
                 match_skill = match
+                fig_bub = None
                 if match_skill and sk_data is not None and not sk_data.empty:
                     top10_bubble = sk_data.head(10).copy()
                     top10_bubble["Is_UK"] = top10_bubble["Country"].apply(
@@ -1484,7 +1483,15 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                         xaxis_title="",
                         yaxis_title="Share % of Jobs",
                     )
-                    show(fig_bub, 380)
+
+                if fig_bub is not None:
+                    c_l, c_r = st.columns(2)
+                    with c_l:
+                        show(fig_sk, 460)
+                    with c_r:
+                        show(fig_bub, 380)
+                else:
+                    show(fig_sk, 460)
             else:
                 st.warning(f"Skill not found: `{skill_in}`. Try e.g. {', '.join(skills_available[:6])}.")
 
