@@ -1409,6 +1409,10 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         showlegend=False,
         xaxis_title="Rank · Country",
         yaxis_title="Number of Job Listings",
+        xaxis=dict(
+            categoryorder="array",
+            categoryarray=df_top["RankLabel"].tolist(),
+        ),
     )
     _uk_rank = int(uk_rank) if (use_live and uk_rank) else int(
         df_top.loc[df_top["Country"] == "United Kingdom", "Rank"].iloc[0]
