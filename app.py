@@ -1387,13 +1387,38 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         x="Jobs",
         y="Country",
         orientation="h",
-        title="Top countries — unique gaming job listings",
+        title="Top 15 Countries — Unique Gaming Job Listings",
         color="Type",
-        color_discrete_map={"United Kingdom": TEAL, "Other": DIM},
+        color_discrete_map={
+            "United Kingdom": "#00E5CC",
+            "Other": "#1E293B",
+        },
+        text="Jobs",
     )
-    fig_ct.update_traces(texttemplate="%{x:,}", textposition="outside")
-    fig_ct.update_layout(legend_title="")
-    show(fig_ct, 460)
+    fig_ct.update_traces(
+        texttemplate="%{text:,}",
+        textposition="outside",
+        textfont=dict(size=11),
+    )
+    fig_ct.update_layout(
+        showlegend=False,
+        xaxis_title="Number of Job Listings",
+        yaxis_title="",
+    )
+    _uk_rank = int(uk_rank) if (use_live and uk_rank) else 4
+    fig_ct.add_annotation(
+        text=f"🇬🇧 UK = #{_uk_rank} globally",
+        xref="paper",
+        yref="paper",
+        x=0.98,
+        y=0.15,
+        showarrow=False,
+        font=dict(size=12, color="#00E5CC"),
+        bgcolor="#0C1422",
+        bordercolor="#00E5CC",
+        borderwidth=1,
+    )
+    show(fig_ct, 500)
 
     if use_live and not share_df.empty:
         st.subheader("Skill Explorer — UK vs world")
@@ -1431,6 +1456,35 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                 fig_sk.update_traces(texttemplate="%{x:.1f}%", textposition="outside")
                 fig_sk.update_layout(legend_title="", yaxis_categoryorder="total ascending")
                 show(fig_sk, 460)
+
+                match_skill = match
+                if match_skill and sk_data is not None and not sk_data.empty:
+                    top10_bubble = sk_data.head(10).copy()
+                    top10_bubble["Is_UK"] = top10_bubble["Country"].apply(
+                        lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
+                    )
+
+                    fig_bub = px.scatter(
+                        top10_bubble,
+                        x="Country",
+                        y="Share %",
+                        size="Share %",
+                        color="Is_UK",
+                        color_discrete_map={
+                            "United Kingdom": "#00E5CC",
+                            "Other": "#A78BFA",
+                        },
+                        title=f"Skill Share Bubble — {match_skill}",
+                        hover_data={"Share %": ":.2f"},
+                        size_max=50,
+                    )
+                    fig_bub.update_layout(
+                        showlegend=False,
+                        xaxis_tickangle=45,
+                        xaxis_title="",
+                        yaxis_title="Share % of Jobs",
+                    )
+                    show(fig_bub, 380)
             else:
                 st.warning(f"Skill not found: `{skill_in}`. Try e.g. {', '.join(skills_available[:6])}.")
 
@@ -1445,52 +1499,113 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         rnk = STATIC_RANKINGS
         sim_pairs = STATIC_SIMILAR
 
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.caption("UK ahead")
-        fa = px.bar(
-            pd.DataFrame(ahead, columns=["Skill", "Diff"]).sort_values("Diff"),
-            x="Diff",
-            y="Skill",
-            orientation="h",
-            color_discrete_sequence=[GREEN],
-            title="UK ahead",
-        )
-        fa.update_traces(texttemplate="+%{x:.2f}%", textposition="outside")
-        fa.update_layout(showlegend=False)
-        show(fa, 340)
-    with col_b:
-        st.caption("UK behind")
-        fb = px.bar(
-            pd.DataFrame(behind, columns=["Skill", "Diff"]).sort_values("Diff"),
-            x="Diff",
-            y="Skill",
-            orientation="h",
-            color_discrete_sequence=[RED],
-            title="UK behind",
-        )
-        fb.update_traces(texttemplate="-%{x:.2f}%", textposition="outside")
-        fb.update_layout(showlegend=False)
-        show(fb, 340)
+    ahead_plot = ahead
+    behind_plot = behind
+
+    ahead_df = pd.DataFrame(ahead_plot, columns=["Skill", "Diff"])
+    behind_df = pd.DataFrame(behind_plot, columns=["Skill", "Diff"])
+    behind_df["Diff"] = -behind_df["Diff"]
+
+    combined = pd.concat([ahead_df, behind_df])
+    combined = combined.sort_values("Diff")
+    combined["Color"] = combined["Diff"].apply(lambda x: "UK Ahead" if x > 0 else "UK Behind")
+    combined["AbsDiff"] = combined["Diff"].abs()
+
+    fig_div = px.bar(
+        combined,
+        x="Diff",
+        y="Skill",
+        orientation="h",
+        color="Color",
+        color_discrete_map={
+            "UK Ahead": "#34D399",
+            "UK Behind": "#FF5572",
+        },
+        title="UK vs Global Average — Skill Share Difference (%)",
+        text="AbsDiff",
+    )
+    fig_div.update_traces(
+        texttemplate="%{text:.2f}%",
+        textposition="outside",
+    )
+    fig_div.add_vline(
+        x=0,
+        line_color="rgba(255,255,255,0.3)",
+        line_width=2,
+    )
+    fig_div.update_layout(
+        showlegend=True,
+        xaxis_title="Difference from Global Average (%)",
+        yaxis_title="",
+        legend=dict(orientation="h", y=1.08),
+    )
+    show(fig_div, 500)
+    st.caption(
+        "Green = UK demands this skill MORE than world average · "
+        "Red = UK demands this skill LESS than world average"
+    )
 
     st.subheader("UK skill rankings vs global")
     st.dataframe(rnk, use_container_width=True, hide_index=True)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric(
+        "UK #1 Skill Globally",
+        "Communication",
+        "51.63% of UK gaming jobs",
+    )
+    col2.metric(
+        "Biggest UK Advantage",
+        "Talent Acquisition",
+        "+13.67% above world avg",
+    )
+    col3.metric(
+        "Biggest UK Gap",
+        "CI/CD",
+        "-8.25% below world avg",
+    )
 
     st.subheader("Countries most similar to UK")
     if sim_pairs:
         df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values("Similarity")
         fig_sim = px.bar(
-            df_sim,
+            df_sim.sort_values("Similarity"),
             x="Similarity",
             y="Country",
             orientation="h",
-            title="Countries with most similar skill profile to UK",
+            title="Countries Most Similar to UK Gaming Skill Profile",
             color="Similarity",
-            color_continuous_scale=[[0, DIM], [1, PURPLE]],
+            color_continuous_scale=[
+                [0.0, "#111D2E"],
+                [0.5, "#0D7A8E"],
+                [1.0, "#00E5CC"],
+            ],
+            text="Similarity",
         )
-        fig_sim.update_layout(coloraxis_showscale=False, xaxis_range=[0.7, 1.0])
-        show(fig_sim, 360)
-        st.caption("Cosine similarity on the tracked skill vocabulary (binary share vectors).")
+        fig_sim.update_traces(
+            texttemplate="%{text:.4f}",
+            textposition="outside",
+            textfont=dict(size=11, color="#F0F4F8"),
+        )
+        fig_sim.update_layout(
+            coloraxis_showscale=False,
+            xaxis_range=[0.70, 1.02],
+            xaxis_title="Cosine Similarity (out of 1.0)",
+            yaxis_title="",
+        )
+        fig_sim.add_vline(
+            x=1.0,
+            line_color="rgba(255,255,255,0.15)",
+            line_dash="dash",
+            annotation_text="Perfect match = 1.0",
+            annotation_font=dict(color="#8A9BB0", size=10),
+        )
+        show(fig_sim, 420)
+        st.caption(
+            "Cosine similarity measures how similar each country's "
+            "gaming skill demand profile is to UK · "
+            "1.0 = identical · France 0.9675 = most similar"
+        )
 
 
 def gaming_global_frame(df: pd.DataFrame) -> pd.DataFrame:
