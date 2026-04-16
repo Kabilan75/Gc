@@ -1585,13 +1585,12 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
 
     st.subheader("Countries most similar to UK")
     if sim_pairs:
-        df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values(
-            "Similarity", ascending=False
-        )
+        df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values("Similarity")
         fig_sim = px.bar(
-            df_sim,
-            x="Country",
-            y="Similarity",
+            df_sim.sort_values("Similarity"),
+            x="Similarity",
+            y="Country",
+            orientation="h",
             title="Countries Most Similar to UK Gaming Skill Profile",
             color="Similarity",
             color_continuous_scale=[
@@ -1608,16 +1607,12 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         )
         fig_sim.update_layout(
             coloraxis_showscale=False,
-            yaxis_range=[0.70, 1.02],
-            xaxis_title="Country",
-            yaxis_title="Cosine Similarity (out of 1.0)",
-            xaxis=dict(
-                categoryorder="array",
-                categoryarray=df_sim["Country"].tolist(),
-            ),
+            xaxis_range=[0.70, 1.02],
+            xaxis_title="Cosine Similarity (out of 1.0)",
+            yaxis_title="",
         )
-        fig_sim.add_hline(
-            y=1.0,
+        fig_sim.add_vline(
+            x=1.0,
             line_color="rgba(255,255,255,0.15)",
             line_dash="dash",
             annotation_text="Perfect match = 1.0",
