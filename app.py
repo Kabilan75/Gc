@@ -1390,9 +1390,8 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
 
     fig_ct = px.bar(
         df_top,
-        x="Jobs",
-        y="RankLabel",
-        orientation="h",
+        x="RankLabel",
+        y="Jobs",
         title="Top 15 Countries — Unique Gaming Job Listings (Ranked)",
         color="Type",
         color_discrete_map={
@@ -1408,9 +1407,8 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     )
     fig_ct.update_layout(
         showlegend=False,
-        xaxis_title="Number of Job Listings",
-        yaxis_title="Rank · Country",
-        yaxis=dict(autorange="reversed"),
+        xaxis_title="Rank · Country",
+        yaxis_title="Number of Job Listings",
     )
     _uk_rank = int(uk_rank) if (use_live and uk_rank) else int(
         df_top.loc[df_top["Country"] == "United Kingdom", "Rank"].iloc[0]
