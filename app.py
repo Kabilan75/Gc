@@ -2165,7 +2165,7 @@ elif tab == "🤖 AI Gaps":
 
     st.subheader("The AI pipeline")
     st.caption("Step A → B → C → D")
-    p1, p2, p3, p4 = st.columns(4)
+    p1, p2, p3, p4, pg = st.columns([1, 1, 1, 1, 1.25])
     with p1:
         st.markdown(f"**A · Data Prep**\n\n{n_a_rows:,} rows · {n_a_skills} skills")
     with p2:
@@ -2174,6 +2174,29 @@ elif tab == "🤖 AI Gaps":
         st.markdown(f"**C · Gap Scoring**\n\nLoc. Quotient · {n_gap}")
     with p4:
         st.markdown(f"**D · Recommender**\n\nTop picks · {n_rec} rows")
+    with pg:
+        fig = go.Figure(
+            go.Indicator(
+                mode="gauge+number",
+                value=10.0,
+                title={"text": "Communication Gap Score — England"},
+                gauge={
+                    "axis": {"range": [0, 10]},
+                    "bar": {"color": "#00E5CC"},
+                    "steps": [
+                        {"range": [0, 5], "color": "#111D2E"},
+                        {"range": [5, 7.5], "color": "#1E3A5F"},
+                        {"range": [7.5, 10], "color": "#0D4A4A"},
+                    ],
+                    "threshold": {
+                        "line": {"color": "#FF5572", "width": 4},
+                        "thickness": 0.75,
+                        "value": 10,
+                    },
+                },
+            )
+        )
+        show(fig, 170, margin_patch=dict(t=40, b=10), axis_tick_color="#CBD5E1")
 
     st.markdown("---")
     st.subheader("Cluster composition")
