@@ -2047,8 +2047,7 @@ df_global, global_source_name = load_global_workbook()
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
 NAV_OPTIONS = [
-    "📊 UK Overview",
-    "🗺️ Regional Analysis",
+    "📊 UK & Regions",
     "🤖 AI Gaps",
     "🌍 Global",
     "📄 CV",
@@ -2087,9 +2086,10 @@ tab = st.radio(
 )
 
 # ═════════════════════════════════════════════════════════════════════════════
-# TAB 1 — UK OVERVIEW
+# TAB 1 — UK OVERVIEW + REGIONAL (sub-view switcher)
 # ═════════════════════════════════════════════════════════════════════════════
-if tab == "📊 UK Overview":
+if tab == "📊 UK & Regions":
+    tab_uk, tab_regional = st.tabs(["UK Overview", "Regional Analysis"])
     with st.expander("Metric definitions (how to read this tab)", expanded=False):
         st.markdown(
             """
@@ -2102,263 +2102,279 @@ if tab == "📊 UK Overview":
             """.strip()
         )
 
-    st.caption("National snapshot from Step A (UK gaming dataset).")
-    n_rows = len(df_a)
-    n_jobs = UK_OVERVIEW_TOTAL_JOB_ADS
-    n_skills = UK_OVERVIEW_UNIQUE_SKILLS
-    n_regions = (
-        int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
-        if "UK Region" in df_a.columns
-        else 4
-    )
-    src = "Step A CSV" if live_a else "demo sample"
-    vc15 = df_a["Skills"].value_counts().head(15) if "Skills" in df_a.columns else pd.Series(dtype=int)
-
-    st.markdown(f"#### UK Overview · `{n_jobs:,} total job ads`")
-    st.caption(f"{n_jobs:,} job ads · {n_rows:,} skill rows · source: {src}")
-
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Total Job Ads", f"{n_jobs:,}", "Unique job listings")
-    k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
-    k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
-    k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
-
-    st.markdown("---")
-    st.subheader("Top 15 skills by demand")
-    st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
-    if len(vc15):
-        df_top = pd.DataFrame({"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values.astype(int)})
-        denom = n_rows if n_rows > 0 else 1
-        df_top["Share_pct"] = (df_top["Count"] / denom * 100).round(1)
-        df_sorted = df_top.sort_values("Count")
-        fig_ov = px.bar(
-            df_sorted,
-            x="Count",
-            y="Skill",
-            orientation="h",
-            title="Skill occurrences",
-            color_discrete_sequence=[TEAL],
+    with tab_uk:
+        st.caption("National snapshot from Step A (UK gaming dataset).")
+        n_rows = len(df_a)
+        n_jobs = UK_OVERVIEW_TOTAL_JOB_ADS
+        n_skills = UK_OVERVIEW_UNIQUE_SKILLS
+        n_regions = (
+            int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
+            if "UK Region" in df_a.columns
+            else 4
         )
-        fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-        fig_ov.update_traces(
-            texttemplate="%{x:,}",
-            textposition="outside",
-            hovertext=[
-                f"Count={int(c):,}<br>{float(p):.1f}% of {n_rows:,} skill rows"
-                for c, p in zip(df_sorted["Count"], df_sorted["Share_pct"])
-            ],
-            hovertemplate="<b>%{y}</b><br>%{hovertext}<extra></extra>",
+        src = "Step A CSV" if live_a else "demo sample"
+        vc15 = (
+            df_a["Skills"].value_counts().head(15)
+            if "Skills" in df_a.columns
+            else pd.Series(dtype=int)
         )
-        show(fig_ov, 460)
-    else:
-        st.warning("No skills in the current dataset.")
 
-    st.markdown("---")
-    st.subheader("Skill Demand Over Time")
-    st.caption("Monthly skill mentions · Jul–Oct 2025 · Step A data · select skills to compare")
-    if "Activated Date" not in df_a.columns:
-        st.warning("Date column not available for time series analysis")
-    elif "Skills" not in df_a.columns:
-        st.warning("Date column not available for time series analysis")
-    else:
-        a_ts = df_a.copy()
-        a_ts["Activated Date"] = pd.to_datetime(a_ts["Activated Date"], errors="coerce")
-        if int(a_ts["Activated Date"].notna().sum()) == 0:
+        st.markdown(f"#### UK Overview · `{n_jobs:,} total job ads`")
+        st.caption(
+            f"{n_jobs:,} job ads · {n_rows:,} skill rows · source: {src}"
+        )
+
+        k1, k2, k3, k4 = st.columns(4)
+        k1.metric("Total Job Ads", f"{n_jobs:,}", "Unique job listings")
+        k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
+        k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
+        k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
+
+        st.markdown("---")
+        st.subheader("Top 15 skills by demand")
+        st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
+        if len(vc15):
+            df_top = pd.DataFrame(
+                {"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values.astype(int)}
+            )
+            denom = n_rows if n_rows > 0 else 1
+            df_top["Share_pct"] = (df_top["Count"] / denom * 100).round(1)
+            df_sorted = df_top.sort_values("Count")
+            fig_ov = px.bar(
+                df_sorted,
+                x="Count",
+                y="Skill",
+                orientation="h",
+                title="Skill occurrences",
+                color_discrete_sequence=[TEAL],
+            )
+            fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
+            fig_ov.update_traces(
+                texttemplate="%{x:,}",
+                textposition="outside",
+                hovertext=[
+                    f"Count={int(c):,}<br>{float(p):.1f}% of {n_rows:,} skill rows"
+                    for c, p in zip(df_sorted["Count"], df_sorted["Share_pct"])
+                ],
+                hovertemplate="<b>%{y}</b><br>%{hovertext}<extra></extra>",
+            )
+            show(fig_ov, 460)
+        else:
+            st.warning("No skills in the current dataset.")
+
+        st.markdown("---")
+        st.subheader("Skill Demand Over Time")
+        st.caption(
+            "Monthly skill mentions · Jul–Oct 2025 · "
+            "Step A data · select skills to compare"
+        )
+        if "Activated Date" not in df_a.columns:
+            st.warning("Date column not available for time series analysis")
+        elif "Skills" not in df_a.columns:
             st.warning("Date column not available for time series analysis")
         else:
-            a_ts["Month"] = a_ts["Activated Date"].dt.to_period("M").astype(str)
-            if "Skill_Display" not in a_ts.columns:
-                a_ts["Skill_Display"] = a_ts["Skills"].map(lambda x: cn(str(x)))
-            top10_skills = a_ts["Skill_Display"].value_counts().head(10).index.tolist()
-            if not top10_skills:
+            a_ts = df_a.copy()
+            a_ts["Activated Date"] = pd.to_datetime(
+                a_ts["Activated Date"], errors="coerce"
+            )
+            if int(a_ts["Activated Date"].notna().sum()) == 0:
                 st.warning("Date column not available for time series analysis")
             else:
-                selected_skills = st.multiselect(
-                    "Select skills to compare:",
-                    options=top10_skills,
-                    default=top10_skills[:5],
-                    key="ts_skills",
+                a_ts["Month"] = a_ts["Activated Date"].dt.to_period("M").astype(str)
+                if "Skill_Display" not in a_ts.columns:
+                    a_ts["Skill_Display"] = a_ts["Skills"].map(lambda x: cn(str(x)))
+                top10_skills = (
+                    a_ts["Skill_Display"]
+                    .value_counts()
+                    .head(10)
+                    .index.tolist()
                 )
-                if selected_skills:
-                    ts_df = (
-                        a_ts[a_ts["Skill_Display"].isin(selected_skills)]
-                        .groupby(["Month", "Skill_Display"])
-                        .size()
-                        .reset_index(name="Mentions")
-                        .sort_values("Month")
-                    )
-                    fig_ts = px.line(
-                        ts_df,
-                        x="Month",
-                        y="Mentions",
-                        color="Skill_Display",
-                        markers=True,
-                        title="Skill Demand by Month — UK Gaming Industry",
-                        labels={"Month": "Month", "Mentions": "Skill Mentions", "Skill_Display": "Skill"},
-                        color_discrete_sequence=[
-                            "#00E5CC",
-                            "#A78BFA",
-                            "#34D399",
-                            "#F5A623",
-                            "#60A5FA",
-                            "#FF5572",
-                            "#FB923C",
-                            "#FCD34D",
-                            "#F472B6",
-                            "#818CF8",
-                        ],
-                    )
-                    fig_ts.update_traces(line_width=2.5, marker_size=8)
-                    fig_ts.update_layout(hovermode="x unified", legend=dict(orientation="h", y=-0.2))
-                    show(fig_ts, 420)
-                    st.info(
-                        "Communication remained the most demanded skill across all months confirming it is "
-                        "sustained employer demand not a seasonal spike."
-                    )
+                if not top10_skills:
+                    st.warning("Date column not available for time series analysis")
                 else:
-                    st.caption("Select at least one skill to plot the time series.")
+                    selected_skills = st.multiselect(
+                        "Select skills to compare:",
+                        options=top10_skills,
+                        default=top10_skills[:5],
+                        key="ts_skills",
+                    )
+                    if selected_skills:
+                        ts_df = (
+                            a_ts[a_ts["Skill_Display"].isin(selected_skills)]
+                            .groupby(["Month", "Skill_Display"])
+                            .size()
+                            .reset_index(name="Mentions")
+                            .sort_values("Month")
+                        )
+                        fig_ts = px.line(
+                            ts_df,
+                            x="Month",
+                            y="Mentions",
+                            color="Skill_Display",
+                            markers=True,
+                            title="Skill Demand by Month — UK Gaming Industry",
+                            labels={
+                                "Month": "Month",
+                                "Mentions": "Skill Mentions",
+                                "Skill_Display": "Skill",
+                            },
+                            color_discrete_sequence=[
+                                "#00E5CC",
+                                "#A78BFA",
+                                "#34D399",
+                                "#F5A623",
+                                "#60A5FA",
+                                "#FF5572",
+                                "#FB923C",
+                                "#FCD34D",
+                                "#F472B6",
+                                "#818CF8",
+                            ],
+                        )
+                        fig_ts.update_traces(line_width=2.5, marker_size=8)
+                        fig_ts.update_layout(
+                            hovermode="x unified",
+                            legend=dict(orientation="h", y=-0.2),
+                        )
+                        show(fig_ts, 420)
+                        st.info(
+                            "Communication remained the most demanded skill across all months confirming it is "
+                            "sustained employer demand not a seasonal spike."
+                        )
+                    else:
+                        st.caption("Select at least one skill to plot the time series.")
 
-# ═════════════════════════════════════════════════════════════════════════════
-# TAB 2 — REGIONAL ANALYSIS
-# ═════════════════════════════════════════════════════════════════════════════
-elif tab == "🗺️ Regional Analysis":
-    with st.expander("Metric definitions (how to read this tab)", expanded=False):
-        st.markdown(
-            """
-- **Per 100k** — Skill counts divided by regional population × 100,000, so regions are comparable.
-- **Top 5 per region** — Most frequent tokens in Step A within each region.
-            """.strip()
+    with tab_regional:
+        st.caption("Per-region demand and cluster signals (England / Scotland / Wales / N. Ireland).")
+        regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
+
+        if not regional:
+            regional = {
+                "England": [("—", 0, 0.0)],
+                "Scotland": [("—", 0, 0.0)],
+                "Wales": [("—", 0, 0.0)],
+                "N. Ireland": [("—", 0, 0.0)],
+            }
+        def _top_regional_row(reg_name: str) -> tuple[str, int, float]:
+            rows = regional.get(reg_name, [])
+            if rows:
+                return rows[0]
+            return ("—", 0, 0.0)
+
+        eng = _top_regional_row("England")
+        sco = _top_regional_row("Scotland")
+        wal = _top_regional_row("Wales")
+        n_ir = _top_regional_row("N. Ireland")
+
+        st.markdown("#### Regional Analysis · `4 Regions`")
+        st.caption(
+            "England · Scotland · Wales · N. Ireland — per 100k · Step A · Step B clusters"
         )
 
-    st.caption("Per-region demand and cluster signals (England / Scotland / Wales / N. Ireland).")
-    regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("England — top /100k", f"{eng[2]:.2f}", str(eng[0]))
+        c2.metric("Scotland — top /100k", f"{sco[2]:.2f}", str(sco[0]))
+        c3.metric("Wales — top /100k", f"{wal[2]:.2f}", str(wal[0]))
+        c4.metric("N. Ireland — top /100k", f"{n_ir[2]:.2f}", str(n_ir[0]))
 
-    if not regional:
-        regional = {
-            "England": [("—", 0, 0.0)],
-            "Scotland": [("—", 0, 0.0)],
-            "Wales": [("—", 0, 0.0)],
-            "N. Ireland": [("—", 0, 0.0)],
+        st.markdown("---")
+        st.subheader("Top 5 skills per region")
+        st.caption("Count · per 100k")
+        cols4 = st.columns(4)
+        for i, reg in enumerate(["England", "Scotland", "Wales", "N. Ireland"]):
+            with cols4[i]:
+                st.subheader(reg)
+                skills = regional.get(reg, [])
+                rows = [{"Skill": s, "Count": c, "/100k": p} for s, c, p in skills]
+                st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+        st.subheader("Skill demand heatmap")
+        st.caption("Per 100k population · Top 10 skills × 4 regions (Step A)")
+        hm_live = bool(z_hm and x_hm and y_hm)
+        if hm_live:
+            hm_t = [[f"{v:.2f}" for v in row] for row in z_hm]
+            fig_hm = go.Figure(
+                go.Heatmap(
+                    z=z_hm,
+                    x=x_hm,
+                    y=y_hm,
+                    text=hm_t,
+                    texttemplate="%{text}",
+                    colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
+                    hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
+                )
+            )
+        else:
+            st.warning(
+                "**Demo heatmap** — Step A has no usable regional heatmap (missing file, empty data, "
+                "or required columns). Values below are static placeholders, not your CSV."
+            )
+            hm_t = [[f"{v:.2f}" for v in row] for row in REG_HM_Z]
+            fig_hm = go.Figure(
+                go.Heatmap(
+                    z=REG_HM_Z,
+                    x=REG_HM_COLS,
+                    y=REG_HM_ROWS,
+                    text=hm_t,
+                    texttemplate="%{text}",
+                    colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
+                    hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
+                )
+            )
+        fig_hm.update_layout(title="Top 10 skills × 4 regions", yaxis=dict(autorange="reversed"))
+        show(fig_hm, 420)
+        st.caption("Darker teal = higher demand per 100k population")
+
+        st.markdown("---")
+        st.subheader("Cluster profile radar (per 100k)")
+        st.caption("Six Step B clusters plotted for all four UK regions (reference profile).")
+
+        clusters = ["Game Dev", "Soft Skills", "Proj Mgmt", "Creative", "Biz Tools", "Cloud"]
+        _theta = clusters + [clusters[0]]
+        radar = {
+            "England": [3.55, 3.55, 1.49, 1.45, 0.72, 0.71],
+            "Scotland": [2.19, 1.60, 0.93, 0.44, 0.47, 0.18],
+            "Wales": [1.06, 0.47, 0.09, 0.16, 0.22, 0.28],
+            "N. Ireland": [1.88, 1.20, 0.58, 0.21, 0.37, 0.00],
+        }
+        radar_cols = {
+            "England": "#60A5FA",
+            "Scotland": "#34D399",
+            "Wales": "#F5A623",
+            "N. Ireland": "#A78BFA",
         }
 
-    def _top_regional_row(reg_name: str) -> tuple[str, int, float]:
-        rows = regional.get(reg_name, [])
-        if rows:
-            return rows[0]
-        return ("—", 0, 0.0)
-
-    eng = _top_regional_row("England")
-    sco = _top_regional_row("Scotland")
-    wal = _top_regional_row("Wales")
-    n_ir = _top_regional_row("N. Ireland")
-
-    st.markdown("#### Regional Analysis · `4 Regions`")
-    st.caption("England · Scotland · Wales · N. Ireland — per 100k · Step A · Step B clusters")
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("England — top /100k", f"{eng[2]:.2f}", str(eng[0]))
-    c2.metric("Scotland — top /100k", f"{sco[2]:.2f}", str(sco[0]))
-    c3.metric("Wales — top /100k", f"{wal[2]:.2f}", str(wal[0]))
-    c4.metric("N. Ireland — top /100k", f"{n_ir[2]:.2f}", str(n_ir[0]))
-
-    st.markdown("---")
-    st.subheader("Top 5 skills per region")
-    st.caption("Count · per 100k")
-    cols4 = st.columns(4)
-    for i, reg in enumerate(["England", "Scotland", "Wales", "N. Ireland"]):
-        with cols4[i]:
-            st.subheader(reg)
-            skills = regional.get(reg, [])
-            rows = [{"Skill": s, "Count": c, "/100k": p} for s, c, p in skills]
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-
-    st.subheader("Skill demand heatmap")
-    st.caption("Per 100k population · Top 10 skills × 4 regions (Step A)")
-    hm_live = bool(z_hm and x_hm and y_hm)
-    if hm_live:
-        hm_t = [[f"{v:.2f}" for v in row] for row in z_hm]
-        fig_hm = go.Figure(
-            go.Heatmap(
-                z=z_hm,
-                x=x_hm,
-                y=y_hm,
-                text=hm_t,
-                texttemplate="%{text}",
-                colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
-                hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
+        fig_r = go.Figure()
+        for region, vals in radar.items():
+            r = list(vals) + [vals[0]]
+            fig_r.add_trace(
+                go.Scatterpolar(
+                    r=r,
+                    theta=_theta,
+                    mode="lines+markers",
+                    name=region,
+                    line=dict(color=radar_cols.get(region, TEAL), width=2),
+                    marker=dict(size=6),
+                )
             )
-        )
-    else:
-        st.warning(
-            "**Demo heatmap** — Step A has no usable regional heatmap (missing file, empty data, "
-            "or required columns). Values below are static placeholders, not your CSV."
-        )
-        hm_t = [[f"{v:.2f}" for v in row] for row in REG_HM_Z]
-        fig_hm = go.Figure(
-            go.Heatmap(
-                z=REG_HM_Z,
-                x=REG_HM_COLS,
-                y=REG_HM_ROWS,
-                text=hm_t,
-                texttemplate="%{text}",
-                colorscale=[[0, S2], [0.35, "#0D5A7A"], [1, TEAL]],
-                hovertemplate="<b>%{y}</b> · %{x}<br>%{z:.2f} /100k<extra></extra>",
-            )
-        )
-    fig_hm.update_layout(title="Top 10 skills × 4 regions", yaxis=dict(autorange="reversed"))
-    show(fig_hm, 420)
-    st.caption("Darker teal = higher demand per 100k population")
-
-    st.markdown("---")
-    st.subheader("Cluster profile radar (per 100k)")
-    st.caption("Six Step B clusters plotted for all four UK regions (reference profile).")
-
-    clusters = ["Game Dev", "Soft Skills", "Proj Mgmt", "Creative", "Biz Tools", "Cloud"]
-    _theta = clusters + [clusters[0]]
-    radar = {
-        "England": [3.55, 3.55, 1.49, 1.45, 0.72, 0.71],
-        "Scotland": [2.19, 1.60, 0.93, 0.44, 0.47, 0.18],
-        "Wales": [1.06, 0.47, 0.09, 0.16, 0.22, 0.28],
-        "N. Ireland": [1.88, 1.20, 0.58, 0.21, 0.37, 0.00],
-    }
-    radar_cols = {
-        "England": "#60A5FA",
-        "Scotland": "#34D399",
-        "Wales": "#F5A623",
-        "N. Ireland": "#A78BFA",
-    }
-
-    fig_r = go.Figure()
-    for region, vals in radar.items():
-        r = list(vals) + [vals[0]]
-        fig_r.add_trace(
-            go.Scatterpolar(
-                r=r,
-                theta=_theta,
-                mode="lines+markers",
-                name=region,
-                line=dict(color=radar_cols.get(region, TEAL), width=2),
-                marker=dict(size=6),
-            )
-        )
-    fig_r.update_layout(
-        title="Regions × clusters — per 100k",
-        polar=dict(
-            bgcolor="rgba(0,0,0,0)",
-            radialaxis=dict(
-                visible=True,
-                gridcolor="rgba(255,255,255,0.06)",
-                tickcolor="rgba(255,255,255,0.12)",
+        fig_r.update_layout(
+            title="Regions × clusters — per 100k",
+            polar=dict(
+                bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(
+                    visible=True,
+                    gridcolor="rgba(255,255,255,0.06)",
+                    tickcolor="rgba(255,255,255,0.12)",
+                ),
+                angularaxis=dict(
+                    gridcolor="rgba(255,255,255,0.06)",
+                    tickcolor="rgba(255,255,255,0.12)",
+                ),
             ),
-            angularaxis=dict(
-                gridcolor="rgba(255,255,255,0.06)",
-                tickcolor="rgba(255,255,255,0.12)",
-            ),
-        ),
-        showlegend=True,
-        legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
-    )
-    show(fig_r, 460, margin_patch=dict(t=40, b=90), axis_tick_color="#CBD5E1")
+            showlegend=True,
+            legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
+        )
+        show(fig_r, 460, margin_patch=dict(t=40, b=90), axis_tick_color="#CBD5E1")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 3 — AI GAP ANALYSIS
