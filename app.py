@@ -79,10 +79,16 @@ section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
   color: #F0F4F8 !important;
 }
 .stApp { background-color: #05090F; color: #F0F4F8; }
+/* Keep Streamlit toolbar visible above custom nav */
+[data-testid="stToolbar"] {
+  z-index: 11000 !important;
+}
+
 /* Fixed top navigation (always visible while scrolling) */
 #gc-fixed-nav {
   position: fixed;
-  top: 0;
+  /* leave room for Streamlit's top toolbar */
+  top: 2.75rem;
   left: 0;
   right: 0;
   z-index: 10000;
@@ -91,9 +97,9 @@ section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 #gc-fixed-nav .gc-inner {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 0.6rem 1rem 0.55rem 1rem;
+  padding: 0.6rem 1.25rem 0.55rem 1.25rem;
 }
 #gc-fixed-nav .gc-title {
   font-size: 1.25rem;
@@ -130,16 +136,10 @@ section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
   color: #F0F4F8;
   box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.35);
 }
-/* Push app content below fixed nav */
-.block-container { padding-top: 6.2rem; }
-/*
- * Main pane only: extra top padding so first widgets (e.g. UK/Regional radio) sit below
- * Streamlit’s fixed header / deploy toolbar (avoids controls clipped under the black bar).
- */
-section.main .block-container,
+/* Push app content below Streamlit toolbar + fixed nav */
 section[data-testid="stMain"] .block-container {
   max-width: 100% !important;
-  padding-top: 3.75rem !important;
+  padding-top: 8.25rem !important;
 }
 h1, h2, h3, h4 { color: #F0F4F8 !important; }
 p, li { color: #CBD5E1; }
