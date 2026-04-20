@@ -484,6 +484,32 @@ def _cv_category_scores(found: set[str], vocab_set: set[str]) -> list[tuple[str,
     return scores
 
 
+def match_jobs_to_cv(df_a, detected_skills, top_n=20):
+    if df_a is None or df_a.empty:
+        return pd.DataFrame()
+    if not detected_skills:
+        return pd.DataFrame()
+
+    skills_lower = [s.lower() for s in detected_skills]
+
+    matched = df_a[df_a["Skills"].str.lower().isin(skills_lower)].copy()
+
+    if matched.empty:
+        return pd.DataFrame()
+
+    id_cols = [c for c in df_a.columns if c not in ("Skills", "_job_id")]
+
+    job_groups = matched.groupby(id_cols, dropna=False)["Skills"].count().reset_index(name="Skills_Matched")
+
+    if "Activated Date" in job_groups.columns:
+        job_groups["Activated Date"] = pd.to_datetime(job_groups["Activated Date"], errors="coerce")
+        job_groups = job_groups.sort_values(["Skills_Matched", "Activated Date"], ascending=[False, False])
+    else:
+        job_groups = job_groups.sort_values("Skills_Matched", ascending=False)
+
+    return job_groups.head(top_n)
+
+
 # ── File finder ───────────────────────────────────────────────────────────────
 def _find(*names):
     dirs = [APP_DIR, APP_DIR / "Step files", APP_DIR / "data"]
@@ -2807,4 +2833,126 @@ elif tab == "📄 CV":
                     st.caption("Step D has no extra workshop skills for this region that you are missing.")
                 else:
                     st.caption("Step D file missing or wrong columns — open **AI Gaps** after fixing `step_d_workshop_recommendations.csv`.")
+
+            st.markdown("---")
+            st.subheader("Matching Job Listings — UK Gaming Dataset")
+            st.caption(
+                "Jobs from the UK gaming dataset that match "
+                "your detected skills · sorted by most recent date"
+            )
+
+            matched_jobs = match_jobs_to_cv(df_a, found)
+
+            if not matched_jobs.empty:
+
+                st.success(
+                    f"Found {len(matched_jobs)} job listings "
+                    f"matching your skills from the UK gaming dataset"
+                )
+
+                # Top 3 metric cards
+                top3 = matched_jobs.head(3)
+                c1, c2, c3 = st.columns(3)
+                for col, (_, row) in zip([c1, c2, c3], top3.iterrows()):
+                    col.metric(
+                        label="Skills matched",
+                        value=f"{int(row['Skills_Matched'])} skills",
+                        delta=str(row.get("UK Region", "")),
+                    )
+
+                # Display table
+                display_cols = [
+                    c
+                    for c in ["UK Region", "Cluster_Name", "Skills_Matched", "Activated Date"]
+                    if c in matched_jobs.columns
+                ]
+
+                st.dataframe(
+                    matched_jobs[display_cols],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+                # Bar chart by region
+                if "UK Region" in matched_jobs.columns:
+                    region_counts = matched_jobs["UK Region"].value_counts().reset_index()
+                    region_counts.columns = ["Region", "Jobs"]
+
+                    fig_match = px.bar(
+                        region_counts,
+                        x="Jobs",
+                        y="Region",
+                        orientation="h",
+                        title="Matching jobs by UK region",
+                        color="Jobs",
+                        color_continuous_scale=[[0, "#111D2E"], [1, "#00E5CC"]],
+                    )
+                    fig_match.update_layout(coloraxis_showscale=False, height=280)
+                    show(fig_match, 280)
+
+            else:
+                st.info(
+                    "No exact skill matches found in the dataset. "
+                    "Try adding more gaming-specific skills to your CV."
+                )
+
+            st.markdown("---")
+            st.subheader("Live Job Listings")
+            st.caption("Real gaming jobs matched to your skills")
+
+            reed_key = None
+            try:
+                reed_key = st.secrets.get("REED_API_KEY")
+            except Exception:
+                pass
+
+            if reed_key and found:
+                import requests
+
+                search_query = " ".join(list(found)[:3]) + " games"
+
+                try:
+                    resp = requests.get(
+                        "https://www.reed.co.uk/api/1.0/search",
+                        params={
+                            "keywords": search_query,
+                            "locationName": "United Kingdom",
+                            "resultsToTake": 10,
+                        },
+                        auth=(reed_key, ""),
+                        timeout=10,
+                    )
+
+                    if resp.status_code == 200:
+                        live_jobs = resp.json().get("results", [])
+
+                        if live_jobs:
+                            st.success(f"Found {len(live_jobs)} live jobs " f"matching your top skills")
+                            for job in live_jobs:
+                                with st.expander(
+                                    f"{job.get('jobTitle', 'Role')} " f"— {job.get('employerName', '')}"
+                                ):
+                                    col_a, col_b = st.columns(2)
+                                    col_a.write(f"Location: " f"{job.get('locationName', '')}")
+                                    col_b.write(f"Posted: {job.get('date', '')}")
+                                    desc = job.get("jobDescription", "")
+                                    if desc:
+                                        st.write(desc[:300] + "...")
+                                    url = job.get("jobUrl", "")
+                                    if url:
+                                        st.markdown(f"[Apply on Reed]({url})")
+                        else:
+                            st.info("No live jobs found for your skills right now.")
+                    else:
+                        st.warning("Could not reach Reed API right now.")
+
+                except Exception as e:
+                    st.warning(f"Live job search unavailable: {str(e)[:80]}")
+
+            else:
+                st.info(
+                    "To enable live job listings add your Reed API key "
+                    "to .streamlit/secrets.toml as REED_API_KEY. "
+                    "Get a free key at reed.co.uk/developers"
+                )
 
