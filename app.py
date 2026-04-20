@@ -514,6 +514,29 @@ def match_jobs_to_cv(
         .reset_index(name="Skills_Matched")
     )
 
+    # Add job-level totals and missing skills (vs CV) for a clearer match score.
+    cv_set = set(skills_lower)
+    all_jobs = df_a[id_cols + ["Skills"]].copy()
+    all_jobs["_skill_norm"] = all_jobs["Skills"].astype(str).str.strip().str.lower()
+    all_groups = (
+        all_jobs.groupby(id_cols, dropna=False)["_skill_norm"]
+        .agg(Total_Skills="nunique", _job_skills=set)
+        .reset_index()
+    )
+    job_groups = job_groups.merge(all_groups, on=id_cols, how="left")
+
+    if "Total_Skills" in job_groups.columns:
+        job_groups["Possibility %"] = (
+            100.0 * job_groups["Skills_Matched"] / job_groups["Total_Skills"].replace({0: pd.NA})
+        ).astype(float)
+        job_groups["Possibility %"] = job_groups["Possibility %"].fillna(0.0).round(1)
+
+    if "_job_skills" in job_groups.columns:
+        job_groups["Missing Skills"] = job_groups["_job_skills"].apply(
+            lambda s: ", ".join(sorted({x for x in (s or set()) if x} - cv_set)[:10])
+        )
+        job_groups = job_groups.drop(columns=["_job_skills"])
+
     if "Activated Date" in job_groups.columns:
         job_groups["Activated Date"] = pd.to_datetime(
             job_groups["Activated Date"],
@@ -2994,7 +3017,16 @@ elif tab == "📄 CV":
                 # Display table
                 display_cols = [
                     c
-                    for c in ["Job Role", "UK Region", "Skills_Matched", "Activated Date", "Apply Link"]
+                    for c in [
+                        "Job Role",
+                        "UK Region",
+                        "Skills_Matched",
+                        "Total_Skills",
+                        "Possibility %",
+                        "Missing Skills",
+                        "Activated Date",
+                        "Apply Link",
+                    ]
                     if c in matched_jobs.columns
                 ]
 
@@ -3006,6 +3038,20 @@ elif tab == "📄 CV":
                     "Skills_Matched": st.column_config.NumberColumn(
                         "Skills Matched",
                         help="Number of your CV skills found in this job",
+                    ),
+                    "Total_Skills": st.column_config.NumberColumn(
+                        "Total Skills",
+                        help="Unique skills mentioned in this job listing",
+                    ),
+                    "Possibility %": st.column_config.NumberColumn(
+                        "Possibility %",
+                        help="(Skills Matched / Total Skills) × 100",
+                        format="%.1f",
+                    ),
+                    "Missing Skills": st.column_config.TextColumn(
+                        "Missing Skills",
+                        help="Skills mentioned in the job but not detected in your CV (top 10)",
+                        width="large",
                     ),
                     "Activated Date": st.column_config.DateColumn(
                         "Date Posted",
