@@ -484,12 +484,7 @@ def _cv_category_scores(found: set[str], vocab_set: set[str]) -> list[tuple[str,
     return scores
 
 
-def match_jobs_to_cv(
-    df_a,
-    detected_skills,
-    df_global=None,
-    top_n=20,
-):
+def match_jobs_to_cv(df_a, detected_skills, top_n=20):
     if df_a is None or df_a.empty:
         return pd.DataFrame()
     if not detected_skills:
@@ -511,94 +506,6 @@ def match_jobs_to_cv(
         job_groups = job_groups.sort_values(["Skills_Matched", "Activated Date"], ascending=[False, False])
     else:
         job_groups = job_groups.sort_values("Skills_Matched", ascending=False)
-
-    # Try to merge job title and apply link from df_global workbook
-    if df_global is not None and not df_global.empty:
-
-        # Find title column
-        title_col = None
-        for c in df_global.columns:
-            if c.lower() in (
-                "title",
-                "job title",
-                "jobtitle",
-                "role",
-                "position",
-                "job role",
-                "job_title",
-                "job name",
-            ):
-                title_col = c
-                break
-
-        # Find link column
-        link_col = None
-        for c in df_global.columns:
-            if c.lower() in (
-                "job link",
-                "link",
-                "url",
-                "apply link",
-                "job url",
-                "application url",
-                "apply url",
-                "job_link",
-                "applylink",
-                "joblink",
-                "application link",
-            ):
-                link_col = c
-                break
-
-        # Find date column in global for joining
-        date_col = None
-        for c in df_global.columns:
-            if c.lower() in (
-                "activated date",
-                "date",
-                "posted date",
-                "activation date",
-                "activateddate",
-            ):
-                date_col = c
-                break
-
-        # Build a lookup from df_global
-        if title_col or link_col:
-            keep_cols = ["Country", "State"]
-            if date_col:
-                keep_cols.append(date_col)
-            if title_col:
-                keep_cols.append(title_col)
-            if link_col:
-                keep_cols.append(link_col)
-
-            # Only keep columns that exist
-            keep_cols = [c for c in keep_cols if c in df_global.columns]
-
-            global_lookup = df_global[keep_cols].copy()
-            global_lookup = global_lookup.drop_duplicates()
-
-            # Rename columns to match job_groups
-            rename_map = {}
-            if title_col:
-                rename_map[title_col] = "Job Role"
-            if link_col:
-                rename_map[link_col] = "Apply Link"
-            if date_col and date_col != "Activated Date":
-                rename_map[date_col] = "Activated Date"
-
-            global_lookup = global_lookup.rename(columns=rename_map)
-
-            # Merge on common columns
-            merge_cols = [
-                c
-                for c in ["Country", "State", "Activated Date"]
-                if c in job_groups.columns and c in global_lookup.columns
-            ]
-
-            if merge_cols:
-                job_groups = job_groups.merge(global_lookup, on=merge_cols, how="left")
 
     return job_groups.head(top_n)
 
@@ -2934,12 +2841,7 @@ elif tab == "📄 CV":
                 "your detected skills · sorted by most recent date"
             )
 
-            matched_jobs = match_jobs_to_cv(
-                df_a,
-                found,
-                df_global=df_global,
-                top_n=20,
-            )
+            matched_jobs = match_jobs_to_cv(df_a, found)
 
             if not matched_jobs.empty:
 
@@ -2947,20 +2849,6 @@ elif tab == "📄 CV":
                     f"Found {len(matched_jobs)} job listings "
                     f"matching your skills from the UK gaming dataset"
                 )
-
-                if "Job Role" not in matched_jobs.columns:
-                    st.caption(
-                        "Job role titles not available — "
-                        "check Combined Data workbook has "
-                        "a Title or Role column"
-                    )
-
-                if "Apply Link" not in matched_jobs.columns:
-                    st.caption(
-                        "Apply links not available — "
-                        "check Combined Data workbook has "
-                        "a Link or URL column"
-                    )
 
                 # Top 3 metric cards
                 top3 = matched_jobs.head(3)
@@ -2975,44 +2863,14 @@ elif tab == "📄 CV":
                 # Display table
                 display_cols = [
                     c
-                    for c in ["Job Role", "UK Region", "Skills_Matched", "Activated Date", "Apply Link"]
+                    for c in ["UK Region", "Cluster_Name", "Skills_Matched", "Activated Date"]
                     if c in matched_jobs.columns
                 ]
 
-                # Rename Skills_Matched for display
-                display_df = matched_jobs[display_cols].copy()
-
-                # Configure columns
-                col_config = {
-                    "Skills_Matched": st.column_config.NumberColumn(
-                        "Skills Matched",
-                        help="Number of your CV skills found in this job",
-                    ),
-                    "Activated Date": st.column_config.DateColumn(
-                        "Date Posted",
-                        format="DD/MM/YYYY",
-                    ),
-                }
-
-                # Add link column config if it exists
-                if "Apply Link" in display_df.columns:
-                    col_config["Apply Link"] = st.column_config.LinkColumn(
-                        "Apply",
-                        help="Click to apply for this job",
-                        display_text="Apply Now",
-                    )
-
-                if "Job Role" in display_df.columns:
-                    col_config["Job Role"] = st.column_config.TextColumn(
-                        "Job Role",
-                        width="medium",
-                    )
-
                 st.dataframe(
-                    display_df,
+                    matched_jobs[display_cols],
                     use_container_width=True,
                     hide_index=True,
-                    column_config=col_config,
                 )
 
                 # Bar chart by region
