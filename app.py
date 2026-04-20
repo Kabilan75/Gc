@@ -515,7 +515,11 @@ def match_jobs_to_cv(
     )
 
     if "Activated Date" in job_groups.columns:
-        job_groups["Activated Date"] = pd.to_datetime(job_groups["Activated Date"], errors="coerce")
+        job_groups["Activated Date"] = pd.to_datetime(
+            job_groups["Activated Date"],
+            errors="coerce",
+            dayfirst=True,
+        )
         job_groups = job_groups.sort_values(["Skills_Matched", "Activated Date"], ascending=[False, False])
     else:
         job_groups = job_groups.sort_values("Skills_Matched", ascending=False)
@@ -597,6 +601,13 @@ def match_jobs_to_cv(
                 rename_map[date_col] = "Activated Date"
 
             global_lookup = global_lookup.rename(columns=rename_map)
+
+            if "Activated Date" in global_lookup.columns:
+                global_lookup["Activated Date"] = pd.to_datetime(
+                    global_lookup["Activated Date"],
+                    errors="coerce",
+                    dayfirst=True,
+                )
 
             # Merge on common columns
             merge_cols = [
