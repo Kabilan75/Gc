@@ -21,7 +21,7 @@ st.set_page_config(
     page_title="UK Gaming — Skill Intelligence",
     page_icon="🎮",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # Host footer only (do not blanket-hide all <footer> — can break layout / accessibility).
@@ -36,6 +36,10 @@ st.html(
 # ── Theme CSS (main + sidebar nav pills) ─────────────────────────────────────
 st.markdown("""
 <style>
+/* Hide sidebar entirely (and its toggle) */
+[data-testid="stSidebar"] { display: none !important; }
+[data-testid="collapsedControl"] { display: none !important; }
+
 /* Sidebar above main so wide main pane never paints over sidebar text */
 section[data-testid="stSidebar"] {
   background-color: #0C1422;
@@ -2105,29 +2109,6 @@ NAV_OPTIONS = [
     ("global", "🌍 Global"),
     ("cv", "📄 CV"),
 ]
-with st.sidebar:
-    st.markdown(
-        """
-<div style="margin:0 0 2px 0;">
-  <span style="font-size:1.35rem;font-weight:700;color:#F0F4F8;letter-spacing:-0.02em;">
-    🎮 Skill Intelligence
-  </span>
-</div>
-<div style="width:52px;height:3px;border-radius:2px;margin:10px 0 14px 0;
-  background:linear-gradient(90deg,#00E5CC 0%,#A78BFA 100%);"></div>
-<div style="font-size:0.82rem;color:#94A3B8;font-weight:600;margin:0 0 4px 0;">
-  UK Gaming Industry
-</div>
-""",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        """
-<div style="font-size:10px;color:#64748B;text-transform:uppercase;
-letter-spacing:2px;font-weight:600;margin:14px 0 10px 0;">Navigate</div>
-""",
-        unsafe_allow_html=True,
-    )
 
 # Fixed top navigation (query-param driven)
 try:
