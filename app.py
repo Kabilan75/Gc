@@ -75,39 +75,59 @@ section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
   color: #F0F4F8 !important;
 }
 .stApp { background-color: #05090F; color: #F0F4F8; }
-.block-container { padding-top: 1rem; }
-/* Sticky top navigation (main pane) */
-#gc-sticky-nav {
-  position: sticky;
+/* Fixed top navigation (always visible while scrolling) */
+#gc-fixed-nav {
+  position: fixed;
   top: 0;
-  z-index: 1000;
-  background: rgba(5, 9, 15, 0.96);
-  backdrop-filter: blur(6px);
-  padding: 0.5rem 0 0.4rem 0;
-  margin-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  background: rgba(5, 9, 15, 0.97);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-#gc-sticky-nav h3 { margin: 0 0 0.35rem 0; }
-#gc-sticky-nav .stRadio [role="radiogroup"] {
-  gap: 0.6rem !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
+#gc-fixed-nav .gc-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.6rem 1rem 0.55rem 1rem;
 }
-#gc-sticky-nav .stRadio label {
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: 999px !important;
-  padding: 0.35rem 0.75rem !important;
-  margin: 0 !important;
-  background: rgba(17, 29, 46, 0.65) !important;
+#gc-fixed-nav .gc-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #F0F4F8;
+  margin: 0 0 0.4rem 0;
 }
-#gc-sticky-nav .stRadio label:hover {
-  border-color: rgba(255,255,255,0.18) !important;
+#gc-fixed-nav .gc-tabs {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
-#gc-sticky-nav .stRadio label:has(input:checked) {
-  border-color: #00E5CC !important;
-  background: rgba(0, 229, 204, 0.10) !important;
+#gc-fixed-nav a.gc-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(17, 29, 46, 0.65);
+  color: #CBD5E1;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+#gc-fixed-nav a.gc-tab:hover {
+  border-color: rgba(255,255,255,0.20);
+  background: rgba(30, 41, 59, 0.70);
+}
+#gc-fixed-nav a.gc-tab.gc-active {
+  border-color: #00E5CC;
+  background: rgba(0, 229, 204, 0.10);
+  color: #F0F4F8;
   box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.35);
 }
+/* Push app content below fixed nav */
+.block-container { padding-top: 6.2rem; }
 /*
  * Main pane only: extra top padding so first widgets (e.g. UK/Regional radio) sit below
  * Streamlit’s fixed header / deploy toolbar (avoids controls clipped under the black bar).
@@ -2079,11 +2099,11 @@ df_global, global_source_name = load_global_workbook()
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
 NAV_OPTIONS = [
-    "📊 UK Overview",
-    "🗺️ Regional Analysis",
-    "🤖 AI Gaps",
-    "🌍 Global",
-    "📄 CV",
+    ("uk", "📊 UK Overview"),
+    ("regional", "🗺️ Regional Analysis"),
+    ("gaps", "🤖 AI Gaps"),
+    ("global", "🌍 Global"),
+    ("cv", "📄 CV"),
 ]
 with st.sidebar:
     st.markdown(
@@ -2109,16 +2129,36 @@ letter-spacing:2px;font-weight:600;margin:14px 0 10px 0;">Navigate</div>
         unsafe_allow_html=True,
     )
 
-st.markdown('<div id="gc-sticky-nav">', unsafe_allow_html=True)
-st.markdown("### Navigate")
-tab = st.radio(
-    "Section",
-    NAV_OPTIONS,
-    horizontal=True,
-    label_visibility="collapsed",
-    key="main_nav_radio",
+# Fixed top navigation (query-param driven)
+try:
+    _tab_id = st.query_params.get("tab", "uk")
+except Exception:
+    _tab_id = "uk"
+
+_tab_ids = [t for t, _ in NAV_OPTIONS]
+if _tab_id not in _tab_ids:
+    _tab_id = "uk"
+
+_tabs_html = []
+for tid, label in NAV_OPTIONS:
+    cls = "gc-tab gc-active" if tid == _tab_id else "gc-tab"
+    _tabs_html.append(f"<a class='{cls}' href='?tab={tid}'>{label}</a>")
+
+st.markdown(
+    f"""
+<div id="gc-fixed-nav">
+  <div class="gc-inner">
+    <div class="gc-title">Navigate</div>
+    <div class="gc-tabs">
+      {''.join(_tabs_html)}
+    </div>
+  </div>
+</div>
+""".strip(),
+    unsafe_allow_html=True,
 )
-st.markdown("</div>", unsafe_allow_html=True)
+
+tab = dict(NAV_OPTIONS).get(_tab_id, "📊 UK Overview")
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — UK OVERVIEW
