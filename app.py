@@ -2134,72 +2134,49 @@ if tab == "📊 UK & Regions":
         k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
 
         st.markdown("---")
-        st.subheader("Top 15 skills by demand")
-        st.caption(f"Occurrences in Step A — {n_rows:,} skill rows")
-        if len(vc15):
-            df_top = pd.DataFrame(
-                {"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values.astype(int)}
-            )
-            denom = n_rows if n_rows > 0 else 1
-            df_top["Share_pct"] = (df_top["Count"] / denom * 100).round(1)
-            df_sorted = df_top.sort_values("Count")
-            fig_ov = px.bar(
-                df_sorted,
-                x="Count",
-                y="Skill",
-                orientation="h",
-                title="Skill occurrences",
-                color_discrete_sequence=[TEAL],
-            )
-            fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
-            fig_ov.update_traces(
-                texttemplate="%{x:,}",
-                textposition="outside",
-                hovertext=[
-                    f"Count={int(c):,}<br>{float(p):.1f}% of {n_rows:,} skill rows"
-                    for c, p in zip(df_sorted["Count"], df_sorted["Share_pct"])
-                ],
-                hovertemplate="<b>%{y}</b><br>%{hovertext}<extra></extra>",
-            )
-            show(fig_ov, 460)
-        else:
-            st.warning("No skills in the current dataset.")
+        left, right = st.columns([1, 1])
 
-        st.markdown("---")
-        st.subheader("Skill Demand Over Time")
-        st.caption(
-            "Monthly skill mentions · Jul–Oct 2025 · "
-            "Step A data · select skills to compare"
-        )
-        if "Activated Date" not in df_a.columns:
-            st.warning("Date column not available for time series analysis")
-        elif "Skills" not in df_a.columns:
-            st.warning("Date column not available for time series analysis")
-        else:
-            a_ts = df_a.copy()
-            a_ts["Activated Date"] = pd.to_datetime(
-                a_ts["Activated Date"], errors="coerce"
-            )
-            if int(a_ts["Activated Date"].notna().sum()) == 0:
+        with left:
+            st.subheader("Top skills (demand)")
+            if len(vc15):
+                df_top = pd.DataFrame(
+                    {"Skill": [cn(str(s)) for s in vc15.index], "Count": vc15.values.astype(int)}
+                )
+                df_sorted = df_top.sort_values("Count")
+                fig_ov = px.bar(
+                    df_sorted,
+                    x="Count",
+                    y="Skill",
+                    orientation="h",
+                    title="Top 15 skills — Step A mentions",
+                    color_discrete_sequence=[TEAL],
+                )
+                fig_ov.update_layout(showlegend=False, yaxis_categoryorder="total ascending")
+                fig_ov.update_traces(texttemplate="%{x:,}", textposition="outside")
+                show(fig_ov, 290)
+            else:
+                st.warning("No skills in the current dataset.")
+
+        with right:
+            st.subheader("Demand over time")
+            if "Activated Date" not in df_a.columns or "Skills" not in df_a.columns:
                 st.warning("Date column not available for time series analysis")
             else:
-                a_ts["Month"] = a_ts["Activated Date"].dt.to_period("M").astype(str)
-                if "Skill_Display" not in a_ts.columns:
-                    a_ts["Skill_Display"] = a_ts["Skills"].map(lambda x: cn(str(x)))
-                top10_skills = (
-                    a_ts["Skill_Display"]
-                    .value_counts()
-                    .head(10)
-                    .index.tolist()
-                )
-                if not top10_skills:
+                a_ts = df_a.copy()
+                a_ts["Activated Date"] = pd.to_datetime(a_ts["Activated Date"], errors="coerce", dayfirst=True)
+                if int(a_ts["Activated Date"].notna().sum()) == 0:
                     st.warning("Date column not available for time series analysis")
                 else:
+                    a_ts["Month"] = a_ts["Activated Date"].dt.to_period("M").astype(str)
+                    if "Skill_Display" not in a_ts.columns:
+                        a_ts["Skill_Display"] = a_ts["Skills"].map(lambda x: cn(str(x)))
+                    top10_skills = a_ts["Skill_Display"].value_counts().head(10).index.tolist()
                     selected_skills = st.multiselect(
-                        "Select skills to compare:",
+                        "Skills",
                         options=top10_skills,
                         default=top10_skills[:5],
                         key="ts_skills",
+                        label_visibility="collapsed",
                     )
                     if selected_skills:
                         ts_df = (
@@ -2215,12 +2192,8 @@ if tab == "📊 UK & Regions":
                             y="Mentions",
                             color="Skill_Display",
                             markers=True,
-                            title="Skill Demand by Month — UK Gaming Industry",
-                            labels={
-                                "Month": "Month",
-                                "Mentions": "Skill Mentions",
-                                "Skill_Display": "Skill",
-                            },
+                            title="Monthly mentions (selected skills)",
+                            labels={"Month": "Month", "Mentions": "Mentions", "Skill_Display": "Skill"},
                             color_discrete_sequence=[
                                 "#00E5CC",
                                 "#A78BFA",
@@ -2234,18 +2207,11 @@ if tab == "📊 UK & Regions":
                                 "#818CF8",
                             ],
                         )
-                        fig_ts.update_traces(line_width=2.5, marker_size=8)
-                        fig_ts.update_layout(
-                            hovermode="x unified",
-                            legend=dict(orientation="h", y=-0.2),
-                        )
-                        show(fig_ts, 420)
-                        st.info(
-                            "Communication remained the most demanded skill across all months confirming it is "
-                            "sustained employer demand not a seasonal spike."
-                        )
+                        fig_ts.update_traces(line_width=2.5, marker_size=7)
+                        fig_ts.update_layout(hovermode="x unified", legend=dict(orientation="h", y=-0.25))
+                        show(fig_ts, 290)
                     else:
-                        st.caption("Select at least one skill to plot the time series.")
+                        st.caption("Pick at least one skill to plot.")
 
     else:
         regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
