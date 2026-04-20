@@ -492,27 +492,19 @@ def match_jobs_to_cv(
 ):
     if df_a is None or df_a.empty:
         return pd.DataFrame()
-    if "Skills" not in df_a.columns:
-        return pd.DataFrame()
     if not detected_skills:
         return pd.DataFrame()
 
     skills_lower = [s.lower() for s in detected_skills]
 
-    matched = df_a[df_a["Skills"].astype(str).str.lower().isin(skills_lower)].copy()
+    matched = df_a[df_a["Skills"].str.lower().isin(skills_lower)].copy()
 
     if matched.empty:
         return pd.DataFrame()
 
     id_cols = [c for c in df_a.columns if c not in ("Skills", "_job_id")]
 
-    # Count UNIQUE matched skills per job listing (not repeated rows/mentions).
-    matched["_skill_norm"] = matched["Skills"].astype(str).str.strip().str.lower()
-    job_groups = (
-        matched.groupby(id_cols, dropna=False)["_skill_norm"]
-        .nunique()
-        .reset_index(name="Skills_Matched")
-    )
+    job_groups = matched.groupby(id_cols, dropna=False)["Skills"].count().reset_index(name="Skills_Matched")
 
     if "Activated Date" in job_groups.columns:
         job_groups["Activated Date"] = pd.to_datetime(job_groups["Activated Date"], errors="coerce")
