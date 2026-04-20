@@ -76,38 +76,6 @@ section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
 }
 .stApp { background-color: #05090F; color: #F0F4F8; }
 .block-container { padding-top: 1rem; }
-/* Sticky top navigation (main pane) */
-#gc-sticky-nav {
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  background: rgba(5, 9, 15, 0.96);
-  backdrop-filter: blur(6px);
-  padding: 0.5rem 0 0.4rem 0;
-  margin-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-}
-#gc-sticky-nav h3 { margin: 0 0 0.35rem 0; }
-#gc-sticky-nav .stRadio [role="radiogroup"] {
-  gap: 0.6rem !important;
-  align-items: center !important;
-  flex-wrap: wrap !important;
-}
-#gc-sticky-nav .stRadio label {
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: 999px !important;
-  padding: 0.35rem 0.75rem !important;
-  margin: 0 !important;
-  background: rgba(17, 29, 46, 0.65) !important;
-}
-#gc-sticky-nav .stRadio label:hover {
-  border-color: rgba(255,255,255,0.18) !important;
-}
-#gc-sticky-nav .stRadio label:has(input:checked) {
-  border-color: #00E5CC !important;
-  background: rgba(0, 229, 204, 0.10) !important;
-  box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.35);
-}
 /*
  * Main pane only: extra top padding so first widgets (e.g. UK/Regional radio) sit below
  * Streamlit’s fixed header / deploy toolbar (avoids controls clipped under the black bar).
@@ -2109,7 +2077,6 @@ letter-spacing:2px;font-weight:600;margin:14px 0 10px 0;">Navigate</div>
         unsafe_allow_html=True,
     )
 
-st.markdown('<div id="gc-sticky-nav">', unsafe_allow_html=True)
 st.markdown("### Navigate")
 tab = st.radio(
     "Section",
@@ -2118,7 +2085,6 @@ tab = st.radio(
     label_visibility="collapsed",
     key="main_nav_radio",
 )
-st.markdown("</div>", unsafe_allow_html=True)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — UK OVERVIEW
