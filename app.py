@@ -2957,7 +2957,7 @@ elif tab == "📄 CV":
                 df_a,
                 found,
                 df_global=df_global,
-                top_n=500,
+                top_n=20,
             )
 
             if not matched_jobs.empty:
@@ -2986,14 +2986,9 @@ elif tab == "📄 CV":
                             matched_jobs["UK Region"].astype(str).str.strip() == region_pick
                         ].copy()
 
-                # Keep the display compact, but ensure region filtering has enough rows to work with.
-                display_limit = 20
-                table_show = table_df.head(display_limit).copy()
-
                 st.success(
                     f"Found {len(table_df)} job listings "
-                    f"matching your skills from the UK gaming dataset "
-                    f"(showing top {min(display_limit, len(table_df))})"
+                    f"matching your skills from the UK gaming dataset"
                 )
 
                 if "Job Role" not in matched_jobs.columns:
@@ -3011,7 +3006,7 @@ elif tab == "📄 CV":
                     )
 
                 # Top 3 metric cards
-                top3 = table_show.head(3)
+                top3 = table_df.head(3)
                 c1, c2, c3 = st.columns(3)
                 for col, (_, row) in zip([c1, c2, c3], top3.iterrows()):
                     col.metric(
@@ -3024,11 +3019,11 @@ elif tab == "📄 CV":
                 display_cols = [
                     c
                     for c in ["Job Role", "UK Region", "Skills_Matched", "Activated Date", "Apply Link"]
-                    if c in table_show.columns
+                    if c in table_df.columns
                 ]
 
                 # Rename Skills_Matched for display
-                display_df = table_show[display_cols].copy()
+                display_df = table_df[display_cols].copy()
 
                 # Configure columns
                 col_config = {
