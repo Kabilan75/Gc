@@ -113,7 +113,7 @@ section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
   flex-wrap: wrap;
   align-items: center;
 }
-#gc-fixed-nav button.gc-tab {
+#gc-fixed-nav a.gc-tab {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -122,16 +122,15 @@ section[data-testid="stSidebar"] .stRadio label:has(input:checked) {
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(17, 29, 46, 0.65);
   color: #CBD5E1;
+  text-decoration: none;
   font-weight: 600;
   font-size: 0.92rem;
-  cursor: pointer;
-  user-select: none;
 }
-#gc-fixed-nav button.gc-tab:hover {
+#gc-fixed-nav a.gc-tab:hover {
   border-color: rgba(255,255,255,0.20);
   background: rgba(30, 41, 59, 0.70);
 }
-#gc-fixed-nav button.gc-tab.gc-active {
+#gc-fixed-nav a.gc-tab.gc-active {
   border-color: #00E5CC;
   background: rgba(0, 229, 204, 0.10);
   color: #F0F4F8;
@@ -2124,9 +2123,7 @@ if _tab_id not in _tab_ids:
 _tabs_html = []
 for tid, label in NAV_OPTIONS:
     cls = "gc-tab gc-active" if tid == _tab_id else "gc-tab"
-    _tabs_html.append(
-        f"<button class='{cls}' type='button' onclick=\"window.location.search='?tab={tid}'\">{label}</button>"
-    )
+    _tabs_html.append(f"<a class='{cls}' href='?tab={tid}'>{label}</a>")
 
 st.markdown(
     f"""
