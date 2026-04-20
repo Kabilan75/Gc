@@ -2125,7 +2125,7 @@ _tabs_html = []
 for tid, label in NAV_OPTIONS:
     cls = "gc-tab gc-active" if tid == _tab_id else "gc-tab"
     _tabs_html.append(
-        f"<button class='{cls}' type='button' onclick=\"window.location.search='?tab={tid}'\">{label}</button>"
+        f"<button class='{cls}' type='button' onclick=\"window.location.href='?tab={tid}';\">{label}</button>"
     )
 
 st.markdown(
