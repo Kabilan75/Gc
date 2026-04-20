@@ -471,6 +471,35 @@ def _cv_listing_overlap(df: pd.DataFrame, found: set[str]) -> tuple[float, int, 
     return round(100.0 * hits / groups, 1), hits, groups
 
 
+def match_jobs_to_cv(df: pd.DataFrame, found: set[str]) -> pd.DataFrame:
+    """Step A rows where job skills intersect CV tokens; one row per job with Skills_Matched = unique hits."""
+    if df is None or df.empty or "Skills" not in df.columns or not found:
+        return pd.DataFrame()
+    id_cols = [c for c in df.columns if c != "Skills"]
+    if not id_cols:
+        return pd.DataFrame()
+    sk = df["Skills"].dropna().astype(str).str.strip().str.lower()
+    matched = df.loc[sk.isin(found)].copy()
+    if matched.empty:
+        return pd.DataFrame()
+    matched = matched.drop_duplicates(subset=id_cols + ["Skills"])
+    job_groups = (
+        matched.drop_duplicates(subset=id_cols + ["Skills"])
+        .groupby(id_cols, dropna=False)["Skills"]
+        .nunique()
+        .reset_index(name="Skills_Matched")
+    )
+    job_groups = (
+        job_groups.sort_values(
+            ["Skills_Matched", "Activated Date"],
+            ascending=[False, False],
+        )
+        if "Activated Date" in job_groups.columns
+        else job_groups.sort_values("Skills_Matched", ascending=False)
+    )
+    return job_groups.reset_index(drop=True)
+
+
 def _cv_category_scores(found: set[str], vocab_set: set[str]) -> list[tuple[str, float, int, int]]:
     scores: list[tuple[str, float, int, int]] = []
     for cat, skills in CV_JOB_CATS.items():
@@ -2759,6 +2788,33 @@ elif tab == "📄 CV":
                 col = (t1, t2, t3)[i]
                 with col:
                     st.metric(cat, f"{score:.0f}%", f"{matched} of {total} skills")
+
+            matched_jobs = match_jobs_to_cv(df_a, found_set)
+            st.subheader("Matching Job Listings")
+            st.caption(
+                f"Skills_Matched = how many of YOUR {len(found)} detected skills appear "
+                f"in each job listing · higher = better match for you"
+            )
+            all_regions = (
+                ["All Regions"]
+                + sorted(matched_jobs["UK Region"].dropna().astype(str).str.strip().unique().tolist())
+                if "UK Region" in matched_jobs.columns
+                else ["All Regions"]
+            )
+            region_filter = st.selectbox(
+                "Filter by region:",
+                options=all_regions,
+                index=0,
+                key="job_match_region_filter",
+            )
+            if region_filter != "All Regions" and "UK Region" in matched_jobs.columns:
+                matched_jobs = matched_jobs[
+                    matched_jobs["UK Region"].astype(str).str.strip() == region_filter
+                ]
+            if len(matched_jobs):
+                st.dataframe(matched_jobs, use_container_width=True, hide_index=True)
+            else:
+                st.caption("No Step A listings matched your detected skills for this filter.")
 
             if not found:
                 advice = (
