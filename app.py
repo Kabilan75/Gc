@@ -2962,32 +2962,8 @@ elif tab == "📄 CV":
 
             if not matched_jobs.empty:
 
-                table_df = matched_jobs
-                if "UK Region" in matched_jobs.columns:
-                    _regions = (
-                        matched_jobs["UK Region"]
-                        .dropna()
-                        .astype(str)
-                        .str.strip()
-                        .replace("", pd.NA)
-                        .dropna()
-                        .unique()
-                        .tolist()
-                    )
-                    _regions = sorted(_regions)
-                    region_pick = st.selectbox(
-                        "Filter matched jobs by UK region",
-                        ["All regions"] + _regions,
-                        index=0,
-                        key="cv_match_jobs_region_filter",
-                    )
-                    if region_pick != "All regions":
-                        table_df = matched_jobs[
-                            matched_jobs["UK Region"].astype(str).str.strip() == region_pick
-                        ].copy()
-
                 st.success(
-                    f"Found {len(table_df)} job listings "
+                    f"Found {len(matched_jobs)} job listings "
                     f"matching your skills from the UK gaming dataset"
                 )
 
@@ -3006,7 +2982,7 @@ elif tab == "📄 CV":
                     )
 
                 # Top 3 metric cards
-                top3 = table_df.head(3)
+                top3 = matched_jobs.head(3)
                 c1, c2, c3 = st.columns(3)
                 for col, (_, row) in zip([c1, c2, c3], top3.iterrows()):
                     col.metric(
@@ -3019,11 +2995,11 @@ elif tab == "📄 CV":
                 display_cols = [
                     c
                     for c in ["Job Role", "UK Region", "Skills_Matched", "Activated Date", "Apply Link"]
-                    if c in table_df.columns
+                    if c in matched_jobs.columns
                 ]
 
                 # Rename Skills_Matched for display
-                display_df = table_df[display_cols].copy()
+                display_df = matched_jobs[display_cols].copy()
 
                 # Configure columns
                 col_config = {
@@ -3059,8 +3035,8 @@ elif tab == "📄 CV":
                 )
 
                 # Bar chart by region
-                if "UK Region" in table_df.columns:
-                    region_counts = table_df["UK Region"].value_counts().reset_index()
+                if "UK Region" in matched_jobs.columns:
+                    region_counts = matched_jobs["UK Region"].value_counts().reset_index()
                     region_counts.columns = ["Region", "Jobs"]
 
                     fig_match = px.bar(
