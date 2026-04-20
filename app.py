@@ -2086,14 +2086,7 @@ letter-spacing:2px;font-weight:600;margin:14px 0 10px 0;">Navigate</div>
 # TAB 1 — UK OVERVIEW + REGIONAL (sub-view switcher)
 # ═════════════════════════════════════════════════════════════════════════════
 if tab == "📊 UK & Regions":
-    uk_sub = st.radio(
-        "National vs regional",
-        ["UK Overview", "Regional Analysis"],
-        horizontal=True,
-        label_visibility="visible",
-        key="uk_regional_subview",
-    )
-    st.caption("Switch between national snapshot and per-region demand.")
+    tab_uk, tab_regional = st.tabs(["UK Overview", "Regional Analysis"])
     with st.expander("Metric definitions (how to read this tab)", expanded=False):
         st.markdown(
             """
@@ -2106,7 +2099,8 @@ if tab == "📊 UK & Regions":
             """.strip()
         )
 
-    if uk_sub == "UK Overview":
+    with tab_uk:
+        st.caption("National snapshot from Step A (UK gaming dataset).")
         n_rows = len(df_a)
         n_jobs = UK_OVERVIEW_TOTAL_JOB_ADS
         n_skills = UK_OVERVIEW_UNIQUE_SKILLS
@@ -2247,7 +2241,8 @@ if tab == "📊 UK & Regions":
                     else:
                         st.caption("Select at least one skill to plot the time series.")
 
-    else:
+    with tab_regional:
+        st.caption("Per-region demand and cluster signals (England / Scotland / Wales / N. Ireland).")
         regional, z_hm, x_hm, y_hm = compute_regional_tables(df_a)
 
         if not regional:
