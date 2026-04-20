@@ -2075,12 +2075,15 @@ letter-spacing:2px;font-weight:600;margin:14px 0 10px 0;">Navigate</div>
 """,
         unsafe_allow_html=True,
     )
-    tab = st.radio(
-        "Section",
-        NAV_OPTIONS,
-        label_visibility="collapsed",
-        key="main_nav_radio",
-    )
+
+st.markdown("### Navigate")
+tab = st.radio(
+    "Section",
+    NAV_OPTIONS,
+    horizontal=True,
+    label_visibility="collapsed",
+    key="main_nav_radio",
+)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 1 — UK OVERVIEW + REGIONAL (sub-view switcher)
