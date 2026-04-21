@@ -128,6 +128,47 @@ div[data-testid="stVerticalBlockBorderWrapper"] {
 div[data-testid="stVerticalBlockBorderWrapper"] * {
     pointer-events: auto !important;
 }
+
+/* CV results styling */
+.gc-card-title {
+  font-weight: 700;
+  color: #F0F4F8;
+  font-size: 0.95rem;
+  margin: 0 0 0.25rem 0;
+}
+.gc-card-sub {
+  color: #8A9BB0;
+  font-size: 0.8rem;
+  margin: 0 0 0.75rem 0;
+}
+.gc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0.35rem 0 0.25rem 0;
+}
+.gc-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(17, 29, 46, 0.9);
+  color: #CBD5E1;
+}
+.gc-chip.good {
+  border-color: rgba(0,229,204,0.25);
+  background: rgba(0,229,204,0.10);
+  color: #E6FFFB;
+}
+.gc-chip.bad {
+  border-color: rgba(255,85,114,0.28);
+  background: rgba(255,85,114,0.10);
+  color: #FFE4EA;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -2840,37 +2881,55 @@ elif tab == "📄 CV":
 
             cl, cr = st.columns(2)
             with cl:
-                st.caption(f"{len(found)} skills from the Step A vocabulary detected in your CV")
-                if found:
-                    st.success(" · ".join(cn(s) for s in found))
-                else:
-                    st.caption("No vocabulary matches — try exact tool names from job ads in your file.")
-                st.markdown("**Missing high-demand skills (Step A top 10)**")
-                st.caption("Frequent tokens in your loaded dataset that did not match your CV")
-                if miss:
-                    st.error(" · ".join(cn(s) for s in miss))
-                else:
-                    st.success("You cover the current top-10 demand tokens.")
+                with st.container(border=True):
+                    st.markdown('<div class="gc-card-title">Skills detected</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        f'<div class="gc-card-sub">{len(found)} skills from the Step A vocabulary matched in your CV</div>',
+                        unsafe_allow_html=True,
+                    )
+                    if found:
+                        chips = "".join(f'<span class="gc-chip good">{cn(s)}</span>' for s in found)
+                        st.markdown(f'<div class="gc-chips">{chips}</div>', unsafe_allow_html=True)
+                    else:
+                        st.caption("No vocabulary matches — try exact tool names from job ads in your file.")
+
+                st.write("")
+
+                with st.container(border=True):
+                    st.markdown('<div class="gc-card-title">Missing high-demand skills</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        '<div class="gc-card-sub">Step A top-10 tokens in your dataset that did not match your CV</div>',
+                        unsafe_allow_html=True,
+                    )
+                    if miss:
+                        chips = "".join(f'<span class="gc-chip bad">{cn(s)}</span>' for s in miss)
+                        st.markdown(f'<div class="gc-chips">{chips}</div>', unsafe_allow_html=True)
+                    else:
+                        ok = '<span class="gc-chip good">You cover the current top-10 demand tokens</span>'
+                        st.markdown(f'<div class="gc-chips">{ok}</div>', unsafe_allow_html=True)
             with cr:
-                st.caption(
-                    "Role-family scores — only skills that exist **both** in Step A and each category list"
-                )
-                df_cm = pd.DataFrame(
-                    [(c, s, m, t) for c, s, m, t in scores],
-                    columns=["Category", "Score %", "Matched", "Total"],
-                ).sort_values("Score %", ascending=True)
-                fig_cm = px.bar(
-                    df_cm,
-                    x="Score %",
-                    y="Category",
-                    orientation="h",
-                    title="Job category match (dataset-scoped)",
-                    color="Score %",
-                    color_continuous_scale=[[0, RED], [0.4, AMBER], [1, GREEN]],
-                )
-                fig_cm.update_traces(texttemplate="%{x:.0f}%", textposition="outside")
-                fig_cm.update_layout(coloraxis_showscale=False)
-                show(fig_cm, 380)
+                with st.container(border=True):
+                    st.markdown('<div class="gc-card-title">Job category match</div>', unsafe_allow_html=True)
+                    st.markdown(
+                        '<div class="gc-card-sub">Role-family scores based on matched Step A vocabulary</div>',
+                        unsafe_allow_html=True,
+                    )
+                    df_cm = pd.DataFrame(
+                        [(c, s, m, t) for c, s, m, t in scores],
+                        columns=["Category", "Score %", "Matched", "Total"],
+                    ).sort_values("Score %", ascending=True)
+                    fig_cm = px.bar(
+                        df_cm,
+                        x="Score %",
+                        y="Category",
+                        orientation="h",
+                        title="",
+                        color="Score %",
+                        color_continuous_scale=[[0, RED], [0.4, AMBER], [1, GREEN]],
+                    )
+                    fig_cm.update_traces(texttemplate="%{x:.0f}%", textposition="outside")
+                    fig_cm.update_layout(coloraxis_showscale=False)
+                    show(fig_cm, 420, margin_patch={"t": 16, "b": 42})
 
             st.subheader("Top job recommendations")
             st.caption("Highest category coverage (after dataset filter)")
