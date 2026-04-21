@@ -2307,56 +2307,7 @@ if tab == "📊 UK & Regions":
         show(fig_hm, 420)
         st.caption("Darker teal = higher demand per 100k population")
 
-        st.markdown("---")
-        st.subheader("Cluster profile radar (per 100k)")
-        st.caption("Six Step B clusters plotted for all four UK regions (reference profile).")
-
-        clusters = ["Game Dev", "Soft Skills", "Proj Mgmt", "Creative", "Biz Tools", "Cloud"]
-        _theta = clusters + [clusters[0]]
-        radar = {
-            "England": [3.55, 3.55, 1.49, 1.45, 0.72, 0.71],
-            "Scotland": [2.19, 1.60, 0.93, 0.44, 0.47, 0.18],
-            "Wales": [1.06, 0.47, 0.09, 0.16, 0.22, 0.28],
-            "N. Ireland": [1.88, 1.20, 0.58, 0.21, 0.37, 0.00],
-        }
-        radar_cols = {
-            "England": "#60A5FA",
-            "Scotland": "#34D399",
-            "Wales": "#F5A623",
-            "N. Ireland": "#A78BFA",
-        }
-
-        fig_r = go.Figure()
-        for region, vals in radar.items():
-            r = list(vals) + [vals[0]]
-            fig_r.add_trace(
-                go.Scatterpolar(
-                    r=r,
-                    theta=_theta,
-                    mode="lines+markers",
-                    name=region,
-                    line=dict(color=radar_cols.get(region, TEAL), width=2),
-                    marker=dict(size=6),
-                )
-            )
-        fig_r.update_layout(
-            title="Regions × clusters — per 100k",
-            polar=dict(
-                bgcolor="rgba(0,0,0,0)",
-                radialaxis=dict(
-                    visible=True,
-                    gridcolor="rgba(255,255,255,0.06)",
-                    tickcolor="rgba(255,255,255,0.12)",
-                ),
-                angularaxis=dict(
-                    gridcolor="rgba(255,255,255,0.06)",
-                    tickcolor="rgba(255,255,255,0.12)",
-                ),
-            ),
-            showlegend=True,
-            legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
-        )
-        show(fig_r, 460, margin_patch=dict(t=40, b=90), axis_tick_color="#CBD5E1")
+        # (Moved to AI Gaps tab: displayed side-by-side with cluster composition)
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 3 — AI GAP ANALYSIS
@@ -2393,49 +2344,111 @@ elif tab == "🤖 AI Gaps":
         st.markdown(f"**D · Recommender**\n\nTop picks · {n_rec} rows")
 
     st.markdown("---")
-    st.subheader("Cluster composition")
-    st.caption(
-        "Per 100k population · K-Means grouping (Step B) · six AI cluster stacks per UK region"
-    )
-    stack_mix, stack_regions = compute_cluster_stack(df_b)
-    fig_cl = go.Figure()
-    if stack_mix and stack_regions:
-        for i, (name, vals) in enumerate(stack_mix.items()):
-            fig_cl.add_trace(
-                go.Bar(
-                    name=name,
-                    x=stack_regions,
-                    y=vals,
-                    marker_color=CLUSTER_STACK_COLS[i % len(CLUSTER_STACK_COLS)],
-                    marker_line_width=0,
+    left, right = st.columns(2)
+
+    with left:
+        st.subheader("Cluster composition")
+        st.caption(
+            "Per 100k population · K-Means grouping (Step B) · six AI cluster stacks per UK region"
+        )
+        stack_mix, stack_regions = compute_cluster_stack(df_b)
+        fig_cl = go.Figure()
+        if stack_mix and stack_regions:
+            for i, (name, vals) in enumerate(stack_mix.items()):
+                fig_cl.add_trace(
+                    go.Bar(
+                        name=name,
+                        x=stack_regions,
+                        y=vals,
+                        marker_color=CLUSTER_STACK_COLS[i % len(CLUSTER_STACK_COLS)],
+                        marker_line_width=0,
+                    )
+                )
+        else:
+            for i, (name, vals) in enumerate(CLUSTER_STACK_SERIES.items()):
+                fig_cl.add_trace(
+                    go.Bar(
+                        name=name,
+                        x=CLUSTER_STACK_LABELS,
+                        y=vals,
+                        marker_color=CLUSTER_STACK_COLS[i],
+                        marker_line_width=0,
+                    )
+                )
+        fig_cl.update_layout(
+            barmode="stack",
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.28,
+                x=0.5,
+                xanchor="center",
+                font=dict(size=11),
+            ),
+            xaxis_title="Region",
+            yaxis_title="Per 100k",
+        )
+        show(fig_cl, 420, margin_patch=dict(t=12, b=120), axis_tick_color="#CBD5E1")
+        st.caption("Game Dev · Soft Skills · Proj Mgmt · Creative · Biz Tools · Cloud")
+
+    with right:
+        st.subheader("Cluster profile radar (per 100k)")
+        st.caption("Six Step B clusters plotted for all four UK regions.")
+
+        # Prefer live Step B-derived values (same source as the stacked composition).
+        clusters = ["Game Dev", "Soft Skills", "Proj Mgmt", "Creative", "Biz Tools", "Cloud"]
+        _theta = clusters + [clusters[0]]
+        radar_cols = {
+            "England": "#60A5FA",
+            "Scotland": "#34D399",
+            "Wales": "#F5A623",
+            "N. Ireland": "#A78BFA",
+        }
+        radar = {}
+        if stack_mix and stack_regions and all(c in stack_mix for c in clusters):
+            for reg_i, reg in enumerate(stack_regions):
+                label = _reg_display(str(reg))
+                radar[label] = [float(stack_mix[c][reg_i]) for c in clusters]
+        else:
+            # Fallback reference profile when Step B isn't available/usable.
+            radar = {
+                "England": [3.55, 3.55, 1.49, 1.45, 0.72, 0.71],
+                "Scotland": [2.19, 1.60, 0.93, 0.44, 0.47, 0.18],
+                "Wales": [1.06, 0.47, 0.09, 0.16, 0.22, 0.28],
+                "N. Ireland": [1.88, 1.20, 0.58, 0.21, 0.37, 0.00],
+            }
+
+        fig_r = go.Figure()
+        for region, vals in radar.items():
+            r = list(vals) + [vals[0]]
+            fig_r.add_trace(
+                go.Scatterpolar(
+                    r=r,
+                    theta=_theta,
+                    mode="lines+markers",
+                    name=region,
+                    line=dict(color=radar_cols.get(region, TEAL), width=2),
+                    marker=dict(size=6),
                 )
             )
-    else:
-        for i, (name, vals) in enumerate(CLUSTER_STACK_SERIES.items()):
-            fig_cl.add_trace(
-                go.Bar(
-                    name=name,
-                    x=CLUSTER_STACK_LABELS,
-                    y=vals,
-                    marker_color=CLUSTER_STACK_COLS[i],
-                    marker_line_width=0,
-                )
-            )
-    fig_cl.update_layout(
-        barmode="stack",
-        legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.28,
-            x=0.5,
-            xanchor="center",
-            font=dict(size=11),
-        ),
-        xaxis_title="Region",
-        yaxis_title="Per 100k",
-    )
-    show(fig_cl, 440, margin_patch=dict(t=12, b=120), axis_tick_color="#CBD5E1")
-    st.caption("Game Dev · Soft Skills · Proj Mgmt · Creative · Biz Tools · Cloud")
+        fig_r.update_layout(
+            title="Regions × clusters — per 100k",
+            polar=dict(
+                bgcolor="rgba(0,0,0,0)",
+                radialaxis=dict(
+                    visible=True,
+                    gridcolor="rgba(255,255,255,0.06)",
+                    tickcolor="rgba(255,255,255,0.12)",
+                ),
+                angularaxis=dict(
+                    gridcolor="rgba(255,255,255,0.06)",
+                    tickcolor="rgba(255,255,255,0.12)",
+                ),
+            ),
+            showlegend=True,
+            legend=dict(orientation="h", y=-0.22, x=0.5, xanchor="center"),
+        )
+        show(fig_r, 420, margin_patch=dict(t=40, b=90), axis_tick_color="#CBD5E1")
 
     st.markdown("---")
     col_l, col_r = st.columns(2)
