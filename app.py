@@ -1645,7 +1645,6 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
             "UK Ahead": "#34D399",
             "UK Behind": "#FF5572",
         },
-        title="UK vs Global Average — Skill Share Difference (%)",
         text="AbsDiff",
     )
     fig_div.update_traces(texttemplate="%{text:.2f}%", textposition="outside")
@@ -1669,6 +1668,9 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
 
     with col_r:
         st.subheader("UK skill rankings vs global")
+        # Add caption spacing so both columns align vertically with the chart column.
+        st.caption(" ")
+        st.caption(" ")
         # Match the chart column height for clean alignment.
         st.dataframe(rnk, use_container_width=True, hide_index=True, height=560)
 
