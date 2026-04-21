@@ -1612,7 +1612,7 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                     with c_l:
                         show(fig_sk, 460)
                     with c_r:
-                        show(fig_bub, 380)
+                        show(fig_bub, 460)
                 else:
                     show(fig_sk, 460)
             else:
