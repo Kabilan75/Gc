@@ -1661,15 +1661,16 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
     with col_l:
         st.subheader("UK ahead / behind the world")
         st.caption("Difference = UK share − global average share (binary % points)")
-        show(fig_div, 520)
         st.caption(
             "Green = UK demands this skill MORE than world average · "
             "Red = UK demands this skill LESS than world average"
         )
+        show(fig_div, 560)
 
     with col_r:
         st.subheader("UK skill rankings vs global")
-        st.dataframe(rnk, use_container_width=True, hide_index=True, height=520)
+        # Match the chart column height for clean alignment.
+        st.dataframe(rnk, use_container_width=True, hide_index=True, height=560)
 
     col1, col2, col3 = st.columns(3)
     col1.metric(
