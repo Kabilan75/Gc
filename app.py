@@ -2199,8 +2199,8 @@ if tab == "📊 UK & Regions":
             if int(a_ts["Activated Date"].notna().sum()) == 0:
                 st.warning("Date column not available for time series analysis")
             else:
-                # Weekly bucket (week start date) for smoother trends.
-                a_ts["Week"] = a_ts["Activated Date"].dt.to_period("W").dt.start_time
+                # Monthly bucket (month start date) for clearer trends.
+                a_ts["Month"] = a_ts["Activated Date"].dt.to_period("M").dt.start_time
                 # Default window used in the narrative for this dataset (adjust if your data differs).
                 start = pd.Timestamp("2025-07-01")
                 end = pd.Timestamp("2025-10-01")
@@ -2225,20 +2225,20 @@ if tab == "📊 UK & Regions":
                     if selected_skills:
                         ts_df = (
                             a_ts[a_ts["Skill_Display"].isin(selected_skills)]
-                            .groupby(["Week", "Skill_Display"])
+                            .groupby(["Month", "Skill_Display"])
                             .size()
                             .reset_index(name="Mentions")
-                            .sort_values("Week")
+                            .sort_values("Month")
                         )
                         fig_ts = px.line(
                             ts_df,
-                            x="Week",
+                            x="Month",
                             y="Mentions",
                             color="Skill_Display",
                             markers=True,
-                            title="Skill Demand by Week — UK Gaming Industry",
+                            title="Skill Demand by Month — UK Gaming Industry",
                             labels={
-                                "Week": "Week",
+                                "Month": "Month",
                                 "Mentions": "Skill Mentions",
                                 "Skill_Display": "Skill",
                             },
