@@ -1668,9 +1668,9 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
 
     with col_r:
         st.subheader("UK skill rankings vs global")
-        # Add caption spacing so both columns align vertically with the chart column.
-        st.caption(" ")
-        st.caption(" ")
+        # Mirror the left column's two caption lines so both columns align vertically.
+        st.caption("Skill · UK share (%) · UK rank")
+        st.caption("Compared with global average (%) · global rank · status")
         # Compact table height: avoid empty filler rows.
         n_rows = int(len(rnk)) if rnk is not None else 0
         row_h = 34  # approx Streamlit row height in px
