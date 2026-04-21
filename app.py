@@ -2157,7 +2157,8 @@ if tab == "📊 UK & Regions":
             if int(a_ts["Activated Date"].notna().sum()) == 0:
                 st.warning("Date column not available for time series analysis")
             else:
-                a_ts["Day"] = a_ts["Activated Date"].dt.floor("D")
+                # Weekly bucket (week start date) for smoother trends.
+                a_ts["Week"] = a_ts["Activated Date"].dt.to_period("W").dt.start_time
                 # Default window used in the narrative for this dataset (adjust if your data differs).
                 start = pd.Timestamp("2025-07-01")
                 end = pd.Timestamp("2025-10-01")
@@ -2182,20 +2183,20 @@ if tab == "📊 UK & Regions":
                     if selected_skills:
                         ts_df = (
                             a_ts[a_ts["Skill_Display"].isin(selected_skills)]
-                            .groupby(["Day", "Skill_Display"])
+                            .groupby(["Week", "Skill_Display"])
                             .size()
                             .reset_index(name="Mentions")
-                            .sort_values("Day")
+                            .sort_values("Week")
                         )
                         fig_ts = px.line(
                             ts_df,
-                            x="Day",
+                            x="Week",
                             y="Mentions",
                             color="Skill_Display",
                             markers=True,
-                            title="Skill Demand by Day — UK Gaming Industry",
+                            title="Skill Demand by Week — UK Gaming Industry",
                             labels={
-                                "Day": "Date",
+                                "Week": "Week",
                                 "Mentions": "Skill Mentions",
                                 "Skill_Display": "Skill",
                             },
