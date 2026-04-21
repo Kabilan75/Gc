@@ -2248,30 +2248,6 @@ if tab == "📊 UK & Regions":
         wal = _top_regional_row("Wales")
         n_ir = _top_regional_row("N. Ireland")
 
-        st.markdown("#### Regional Analysis · `4 Regions`")
-        st.caption(
-            "England · Scotland · Wales · N. Ireland — per 100k · Step A · Step B clusters"
-        )
-
-        top_tiles = pd.DataFrame(
-            [
-                {"Region": "England", "Top skill": str(eng[0]), "/100k": float(eng[2])},
-                {"Region": "Scotland", "Top skill": str(sco[0]), "/100k": float(sco[2])},
-                {"Region": "Wales", "Top skill": str(wal[0]), "/100k": float(wal[2])},
-                {"Region": "N. Ireland", "Top skill": str(n_ir[0]), "/100k": float(n_ir[2])},
-            ]
-        )
-        st.dataframe(
-            top_tiles,
-            use_container_width=True,
-            hide_index=True,
-            height=170,
-            column_config={
-                "/100k": st.column_config.NumberColumn("/100k", format="%.2f"),
-            },
-        )
-
-        st.markdown("---")
         st.subheader("Top 5 skills per region")
         st.caption("Count · per 100k")
         cols4 = st.columns(4)
