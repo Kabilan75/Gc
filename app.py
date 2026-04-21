@@ -2138,16 +2138,45 @@ if tab == "📊 UK & Regions":
             else pd.Series(dtype=int)
         )
 
-        st.markdown(f"#### UK Overview · `{n_jobs:,} total job ads`")
-        st.caption(
-            f"{n_jobs:,} job ads · {n_rows:,} skill rows · source: {src}"
-        )
+        with st.container(border=True):
+            st.markdown(
+                f"""
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
+  <div>
+    <div style="font-size:1.35rem;font-weight:800;color:#F0F4F8;letter-spacing:-0.02em;">
+      UK Gaming — Overview
+    </div>
+    <div style="margin-top:4px;color:#8A9BB0;font-size:0.9rem;">
+      A national snapshot of skill demand across UK gaming job listings — what employers ask for most.
+    </div>
+    <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+      <span style="padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.10);background:rgba(17,29,46,0.9);color:#CBD5E1;font-size:0.78rem;font-weight:700;">Source: {src}</span>
+      <span style="padding:4px 10px;border-radius:999px;border:1px solid rgba(0,229,204,0.25);background:rgba(0,229,204,0.10);color:#E6FFFB;font-size:0.78rem;font-weight:700;">{n_jobs:,} job ads</span>
+      <span style="padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,0.10);background:rgba(17,29,46,0.9);color:#CBD5E1;font-size:0.78rem;font-weight:700;">{n_rows:,} skill rows</span>
+    </div>
+  </div>
+  <div style="min-width:240px;text-align:right;">
+    <div style="color:#64748B;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">
+      Verified totals
+    </div>
+    <div style="margin-top:6px;color:#00E5CC;font-family:var(--font-monospace, JetBrains Mono, monospace);font-size:1.0rem;font-weight:800;">
+      {n_skills:,} skills · {n_regions} regions
+    </div>
+  </div>
+</div>
+""",
+                unsafe_allow_html=True,
+            )
 
-        k1, k2, k3, k4 = st.columns(4)
-        k1.metric("Total Job Ads", f"{n_jobs:,}", "Unique job listings")
-        k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
-        k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
-        k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Total Job Ads", f"{n_jobs:,}", "Unique job listings")
+            k2.metric("Unique Skills", f"{n_skills:,}", "Distinct skill tokens")
+            k3.metric("Skill Rows", f"{n_rows:,}", "After cleaning in pipeline")
+            k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
+
+        st.caption(
+            "Tip: Start with Top 15 skills and the 29→29 trend to see consistent demand patterns."
+        )
 
         st.markdown("---")
         st.subheader("Top 15 skills by demand")
