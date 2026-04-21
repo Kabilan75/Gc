@@ -2199,8 +2199,16 @@ if tab == "📊 UK & Regions":
             if int(a_ts["Activated Date"].notna().sum()) == 0:
                 st.warning("Date column not available for time series analysis")
             else:
-                # Monthly bucket (month start date) for clearer trends.
-                a_ts["Month"] = a_ts["Activated Date"].dt.to_period("M").dt.start_time
+                # Custom monthly bucket anchored on the 29th (e.g. Jun 29 → Jul 29).
+                anchor_day = 29
+                shift_days = anchor_day - 1  # 28
+                a_ts["PeriodStart"] = (
+                    (a_ts["Activated Date"] - pd.Timedelta(days=shift_days))
+                    .dt.to_period("M")
+                    .dt.start_time
+                    + pd.Timedelta(days=shift_days)
+                )
+                a_ts["PeriodEnd"] = a_ts["PeriodStart"] + pd.DateOffset(months=1)
                 # Default window used in the narrative for this dataset (adjust if your data differs).
                 start = pd.Timestamp("2025-07-01")
                 end = pd.Timestamp("2025-10-01")
@@ -2223,22 +2231,34 @@ if tab == "📊 UK & Regions":
                         key="ts_skills",
                     )
                     if selected_skills:
+                        # Drop the last partial period (often causes an artificial "downfall" at the end).
+                        a_plot = a_ts[a_ts["PeriodEnd"] <= end].copy()
                         ts_df = (
-                            a_ts[a_ts["Skill_Display"].isin(selected_skills)]
-                            .groupby(["Month", "Skill_Display"])
+                            a_plot[a_plot["Skill_Display"].isin(selected_skills)]
+                            .groupby(["PeriodStart", "Skill_Display"])
                             .size()
                             .reset_index(name="Mentions")
-                            .sort_values("Month")
+                            .sort_values("PeriodStart")
                         )
+                        periods = (
+                            ts_df[["PeriodStart"]]
+                            .drop_duplicates()
+                            .sort_values("PeriodStart")["PeriodStart"]
+                            .tolist()
+                        )
+                        ticktext = [
+                            f"{p.strftime('%b %d')} → {(p + pd.DateOffset(months=1)).strftime('%b %d')}"
+                            for p in periods
+                        ]
                         fig_ts = px.line(
                             ts_df,
-                            x="Month",
+                            x="PeriodStart",
                             y="Mentions",
                             color="Skill_Display",
                             markers=True,
-                            title="Skill Demand by Month — UK Gaming Industry",
+                            title="Skill Demand by Month (29th→29th) — UK Gaming Industry",
                             labels={
-                                "Month": "Month",
+                                "PeriodStart": "Month",
                                 "Mentions": "Skill Mentions",
                                 "Skill_Display": "Skill",
                             },
@@ -2261,6 +2281,7 @@ if tab == "📊 UK & Regions":
                             legend=dict(orientation="h", y=-0.2),
                         )
                         fig_ts.update_xaxes(type="date")
+                        fig_ts.update_xaxes(tickmode="array", tickvals=periods, ticktext=ticktext)
                         show(fig_ts, 420)
                         st.info(
                             "Communication remained the most demanded skill across all months confirming it is "
