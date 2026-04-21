@@ -1671,8 +1671,13 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         # Add caption spacing so both columns align vertically with the chart column.
         st.caption(" ")
         st.caption(" ")
-        # Match the chart column height for clean alignment.
-        st.dataframe(rnk, use_container_width=True, hide_index=True, height=560)
+        # Compact table height: avoid empty filler rows.
+        n_rows = int(len(rnk)) if rnk is not None else 0
+        row_h = 34  # approx Streamlit row height in px
+        header_h = 38
+        pad = 14
+        table_h = max(220, min(560, header_h + pad + row_h * (n_rows + 1)))
+        st.dataframe(rnk, use_container_width=True, hide_index=True, height=table_h)
 
     col1, col2, col3 = st.columns(3)
     col1.metric(
