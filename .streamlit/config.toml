@@ -1,3 +1,11 @@
 [browser]
 gatherUsageStats = false
 
+[theme]
+base = "dark"
+primaryColor = "#00E5CC"
+backgroundColor = "#05090F"
+secondaryBackgroundColor = "#0C1422"
+textColor = "#F0F4F8"
+font = "sans serif"
+
