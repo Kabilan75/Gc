@@ -1618,8 +1618,6 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
             else:
                 st.warning(f"Skill not found: `{skill_in}`. Try e.g. {', '.join(skills_available[:6])}.")
 
-    st.subheader("UK ahead / behind the world")
-    st.caption("Difference = UK share − global average share (binary % points)")
     if use_live and not share_df.empty:
         ahead, behind = compute_uk_vs_world(share_df, all_job_counts, top_n=7)
         rnk = build_rankings_table(share_df, all_job_counts, n_show=12)
@@ -1629,15 +1627,11 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         rnk = STATIC_RANKINGS
         sim_pairs = STATIC_SIMILAR
 
-    ahead_plot = ahead
-    behind_plot = behind
-
-    ahead_df = pd.DataFrame(ahead_plot, columns=["Skill", "Diff"])
-    behind_df = pd.DataFrame(behind_plot, columns=["Skill", "Diff"])
+    ahead_df = pd.DataFrame(ahead, columns=["Skill", "Diff"])
+    behind_df = pd.DataFrame(behind, columns=["Skill", "Diff"])
     behind_df["Diff"] = -behind_df["Diff"]
 
-    combined = pd.concat([ahead_df, behind_df])
-    combined = combined.sort_values("Diff")
+    combined = pd.concat([ahead_df, behind_df]).sort_values("Diff")
     combined["Color"] = combined["Diff"].apply(lambda x: "UK Ahead" if x > 0 else "UK Behind")
     combined["AbsDiff"] = combined["Diff"].abs()
 
@@ -1654,29 +1648,28 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         title="UK vs Global Average — Skill Share Difference (%)",
         text="AbsDiff",
     )
-    fig_div.update_traces(
-        texttemplate="%{text:.2f}%",
-        textposition="outside",
-    )
-    fig_div.add_vline(
-        x=0,
-        line_color="rgba(255,255,255,0.3)",
-        line_width=2,
-    )
+    fig_div.update_traces(texttemplate="%{text:.2f}%", textposition="outside")
+    fig_div.add_vline(x=0, line_color="rgba(255,255,255,0.3)", line_width=2)
     fig_div.update_layout(
         showlegend=True,
         xaxis_title="Difference from Global Average (%)",
         yaxis_title="",
         legend=dict(orientation="h", y=1.08),
     )
-    show(fig_div, 500)
-    st.caption(
-        "Green = UK demands this skill MORE than world average · "
-        "Red = UK demands this skill LESS than world average"
-    )
 
-    st.subheader("UK skill rankings vs global")
-    st.dataframe(rnk, use_container_width=True, hide_index=True)
+    col_l, col_r = st.columns(2)
+    with col_l:
+        st.subheader("UK ahead / behind the world")
+        st.caption("Difference = UK share − global average share (binary % points)")
+        show(fig_div, 520)
+        st.caption(
+            "Green = UK demands this skill MORE than world average · "
+            "Red = UK demands this skill LESS than world average"
+        )
+
+    with col_r:
+        st.subheader("UK skill rankings vs global")
+        st.dataframe(rnk, use_container_width=True, hide_index=True, height=520)
 
     col1, col2, col3 = st.columns(3)
     col1.metric(
