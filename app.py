@@ -2157,7 +2157,11 @@ if tab == "📊 UK & Regions":
             if int(a_ts["Activated Date"].notna().sum()) == 0:
                 st.warning("Date column not available for time series analysis")
             else:
-                a_ts["Month"] = a_ts["Activated Date"].dt.to_period("M").astype(str)
+                a_ts["Day"] = a_ts["Activated Date"].dt.floor("D")
+                # Default window used in the narrative for this dataset (adjust if your data differs).
+                start = pd.Timestamp("2025-07-01")
+                end = pd.Timestamp("2025-10-01")
+                a_ts = a_ts[(a_ts["Activated Date"] >= start) & (a_ts["Activated Date"] <= end)]
                 if "Skill_Display" not in a_ts.columns:
                     a_ts["Skill_Display"] = a_ts["Skills"].map(lambda x: cn(str(x)))
                 top10_skills = (
@@ -2178,20 +2182,20 @@ if tab == "📊 UK & Regions":
                     if selected_skills:
                         ts_df = (
                             a_ts[a_ts["Skill_Display"].isin(selected_skills)]
-                            .groupby(["Month", "Skill_Display"])
+                            .groupby(["Day", "Skill_Display"])
                             .size()
                             .reset_index(name="Mentions")
-                            .sort_values("Month")
+                            .sort_values("Day")
                         )
                         fig_ts = px.line(
                             ts_df,
-                            x="Month",
+                            x="Day",
                             y="Mentions",
                             color="Skill_Display",
                             markers=True,
-                            title="Skill Demand by Month — UK Gaming Industry",
+                            title="Skill Demand by Day — UK Gaming Industry",
                             labels={
-                                "Month": "Month",
+                                "Day": "Date",
                                 "Mentions": "Skill Mentions",
                                 "Skill_Display": "Skill",
                             },
@@ -2213,6 +2217,7 @@ if tab == "📊 UK & Regions":
                             hovermode="x unified",
                             legend=dict(orientation="h", y=-0.2),
                         )
+                        fig_ts.update_xaxes(type="date")
                         show(fig_ts, 420)
                         st.info(
                             "Communication remained the most demanded skill across all months confirming it is "
