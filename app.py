@@ -2253,11 +2253,23 @@ if tab == "📊 UK & Regions":
             "England · Scotland · Wales · N. Ireland — per 100k · Step A · Step B clusters"
         )
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("England — top /100k", f"{eng[2]:.2f}", str(eng[0]))
-        c2.metric("Scotland — top /100k", f"{sco[2]:.2f}", str(sco[0]))
-        c3.metric("Wales — top /100k", f"{wal[2]:.2f}", str(wal[0]))
-        c4.metric("N. Ireland — top /100k", f"{n_ir[2]:.2f}", str(n_ir[0]))
+        top_tiles = pd.DataFrame(
+            [
+                {"Region": "England", "Top skill": str(eng[0]), "/100k": float(eng[2])},
+                {"Region": "Scotland", "Top skill": str(sco[0]), "/100k": float(sco[2])},
+                {"Region": "Wales", "Top skill": str(wal[0]), "/100k": float(wal[2])},
+                {"Region": "N. Ireland", "Top skill": str(n_ir[0]), "/100k": float(n_ir[2])},
+            ]
+        )
+        st.dataframe(
+            top_tiles,
+            use_container_width=True,
+            hide_index=True,
+            height=170,
+            column_config={
+                "/100k": st.column_config.NumberColumn("/100k", format="%.2f"),
+            },
+        )
 
         st.markdown("---")
         st.subheader("Top 5 skills per region")
