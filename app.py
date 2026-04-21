@@ -2812,7 +2812,39 @@ elif tab == "📄 CV":
                     matched_jobs["UK Region"].astype(str).str.strip() == region_filter
                 ]
             if len(matched_jobs):
-                st.dataframe(matched_jobs, use_container_width=True, hide_index=True)
+                # Display config for job table (hide Country/State; show Job Role + Apply Link when available)
+                display_df = matched_jobs.copy()
+                hide_cols = [c for c in ["Country", "State"] if c in display_df.columns]
+                if hide_cols:
+                    display_df = display_df.drop(columns=hide_cols)
+
+                preferred = [
+                    "Company Category",
+                    "Job Role",
+                    "Activated Date",
+                    "UK Region",
+                    "Skills_Matched",
+                    "Apply Link",
+                ]
+                ordered = [c for c in preferred if c in display_df.columns] + [
+                    c for c in display_df.columns if c not in preferred
+                ]
+                display_df = display_df.loc[:, ordered]
+
+                col_cfg = {}
+                if "Apply Link" in display_df.columns:
+                    col_cfg["Apply Link"] = st.column_config.LinkColumn(
+                        "Apply Link",
+                        display_text="Apply",
+                        help="Open the job application page",
+                    )
+
+                st.dataframe(
+                    display_df,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config=col_cfg if col_cfg else None,
+                )
             else:
                 st.caption("No Step A listings matched your detected skills for this filter.")
 
