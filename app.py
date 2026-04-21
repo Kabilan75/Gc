@@ -500,6 +500,89 @@ def match_jobs_to_cv(df: pd.DataFrame, found: set[str]) -> pd.DataFrame:
     return job_groups.reset_index(drop=True)
 
 
+@st.cache_data(show_spinner=False)
+def _load_job_meta_from_workbook() -> pd.DataFrame:
+    """
+    Loads job-level metadata (role + apply link) from the global workbook when available.
+    Returns a dataframe keyed by the Step A fingerprint columns.
+    """
+    df_global, _ = load_global_workbook()
+    if df_global is None or df_global.empty:
+        return pd.DataFrame()
+
+    keys = ["Company Category", "Country", "State", "Activated Date"]
+    # Prefer the cleaned workbook schema (observed in Combined_Data_cleaned.xlsx).
+    role_src = "Title" if "Title" in df_global.columns else None
+    link_src = "Job Link" if "Job Link" in df_global.columns else None
+
+    # Fallbacks for alternate workbook naming.
+    if role_src is None:
+        for c in ("Job Role", "Job Title", "Role", "Title"):
+            if c in df_global.columns:
+                role_src = c
+                break
+    if link_src is None:
+        for c in ("Apply Link", "URL", "url", "Link", "Job Link"):
+            if c in df_global.columns:
+                link_src = c
+                break
+
+    if role_src is None and link_src is None:
+        return pd.DataFrame()
+    if not all(k in df_global.columns for k in keys):
+        return pd.DataFrame()
+
+    cols = keys + [c for c in (role_src, link_src) if c]
+    meta = df_global[cols].copy()
+
+    # Normalise Activated Date to a comparable string (YYYY-MM-DD).
+    meta["_act"] = pd.to_datetime(meta["Activated Date"], errors="coerce").dt.date.astype(str)
+    meta["Activated Date"] = meta["_act"].where(meta["_act"].ne("NaT"), meta["Activated Date"].astype(str))
+    meta = meta.drop(columns=["_act"], errors="ignore")
+
+    if role_src and role_src != "Job Role":
+        meta = meta.rename(columns={role_src: "Job Role"})
+    if link_src and link_src != "Apply Link":
+        meta = meta.rename(columns={link_src: "Apply Link"})
+
+    # Deduplicate to one row per job fingerprint.
+    meta = (
+        meta.dropna(subset=keys)
+        .drop_duplicates(subset=keys, keep="first")
+        .reset_index(drop=True)
+    )
+    return meta
+
+
+def _enrich_jobs_with_meta(df_jobs: pd.DataFrame) -> pd.DataFrame:
+    """Merge Job Role / Apply Link into Step A-derived job rows when missing."""
+    if df_jobs is None or df_jobs.empty:
+        return pd.DataFrame()
+    if "Job Role" in df_jobs.columns and "Apply Link" in df_jobs.columns:
+        return df_jobs
+
+    meta = _load_job_meta_from_workbook()
+    if meta is None or meta.empty:
+        return df_jobs
+
+    keys = ["Company Category", "Country", "State", "Activated Date"]
+    if not all(k in df_jobs.columns for k in keys):
+        return df_jobs
+
+    out = df_jobs.copy()
+    out["_act"] = pd.to_datetime(out["Activated Date"], errors="coerce").dt.date.astype(str)
+    out["Activated Date"] = out["_act"].where(out["_act"].ne("NaT"), out["Activated Date"].astype(str))
+    out = out.drop(columns=["_act"], errors="ignore")
+
+    # Only bring in columns that aren't already present.
+    add_cols = [c for c in ("Job Role", "Apply Link") if c in meta.columns and c not in out.columns]
+    if not add_cols:
+        return df_jobs
+
+    merged = out.merge(meta[keys + add_cols], on=keys, how="left")
+    return merged
+
+
 def _cv_category_scores(found: set[str], vocab_set: set[str]) -> list[tuple[str, float, int, int]]:
     scores: list[tuple[str, float, int, int]] = []
     for cat, skills in CV_JOB_CATS.items():
@@ -2790,6 +2873,7 @@ elif tab == "📄 CV":
                     st.metric(cat, f"{score:.0f}%", f"{matched} of {total} skills")
 
             matched_jobs = match_jobs_to_cv(df_a, found_set)
+            matched_jobs = _enrich_jobs_with_meta(matched_jobs)
             st.subheader("Matching Job Listings")
             st.caption(
                 f"Skills_Matched = how many of YOUR {len(found)} detected skills appear "
