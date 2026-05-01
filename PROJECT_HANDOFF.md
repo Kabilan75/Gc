@@ -26,31 +26,31 @@ python -m pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Optional: build a cleaned global dataset from the raw workbook (writes `Combined_Data_cleaned.xlsx`, gitignored):
+Optional: build a cleaned global dataset from the raw workbook (writes `Combined_Data_cleaned.xlsx` to `data/`, gitignored):
 
 ```bash
-python preprocess_combined_for_global.py
+python -m src.preprocess_combined_for_global
 ```
 
-Requires `Updated_27_02_26_-_Kabilan.xlsx` at project root with sheet **`Combined Data`**.
+Requires `data/Updated_27_02_26_-_Kabilan.xlsx` with sheet **`Combined Data`**.
 
 ## Repository layout (important files)
 
 | Path | Role |
 |------|------|
 | `app.py` | Main Streamlit app (~2k lines): tabs, loaders, all Plotly figures |
-| `city_to_country_tab5.py` | City → country mapping and normalization for global tab (`TAB5_CHART_COUNTRIES`, `normalize_tab5_dataframe_country`) |
-| `preprocess_combined_for_global.py` | Dedupes/merges raw `Combined Data` → `Combined_Data_cleaned.xlsx` |
-| `Step files/step_a_clean_output.csv` | Step A — UK overview metrics |
-| `Step files/step_b_clustered_skills (2).csv` | Step B — clustered skills (note: filename has space and `(2)`) |
-| `Step files/step_c_gap_scores.csv` | Step C — AI gap scores |
-| `Step files/step_d_workshop_recommendations.csv` | Step D — workshop recommendations |
-| `universal_skills.csv` | Listed in README; **not imported in `app.py`** (legacy/extra asset) |
-| `Updated_27_02_26_-_Kabilan.xlsx` | Raw global comparison workbook (sheet `Combined Data`) — may be absent in git |
-| `Combined_Data_cleaned.xlsx` | Preferred input for global tab when present (generated; in `.gitignore`) |
-| `gaming_dashboard.html` | Standalone HTML demo/visual; **not wired into Streamlit** unless you integrate it |
+| `src/city_to_country_tab5.py` | City → country mapping and normalization for global tab (`TAB5_CHART_COUNTRIES`, `normalize_tab5_dataframe_country`) |
+| `src/preprocess_combined_for_global.py` | Dedupes/merges raw `Combined Data` → `Combined_Data_cleaned.xlsx` |
+| `data/steps/step_a_clean_output.csv` | Step A — UK overview metrics |
+| `data/steps/step_b_clustered_skills (2).csv` | Step B — clustered skills (note: filename has space and `(2)`) |
+| `data/steps/step_c_gap_scores.csv` | Step C — AI gap scores |
+| `data/steps/step_d_workshop_recommendations.csv` | Step D — workshop recommendations |
+| `data/universal_skills.csv` | Not imported in `app.py`; available for future use |
+| `data/Updated_27_02_26_-_Kabilan.xlsx` | Raw global comparison workbook (sheet `Combined Data`) — may be absent in git |
+| `data/Combined_Data_cleaned.xlsx` | Preferred input for global tab when present (generated; in `.gitignore`) |
+| `assets/gaming_dashboard.html` | Standalone HTML demo/visual; **not wired into Streamlit** unless you integrate it |
 | `.streamlit/config.toml` | Streamlit theme (e.g. dark) |
-| `.gitignore` | Ignores `Combined_Data_cleaned.xlsx`, secrets, `__pycache__` |
+| `.gitignore` | Ignores `data/Combined_Data_cleaned.xlsx`, secrets, `__pycache__` |
 | `.devcontainer/devcontainer.json` | Optional VS Code dev container |
 | `README.md` | Short run/deploy instructions |
 
@@ -61,7 +61,7 @@ Requires `Updated_27_02_26_-_Kabilan.xlsx` at project root with sheet **`Combine
   - `🤖 AI Gaps` — pipeline, cluster stack, heatmaps, Step D table, per-region bars; suggested reading order; Step D validated against required columns; sparse-region caption for low Step C row counts.
   - `🌍 Global` — live workbook drives country bars and ahead/behind; ranking table + cosine similarity computed from data when possible; static blocks labelled as reference when no workbook.
   - `📄 CV` — lexical/alias matching only; region picker links high-gap Step C / Step D skills not matched on the CV.
-- **Data loading:** `load_a()` … `load_d()` plus `_find()` for CSVs under `Step files/` (or repo root). Global: `load_global_workbook()` prefers **`Combined_Data_cleaned.xlsx`**, else **`Updated_27_02_26_-_Kabilan.xlsx`** (sheet **`Combined Data`**).
+- **Data loading:** `load_a()` … `load_d()` plus `_find()` for CSVs under `data/steps/` (or repo root). Global: `load_global_workbook()` prefers **`data/Combined_Data_cleaned.xlsx`**, else **`data/Updated_27_02_26_-_Kabilan.xlsx`** (sheet **`Combined Data`**).
 - **Step D contract:** Live workshop table requires columns `UK_Region`, `Skill`, `Demand_Count`, `Gap_Score` (optional `Workshop_Recommendation`). See `step_d_workshop_recommendations.csv`.
 - **Imports from `city_to_country_tab5`:** `normalize_tab5_dataframe_country` for the global workbook path.
 - **Styling:** Plotly `template="plotly_dark"` (and custom layout) for consistency.
@@ -69,15 +69,15 @@ Requires `Updated_27_02_26_-_Kabilan.xlsx` at project root with sheet **`Combine
 
 ## Global comparison (sidebar: “🌍 Global”)
 
-- Prefers **`Combined_Data_cleaned.xlsx`** when found anywhere under the app directory tree.
-- Falls back to **`Updated_27_02_26_-_Kabilan.xlsx`** (sheet **`Combined Data`**).
-- UI may mention running `preprocess_combined_for_global.py` when using the raw workbook.
+- Prefers **`data/Combined_Data_cleaned.xlsx`** when found anywhere under the app directory tree.
+- Falls back to **`data/Updated_27_02_26_-_Kabilan.xlsx`** (sheet **`Combined Data`**).
+- UI may mention running `python -m src.preprocess_combined_for_global` when using the raw workbook.
 
-## `preprocess_combined_for_global.py`
+## `src/preprocess_combined_for_global.py`
 
-- **Reads:** `Updated_27_02_26_-_Kabilan.xlsx`, sheet `"Combined Data"`.
-- **Writes:** `Combined_Data_cleaned.xlsx` at project root.
-- Uses `normalize_tab5_dataframe_country` from `city_to_country_tab5.py` for country cleanup.
+- **Reads:** `data/Updated_27_02_26_-_Kabilan.xlsx`, sheet `"Combined Data"`.
+- **Writes:** `data/Combined_Data_cleaned.xlsx`.
+- Uses `normalize_tab5_dataframe_country` from `src/city_to_country_tab5.py` for country cleanup.
 
 ## Deploy (Streamlit Community Cloud)
 

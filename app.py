@@ -639,7 +639,7 @@ def _cv_category_scores(found: set[str], vocab_set: set[str]) -> list[tuple[str,
 
 # ── File finder ───────────────────────────────────────────────────────────────
 def _find(*names):
-    dirs = [APP_DIR, APP_DIR / "Step files", APP_DIR / "data"]
+    dirs = [APP_DIR, APP_DIR / "data" / "steps", APP_DIR / "data"]
     for n in names:
         for d in dirs:
             p = Path(d) / n
@@ -835,7 +835,7 @@ def load_global_workbook() -> tuple[pd.DataFrame | None, str | None]:
     if not p:
         return None, None
     try:
-        from city_to_country_tab5 import normalize_tab5_dataframe_country
+        from src.city_to_country_tab5 import normalize_tab5_dataframe_country
 
         df = pd.read_excel(p, sheet_name="Combined Data", engine="openpyxl")
         df = normalize_tab5_dataframe_country(df)
@@ -2118,7 +2118,7 @@ if tab == "📊 UK & Regions":
 - **Per 100k** — Skill counts divided by national population × 100,000, so regions are comparable.
 - **Regional top tile** — Highest-demand skill in each region among its top five by count, as mentions per 100k (same rule for all four).
 - **Demo / fallback** — If a CSV is missing, some charts use built-in sample data (Step A–D files
-  under `Step files/`).
+  under `data/steps/`).
             """.strip()
         )
 
@@ -2584,7 +2584,7 @@ elif tab == "🤖 AI Gaps":
             )
             if not live_c:
                 st.caption(
-                    "Step C CSV was not found — place `step_c_gap_scores.csv` in the project or `Step files/` folder."
+                    "Step C CSV was not found — place `step_c_gap_scores.csv` in the project or `data/steps/` folder."
                 )
 
     with col_r:

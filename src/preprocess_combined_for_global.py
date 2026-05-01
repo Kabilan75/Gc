@@ -6,7 +6,7 @@ Reads: Updated_27_02_26_-_Kabilan.xlsx (sheet "Combined Data")
 Writes: Combined_Data_cleaned.xlsx (same columns; one row per job; merged skills)
 
 Run from project root:
-    python preprocess_combined_for_global.py
+    python -m src.preprocess_combined_for_global
 """
 
 from __future__ import annotations
@@ -17,11 +17,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from city_to_country_tab5 import normalize_tab5_dataframe_country
+from src.city_to_country_tab5 import normalize_tab5_dataframe_country
 
-APP_DIR = Path(__file__).resolve().parent
-SOURCE_XLSX = APP_DIR / "Updated_27_02_26_-_Kabilan.xlsx"
-OUT_XLSX = APP_DIR / "Combined_Data_cleaned.xlsx"
+APP_DIR = Path(__file__).resolve().parent.parent
+SOURCE_XLSX = APP_DIR / "data" / "Updated_27_02_26_-_Kabilan.xlsx"
+OUT_XLSX = APP_DIR / "data" / "Combined_Data_cleaned.xlsx"
 SHEET = "Combined Data"
 
 
