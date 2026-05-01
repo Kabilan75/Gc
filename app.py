@@ -844,6 +844,53 @@ def load_global_workbook() -> tuple[pd.DataFrame | None, str | None]:
         return None, None
 
 
+def _count_uk_gaming_job_rows_from_workbook(path: Path) -> int | None:
+    """Count UK gaming rows in a Combined Data workbook (job-listing grain).
+
+    This matches the dashboard's historic headline count (e.g. 1,121) better than
+    collapsing Step A rows using only {Company Category, Country, State, Date},
+    which massively under-counts unique listings.
+    """
+    try:
+        df = pd.read_excel(path, sheet_name="Combined Data", engine="openpyxl")
+    except Exception:
+        return None
+
+    if "Company Category" in df.columns:
+        df = df[df["Company Category"].astype(str).str.strip() == "Gaming Company"]
+    if "Country" in df.columns:
+        df = df[df["Country"].astype(str).str.strip() == "United Kingdom"]
+    return int(len(df))
+
+
+def uk_overview_core_metrics(df: pd.DataFrame) -> tuple[int, int]:
+    """Return (UK job listings count, distinct Step A skills).
+
+    - Job listings: prefer counting rows in `data/Updated_27_02_26_-_Kabilan.xlsx`
+      (Combined Data) filtered to UK + Gaming Company — consistent with the UK sample.
+    - Skills: distinct tokens in Step A after `load_a()` cleaning.
+    """
+    # Skills from Step A
+    if df is None or df.empty or "Skills" not in df.columns:
+        skills = UK_OVERVIEW_UNIQUE_SKILLS
+    else:
+        sk = df["Skills"].dropna().astype(str).str.strip()
+        sk = sk[sk.str.len() > 0]
+        skills = int(sk.nunique())
+
+    # Jobs from workbook (preferred)
+    jobs = UK_OVERVIEW_TOTAL_JOB_ADS
+    p_data_updated = Path("data") / "Updated_27_02_26_-_Kabilan.xlsx"
+    p_root_updated = Path("Updated_27_02_26_-_Kabilan.xlsx")
+    for p in (p_data_updated, p_root_updated):
+        n = _count_uk_gaming_job_rows_from_workbook(p)
+        if n is not None:
+            jobs = n
+            break
+
+    return jobs, skills
+
+
 def _short_cluster(name: str) -> str:
     m = {
         "Game Development & Programming": "Game Dev",
@@ -2060,6 +2107,7 @@ df_b, live_b = load_b()
 df_c, live_c = load_c()
 df_d, live_d = load_d()
 df_global, global_source_name = load_global_workbook()
+uk_overview_jobs, uk_overview_skills = uk_overview_core_metrics(df_a)
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
 NAV_OPTIONS = [
@@ -2113,7 +2161,7 @@ if tab == "📊 UK & Regions":
     with st.expander("Metric definitions (how to read this tab)", expanded=False):
         st.markdown(
             """
-- **Total job ads** — Unique job listings in the UK gaming sample (1,121); Step A stores one row per skill per ad.
+- **Total job ads** — UK gaming job listings counted from the `Combined Data` sheet in `data/Updated_27_02_26_-_Kabilan.xlsx` (UK + `Gaming Company` rows), which matches the UK sample behind Step A.
 - **Skill rows / mentions** — One row per skill tag attached to a listing in Step A.
 - **Per 100k** — Skill counts divided by national population × 100,000, so regions are comparable.
 - **Regional top tile** — Highest-demand skill in each region among its top five by count, as mentions per 100k (same rule for all four).
@@ -2124,8 +2172,8 @@ if tab == "📊 UK & Regions":
 
     if uk_sub == "UK Overview":
         n_rows = len(df_a)
-        n_jobs = UK_OVERVIEW_TOTAL_JOB_ADS
-        n_skills = UK_OVERVIEW_UNIQUE_SKILLS
+        n_jobs = uk_overview_jobs
+        n_skills = uk_overview_skills
         n_regions = (
             int(df_a["UK Region"].dropna().astype(str).str.strip().nunique())
             if "UK Region" in df_a.columns
@@ -2396,8 +2444,8 @@ elif tab == "🤖 AI Gaps":
     n_gap = len(df_c)
     n_rec = len(df_d)
     n_a_rows = len(df_a)
-    # Same verified distinct-skill total as UK Overview (not raw CSV nunique — can differ slightly).
-    n_a_skills = UK_OVERVIEW_UNIQUE_SKILLS
+    # Same distinct-skill total as UK Overview (computed from Step A after cleaning filters).
+    n_a_skills = uk_overview_skills
     n_cl = int(df_c["Cluster_Name"].nunique()) if live_c and "Cluster_Name" in df_c.columns else 6
 
     st.markdown(f"#### AI Gap Analysis · `{n_gap} gap rows`")
@@ -2774,8 +2822,8 @@ elif tab == "📄 CV":
         st.markdown("**🔍 Detect skills**\n\nWord-boundary match + aliases")
     with c3:
         st.markdown(
-            f"**📊 Match dataset**\n\n{UK_OVERVIEW_TOTAL_JOB_ADS:,} total job ads · "
-            f"{UK_OVERVIEW_UNIQUE_SKILLS:,} skill tokens"
+            f"**📊 Match dataset**\n\n{uk_overview_jobs:,} total job ads · "
+            f"{uk_overview_skills:,} skill tokens"
         )
     with c4:
         st.markdown("**💡 Feedback**\n\nDemand + listing reach + gaps")
