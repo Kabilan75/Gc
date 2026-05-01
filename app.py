@@ -2205,10 +2205,13 @@ if tab == "📊 UK & Regions":
   </div>
   <div style="min-width:240px;text-align:right;">
     <div style="color:#64748B;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;">
-      Verified totals
+      Step A (after filters)
     </div>
     <div style="margin-top:6px;color:#00E5CC;font-family:var(--font-monospace, JetBrains Mono, monospace);font-size:1.0rem;font-weight:800;">
       {n_skills:,} skills · {n_regions} regions
+    </div>
+    <div style="margin-top:6px;color:#64748B;font-size:0.72rem;line-height:1.35;">
+      Job ads ({n_jobs:,}) come from the UK gaming listings workbook — not from Step A row counts.
     </div>
   </div>
 </div>
@@ -2223,7 +2226,7 @@ if tab == "📊 UK & Regions":
             k4.metric("UK Regions", str(n_regions), "ENG · SCO · WAL · NI")
 
         st.caption(
-            "Tip: Start with Top 15 skills and the 29→29 trend to see consistent demand patterns."
+            "Tip: Start with Top 15 skills, then use Skill Demand Over Time to compare months."
         )
 
         st.markdown("---")
