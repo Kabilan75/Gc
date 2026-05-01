@@ -12,14 +12,14 @@ streamlit run app.py
 ## Data & assets expected
 
 - CSV inputs:
-  - `Step files/step_a_clean_output.csv`
-  - `Step files/step_b_clustered_skills (2).csv`
-  - `Step files/step_c_gap_scores.csv`
-  - `Step files/step_d_workshop_recommendations.csv`
-  - `universal_skills.csv`
-- Chart images: stored in folders such as `expr charts/` and `Stage 3 Charts/`.
+  - `data/steps/step_a_clean_output.csv`
+  - `data/steps/step_b_clustered_skills (2).csv`
+  - `data/steps/step_c_gap_scores.csv`
+  - `data/steps/step_d_workshop_recommendations.csv`
+  - `data/universal_skills.csv`
+- Chart images: stored in `assets/expr_charts/` and `assets/stage3_charts/`.
 - Global comparison (Tab 5):
-  - If you have it, place `Updated_27_02_26_-_Kabilan.xlsx` (sheet: `Combined Data`) in the project folder (or any subfolder), **or**
+  - If you have it, place `Updated_27_02_26_-_Kabilan.xlsx` (sheet: `Combined Data`) in `data/`, **or**
   - Upload the file in the app when prompted.
 
 ## Deploy (Streamlit Community Cloud)
