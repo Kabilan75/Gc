@@ -70,7 +70,8 @@ Step 3: Render chosen tab
   ↓
 Step 4: User sees results
   - Charts update in real-time
-  - If data files missing → show fallback demo data
+  - If Step A–D CSVs are missing → built-in demo sample for those tabs
+  - If the global workbook is missing (e.g. on Streamlit Cloud) → Global tab shows an upload prompt, not placeholder country charts
   ↓
 END: User closes app
 ```
@@ -79,7 +80,7 @@ END: User closes app
 
 ```
 GC_dashboard/
-├── app.py                          ← Main Streamlit app (3,100 lines)
+├── app.py                          ← Main Streamlit app (~3,100+ lines)
 │
 ├── src/                            ← Helper Python modules
 │   ├── __init__.py
@@ -141,13 +142,13 @@ The file is organized in sections (marked with `# ── Section Name ──`):
 | 544-595 | Data Enrichment | Add job roles and apply links to data |
 | 641-860 | Loaders & Helpers | Load CSVs, apply fallbacks, normalize data |
 | 865-1348 | Data Processing | Calculate metrics, gaps, similarities, clusters |
-| 1399-1781 | Global Tab | Render global comparison tab |
-| 2027-2056 | Chart Rendering | Apply dark theme to charts |
-| 2058-2112 | Data Load & Navigation | Load all files, show sidebar menu |
-| 2104-2391 | Tab 1: UK & Regions | Show national overview and regional analysis |
-| 2395-2748 | Tab 2: AI Gaps | Show gap analysis and clusters |
-| 2752-2854 | Tab 3: Global | (calls render_global_tab) |
-| 2758-3098 | Tab 4: CV Evaluator | Show CV matching and job recommendations |
+| 1455-1805 | `render_global_tab` | Global comparison UI (workbook or upload; no static country charts) |
+| 2050-2078 | Chart helpers | `_dark`, `show` — Plotly dark theme |
+| 2081-2112 | Data load & nav | `load_a`…`load_d`, `load_global_workbook`, session upload override, sidebar |
+| 2133-2421 | Tab 1: UK & Regions | UK Overview + Regional Analysis |
+| 2427-2779 | Tab 2: AI Gaps | Gaps, clusters, workshops |
+| 2784-2789 | Tab 3: Global | Calls `render_global_tab(...)` |
+| 2794+ | Tab 4: CV | CV Evaluator |
 
 ---
 
@@ -158,7 +159,7 @@ The file is organized in sections (marked with `# ── Section Name ──`):
 The app uses a 4-step data pipeline. Each step builds on the previous one.
 
 ```
-Raw Job Listings (1,121 jobs from UK gaming companies)
+Raw job listings (UK gaming sample; volume varies with your workbook and pipeline)
   ↓
 [STEP A] Clean the raw data
   ✓ Input: step_a_clean_output.csv
@@ -192,23 +193,29 @@ Raw Job Listings (1,121 jobs from UK gaming companies)
 
 ### How Data is Loaded (Code Flow)
 
-**In app.py lines 2058-2062:**
+**In app.py (data load block, ~lines 2081-2091):**
 
 ```python
-df_a, live_a = load_a()           # Load/cache Step A CSV
-df_b, live_b = load_b()           # Load/cache Step B CSV
-df_c, live_c = load_c()           # Load/cache Step C CSV
-df_d, live_d = load_d()           # Load/cache Step D CSV
-df_global, global_source_name = load_global_workbook()  # Load global Excel
+df_a, live_a = load_a()
+df_b, live_b = load_b()
+df_c, live_c = load_c()
+df_d, live_d = load_d()
+df_global, global_source_name, global_load_error = load_global_workbook()
+# Optional: user-uploaded Combined Data for this session (e.g. Streamlit Cloud)
+if st.session_state.get("gc_global_workbook_df") is not None:
+    df_global = st.session_state["gc_global_workbook_df"]
+    global_source_name = st.session_state.get("gc_global_workbook_name", "Uploaded workbook")
+    global_load_error = None
 ```
 
-**Each loader (load_a, load_b, etc.):**
-1. Looks for the CSV file in `data/steps/` folder
-2. If found → Load it with pandas, cache it (so it doesn't reload on every page refresh)
-3. If NOT found → Use hardcoded fallback demo data (`_fallback_a()`, `_fallback_b()`, etc.)
-4. Returns both the data AND a flag (`live_a = True/False`) saying if it's real or demo
+**Each Step A–D loader (`load_a`, `load_b`, etc.):**
+1. Looks for the CSV in `data/steps/` (or via `_find()`)
+2. If found → load with pandas and `@st.cache_data`
+3. If NOT found → hardcoded `_fallback_a()` / `_fallback_b()` etc. and `live_* = False`
 
-**This means: The app ALWAYS works**, even if data files are missing. It just shows demo data.
+**Global workbook:** `load_global_workbook()` returns `(DataFrame | None, filename | None, error_message | None)`. It does **not** inject demo country data. The **Global** tab either processes a disk file, an **uploaded** Excel in session state, or shows guidance only (see `render_global_tab`).
+
+**This means:** UK / AI Gaps / CV can still run with Step A–D fallbacks. **Global** needs real Combined Data (on disk or upload) to show live country and skill views.
 
 ---
 
@@ -224,25 +231,11 @@ Shows the big picture of UK gaming job postings:
 
 | Chart/Metric | Shows | Data Source |
 |--------------|-------|-------------|
-| 4 metrics (top row) | Total jobs, unique skills, skill rows, regions | Hardcoded constants |
+| 4 metrics (top row) | Job ads (workbook), unique skills & rows (Step A), regions | `Updated_...xlsx` `Combined Data` (UK + Gaming Company) for job count; `uk_overview_core_metrics` + Step A for skills |
 | Top 15 skills bar chart | Which skills appear most in job postings | Step A (count + %) |
 | Skill Demand Over Time | How demand for top skills changed Jul-Oct 2025 | Step A (by month) |
 
-**Code walkthrough (lines 2125-2211):**
-```python
-# Line 2127: Load Step A data
-df_a, live_a = load_a()
-
-# Lines 2135-2151: Show 4 metrics at top
-st.metric("Total Job Ads", 1121, "UK Gaming")
-st.metric("Unique Skills", 352, "Across dataset")
-# ... more metrics
-
-# Lines 2177-2211: Top 15 skills bar chart
-top_15 = df_a['Skills'].value_counts().head(15)
-fig = px.bar(...)  # Create bar chart
-show(fig, h=300)   # Display with dark theme
-```
+**Code walkthrough:** UK Overview lives under `if tab == "📊 UK & Regions"` → `uk_sub == "UK Overview"` (~lines 2154+). Metrics use `n_jobs` from the workbook count, `n_rows` / `n_skills` / `n_regions` from Step A after filters — not hardcoded constants.
 
 #### Regional Analysis
 Shows skill demand by UK region:
@@ -316,30 +309,25 @@ region = st.selectbox("Pick a region:", ["England", "Scotland", ...])
 
 ---
 
-### Tab 3: Global (Lines 2752-2854 calls render_global_tab)
+### Tab 3: Global (`render_global_tab`, ~1455-1805; invoked from ~2784)
 
-**What you see:**
-- Compare UK gaming skills to 81 other countries
+**What you see (when data is available):**
+- Country job counts and UK vs world skill analysis from the **Combined Data** sheet
 
 **The data:**
-- Uses global workbook (Excel file with gaming jobs from multiple countries)
-- Countries are normalized by the `city_to_country_tab5` module (maps city names to country names)
-- If workbook missing → Shows static reference data
+- **Disk:** `load_global_workbook()` uses `_find()` with **`Updated_27_02_26_-_Kabilan.xlsx` first**, then `Combined_Data_cleaned.xlsx` (first file found wins). Sheet: **`Combined Data`**, then `normalize_tab5_dataframe_country`.
+- **Upload:** User can upload the same workbook in-session (`gc_global_workbook_upload`); it overrides disk load for that session.
+- **If there is no usable workbook and no successful processing:** the tab shows **info / error text and upload** — it does **not** show hardcoded “reference” country rankings or placeholder KPIs.
 
-**Charts:**
+**Charts (when `use_live` path succeeds):**
 
 | Chart | Shows |
 |-------|-------|
-| Top 15 countries bar | Which countries have most gaming jobs (UK highlighted in teal) |
-| Skill explorer | Type a skill name, see which countries value it most |
-| Divergence chart | Skills where UK leads vs lags global average |
-| Similarity radar | Which countries have most similar skill profiles to UK |
-| Skill ranking table | Top 12 skills with UK % vs global average |
+| Top countries bar | Gaming job row counts by country (UK highlighted when present) |
+| Skill explorer | UK vs world skill shares (when `share_df` is non-empty) |
+| Ahead / behind, rankings, similarity | From computed shares when United Kingdom appears in the skill-share matrix |
 
-**Key metrics:**
-- Which skill is the UK's #1 (usually "Communication")
-- Biggest advantage (e.g., "Talent Acquisition" more valued in UK)
-- Biggest gap (e.g., "CI/CD" more valued globally)
+Skill-level highlights (#1 skill, biggest ahead/behind) come from **data**, not fixed example skill names.
 
 ---
 
@@ -521,11 +509,10 @@ Sheet: `"Combined Data"`
 | Job Link | "https://..." |
 | Activated Date | "2025-09-20" |
 
-**Processing:**
-1. Raw workbook is loaded (lines 832-844)
-2. Country names are normalized using `city_to_country_tab5` (maps city → country)
-3. If already preprocessed → uses `Combined_Data_cleaned.xlsx`
-4. Result: 81 countries, ~5,000+ unique jobs
+**Loading in the app (`load_global_workbook`, ~836+):**
+1. Resolve a file path with `_find("Updated_27_02_26_-_Kabilan.xlsx", "Combined_Data_cleaned.xlsx")` (Updated is tried first).
+2. Read sheet **`Combined Data`**, then `normalize_tab5_dataframe_country`.
+3. Optional offline script `python -m src.preprocess_combined_for_global` can create `Combined_Data_cleaned.xlsx` for a deduped copy; the app will pick it if the raw file is absent.
 
 ---
 
@@ -602,7 +589,7 @@ python -m src.preprocess_combined_for_global
 # Creates: data/Combined_Data_cleaned.xlsx
 ```
 
-**The app automatically uses it:** If `Combined_Data_cleaned.xlsx` doesn't exist, the app falls back to the raw workbook.
+**In practice:** If only the raw workbook is present, the app uses that. If both exist, **`Updated_...` is preferred** by `_find` order.
 
 ---
 
@@ -802,11 +789,10 @@ matching_jobs = df_jobs[df_jobs['Skills'].str.contains('|'.join(selected_skills)
    → Displays cluster composition, gap analysis, workshops
 
 6. User clicks "Global"
-   → Tab 3 renders (calls render_global_tab)
-   → Loads global workbook
-   → Normalizes countries using city_to_country_tab5
-   → Calculates binary skill matrices, cosine similarity
-   → Displays country rankings, skill explorer, divergence
+   → Renders `render_global_tab` (or shows upload prompt if no data)
+   → Workbook from disk and/or user upload; session state can override
+   → Normalizes countries using `city_to_country_tab5`
+   → When possible: skill shares, rankings, similarity from real rows only
 
 7. User clicks "CV Evaluator"
    → Tab 4 renders

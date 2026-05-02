@@ -1496,61 +1496,6 @@ def render_global_tab(
         st.error(load_error[:900])
     st.markdown("---")
 
-    STATIC_COUNTRIES = [
-        ("United States", 5604),
-        ("India", 2374),
-        ("Canada", 1914),
-        ("United Kingdom", 1634),
-        ("China", 998),
-        ("Poland", 867),
-        ("Germany", 575),
-        ("Japan", 535),
-        ("Australia", 447),
-        ("France", 442),
-    ]
-    STATIC_AHEAD = [
-        ("Talent Acquisition", 18.73),
-        ("Storytelling", 8.41),
-        ("Team Management", 8.22),
-        ("Unreal", 7.41),
-        ("Maya", 6.57),
-        ("C++", 6.35),
-        ("Real-Time VFX", 4.61),
-    ]
-    STATIC_BEHIND = [
-        ("CI/CD", 8.25),
-        ("Python", 6.86),
-        ("SQL", 5.68),
-        ("Docker", 5.10),
-        ("Kubernetes", 4.43),
-        ("Linux", 4.41),
-        ("AWS", 4.41),
-    ]
-    STATIC_RANKINGS = pd.DataFrame(
-        [
-            ["Communication", 52.12, 1, 55.06, 1, "↑ Ahead"],
-            ["Talent Acquisition", 37.11, 2, 18.38, 4, "↑ Ahead"],
-            ["Team Management", 33.67, 3, 25.45, 2, "↓ Behind"],
-            ["Storytelling", 13.07, 6, 4.66, 37, "↑ Ahead"],
-            ["Python", 12.99, 7, 19.85, 3, "↓ Behind"],
-            ["C++", 12.71, 8, 6.36, 25, "↑ Ahead"],
-            ["Unreal", 12.56, 9, 5.15, 31, "↑ Ahead"],
-            ["CI/CD", 5.60, 18, 13.85, 6, "↓ Behind"],
-        ],
-        columns=["Skill", "UK Share %", "UK Rank", "Global Avg %", "Global Rank", "Trend"],
-    )
-    STATIC_SIMILAR = [
-        ("France", 0.96),
-        ("Japan", 0.95),
-        ("United States", 0.94),
-        ("Sweden", 0.93),
-        ("Brazil", 0.93),
-        ("Spain", 0.93),
-        ("UAE", 0.92),
-        ("South Korea", 0.92),
-        ("Netherlands", 0.92),
-    ]
-
     use_live = False
     share_df = pd.DataFrame()
     top_skills: list[str] = []
@@ -1601,45 +1546,39 @@ def render_global_tab(
                 use_live = False
                 st.error(f"Error processing global workbook: {str(ex)[:220]}")
 
-    if use_live:
-        st.success(f"📡 **Live Data** — `{source_name}` · one row per job listing · binary skill shares.")
-        if share_df.empty or "United Kingdom" not in share_df.index:
-            st.warning(
-                "Country job counts and the chart below use your **`Combined Data`** workbook. "
-                "Some UK vs world **skill** sections may fall back to reference snapshots if `Skills` "
-                "could not be parsed into tokens or **United Kingdom** is missing from the skill matrix."
-            )
-    else:
+    if not use_live:
+        st.info(
+            "**No Combined Data loaded.** This tab only shows your real workbook — **no demo charts**. "
+            "Add `data/Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx`, or **upload** an `.xlsx` "
+            "with sheet **`Combined Data`** (expander above)."
+        )
+        return
+
+    st.success(f"📡 **Live Data** — `{source_name}` · one row per job listing · binary skill shares.")
+    if share_df.empty or "United Kingdom" not in share_df.index:
         st.warning(
-            "📋 **Reference Data** — Add `Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx` "
-            "(sheet: `Combined Data`) under the project or `data/` to enable live global comparisons. "
-            "Showing 81 countries in reference data. Live mode shows countries with ≥50 jobs "
-            "for skill analysis but all countries for ranking. "
-            "Note: static % values use raw token counts — live values use binary presence per job so numbers will differ."
+            "Country job counts and the chart below use your **`Combined Data`** workbook. "
+            "UK vs world **skill** comparison sections appear only when `Skills` parse into tokens and "
+            "**United Kingdom** is present in the skill matrix."
         )
 
     st.markdown("---")
     c1, c2, c3, c4 = st.columns(4)
-    if use_live:
-        c1.metric("UK Global Rank", f"#{uk_rank}" if uk_rank else "—", f"out of {n_total_countries} total countries")
-        c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "unique job listings")
-        c3.metric("Countries for analysis", f"{n_countries_analysed}", f"{n_total_countries} total countries found")
-        c4.metric(
-            "Skills tracked",
-            str(len(top_skills)) if top_skills else "0",
-            "top skills vocabulary",
-        )
-    else:
-        c1.metric("UK Global Rank", "#4", "By gaming listings")
-        c2.metric("Communication", "80/81", "Countries demand it")
-        c3.metric("UK Comm. Share", "52.12%", "Ranks #1 globally")
-        c4.metric("Most Similar", "France", "0.96 cosine similarity")
+    c1.metric("UK Global Rank", f"#{uk_rank}" if uk_rank else "—", f"out of {n_total_countries} total countries")
+    c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "unique job listings")
+    c3.metric("Countries for analysis", f"{n_countries_analysed}", f"{n_total_countries} total countries found")
+    c4.metric(
+        "Skills tracked",
+        str(len(top_skills)) if top_skills else "0",
+        "top skills vocabulary",
+    )
 
     st.subheader("Top countries by gaming job listings")
-    if use_live and top_countries is not None:
-        df_top = top_countries.head(15).copy()
-    else:
-        df_top = pd.DataFrame(STATIC_COUNTRIES, columns=["Country", "Jobs"])
+    df_top = top_countries.head(15).copy() if top_countries is not None else pd.DataFrame(columns=["Country", "Jobs"])
+    if df_top.empty:
+        st.warning("No country rows to chart after filters — check `Combined Data` and `Company Category`.")
+        return
+
     df_top["Type"] = df_top["Country"].astype(str).map(
         lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
     )
@@ -1673,24 +1612,22 @@ def render_global_tab(
             categoryarray=df_top["RankLabel"].tolist(),
         ),
     )
-    _uk_rank = int(uk_rank) if (use_live and uk_rank) else int(
-        df_top.loc[df_top["Country"] == "United Kingdom", "Rank"].iloc[0]
-    ) if "United Kingdom" in df_top["Country"].values else 4
-    fig_ct.add_annotation(
-        text=f"🇬🇧 UK = #{_uk_rank} globally",
-        xref="paper",
-        yref="paper",
-        x=0.98,
-        y=0.15,
-        showarrow=False,
-        font=dict(size=12, color="#00E5CC"),
-        bgcolor="#0C1422",
-        bordercolor="#00E5CC",
-        borderwidth=1,
-    )
+    if uk_rank is not None:
+        fig_ct.add_annotation(
+            text=f"🇬🇧 UK = #{int(uk_rank)} globally",
+            xref="paper",
+            yref="paper",
+            x=0.98,
+            y=0.15,
+            showarrow=False,
+            font=dict(size=12, color="#00E5CC"),
+            bgcolor="#0C1422",
+            bordercolor="#00E5CC",
+            borderwidth=1,
+        )
     show(fig_ct, 500)
 
-    if use_live and not share_df.empty:
+    if not share_df.empty:
         st.subheader("Skill Explorer — UK vs world")
         st.caption("Binary presence: % of unique jobs in each country that mention the skill")
         skills_available = [str(s) for s in share_df.columns.tolist()]
@@ -1765,130 +1702,106 @@ def render_global_tab(
             else:
                 st.warning(f"Skill not found: `{skill_in}`. Try e.g. {', '.join(skills_available[:6])}.")
 
-    skill_tables_live = (
-        use_live
-        and not share_df.empty
-        and "United Kingdom" in share_df.index
-    )
+    skill_tables_live = not share_df.empty and "United Kingdom" in share_df.index
+
     if skill_tables_live:
         ahead, behind = compute_uk_vs_world(share_df, all_job_counts, top_n=7)
         rnk = build_rankings_table(share_df, all_job_counts, n_show=12)
         sim_pairs = cosine_similarity_to_uk(share_df, top_n=12)
-    else:
-        ahead, behind = STATIC_AHEAD, STATIC_BEHIND
-        rnk = STATIC_RANKINGS
-        sim_pairs = STATIC_SIMILAR
 
-    ahead_df = pd.DataFrame(ahead, columns=["Skill", "Diff"])
-    behind_df = pd.DataFrame(behind, columns=["Skill", "Diff"])
-    behind_df["Diff"] = -behind_df["Diff"]
+        ahead_df = pd.DataFrame(ahead, columns=["Skill", "Diff"])
+        behind_df = pd.DataFrame(behind, columns=["Skill", "Diff"])
+        behind_df["Diff"] = -behind_df["Diff"]
 
-    combined = pd.concat([ahead_df, behind_df]).sort_values("Diff")
-    combined["Color"] = combined["Diff"].apply(lambda x: "UK Ahead" if x > 0 else "UK Behind")
-    combined["AbsDiff"] = combined["Diff"].abs()
+        combined = pd.concat([ahead_df, behind_df]).sort_values("Diff")
+        combined["Color"] = combined["Diff"].apply(lambda x: "UK Ahead" if x > 0 else "UK Behind")
+        combined["AbsDiff"] = combined["Diff"].abs()
 
-    fig_div = px.bar(
-        combined,
-        x="Diff",
-        y="Skill",
-        orientation="h",
-        color="Color",
-        color_discrete_map={
-            "UK Ahead": "#34D399",
-            "UK Behind": "#FF5572",
-        },
-        text="AbsDiff",
-    )
-    fig_div.update_traces(texttemplate="%{text:.2f}%", textposition="outside")
-    fig_div.add_vline(x=0, line_color="rgba(255,255,255,0.3)", line_width=2)
-    fig_div.update_layout(
-        showlegend=True,
-        xaxis_title="Difference from Global Average (%)",
-        yaxis_title="",
-        legend=dict(orientation="h", y=1.08),
-    )
+        if not combined.empty:
+            fig_div = px.bar(
+                combined,
+                x="Diff",
+                y="Skill",
+                orientation="h",
+                color="Color",
+                color_discrete_map={
+                    "UK Ahead": "#34D399",
+                    "UK Behind": "#FF5572",
+                },
+                text="AbsDiff",
+            )
+            fig_div.update_traces(texttemplate="%{text:.2f}%", textposition="outside")
+            fig_div.add_vline(x=0, line_color="rgba(255,255,255,0.3)", line_width=2)
+            fig_div.update_layout(
+                showlegend=True,
+                xaxis_title="Difference from Global Average (%)",
+                yaxis_title="",
+                legend=dict(orientation="h", y=1.08),
+            )
 
-    col_l, col_r = st.columns(2)
-    with col_l:
-        st.subheader("UK ahead / behind the world")
-        st.caption("Difference = UK share − global average share (binary % points)")
-        st.caption(
-            "Green = UK demands this skill MORE than world average · "
-            "Red = UK demands this skill LESS than world average"
-        )
-        show(fig_div, 560)
+            col_l, col_r = st.columns(2)
+            with col_l:
+                st.subheader("UK ahead / behind the world")
+                st.caption("Difference = UK share − global average share (binary % points)")
+                st.caption(
+                    "Green = UK demands this skill MORE than world average · "
+                    "Red = UK demands this skill LESS than world average"
+                )
+                show(fig_div, 560)
 
-    with col_r:
-        st.subheader("UK skill rankings vs global")
-        # Mirror the left column's two caption lines so both columns align vertically.
-        st.caption("Skill · UK share (%) · UK rank")
-        st.caption("Compared with global average (%) · global rank · status")
-        # Compact table height: avoid empty filler rows.
-        n_rows = int(len(rnk)) if rnk is not None else 0
-        row_h = 34  # approx Streamlit row height in px
-        header_h = 38
-        pad = 14
-        table_h = max(220, min(560, header_h + pad + row_h * (n_rows + 1)))
-        st.dataframe(rnk, use_container_width=True, hide_index=True, height=table_h)
+            with col_r:
+                st.subheader("UK skill rankings vs global")
+                st.caption("Skill · UK share (%) · UK rank")
+                st.caption("Compared with global average (%) · global rank · status")
+                n_rows = int(len(rnk)) if rnk is not None else 0
+                row_h = 34
+                header_h = 38
+                pad = 14
+                table_h = max(220, min(560, header_h + pad + row_h * (n_rows + 1)))
+                st.dataframe(rnk, use_container_width=True, hide_index=True, height=table_h)
+        else:
+            st.info("No UK ahead/behind skill differences computed for the current filters.")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric(
-        "UK #1 Skill Globally",
-        "Communication",
-        "51.63% of UK gaming jobs",
-    )
-    col2.metric(
-        "Biggest UK Advantage",
-        "Talent Acquisition",
-        "+13.67% above world avg",
-    )
-    col3.metric(
-        "Biggest UK Gap",
-        "CI/CD",
-        "-8.25% below world avg",
-    )
-
-    st.subheader("Countries most similar to UK")
-    if sim_pairs:
-        df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values("Similarity")
-        fig_sim = px.bar(
-            df_sim.sort_values("Similarity"),
-            x="Similarity",
-            y="Country",
-            orientation="h",
-            title="Countries Most Similar to UK Gaming Skill Profile",
-            color="Similarity",
-            color_continuous_scale=[
-                [0.0, "#111D2E"],
-                [0.5, "#0D7A8E"],
-                [1.0, "#00E5CC"],
-            ],
-            text="Similarity",
-        )
-        fig_sim.update_traces(
-            texttemplate="%{text:.4f}",
-            textposition="outside",
-            textfont=dict(size=11, color="#F0F4F8"),
-        )
-        fig_sim.update_layout(
-            coloraxis_showscale=False,
-            xaxis_range=[0.70, 1.02],
-            xaxis_title="Cosine Similarity (out of 1.0)",
-            yaxis_title="",
-        )
-        fig_sim.add_vline(
-            x=1.0,
-            line_color="rgba(255,255,255,0.15)",
-            line_dash="dash",
-            annotation_text="Perfect match = 1.0",
-            annotation_font=dict(color="#8A9BB0", size=10),
-        )
-        show(fig_sim, 420)
-        st.caption(
-            "Cosine similarity measures how similar each country's "
-            "gaming skill demand profile is to UK · "
-            "1.0 = identical · France 0.9675 = most similar"
-        )
+        st.subheader("Countries most similar to UK")
+        if sim_pairs:
+            df_sim = pd.DataFrame(sim_pairs, columns=["Country", "Similarity"]).sort_values("Similarity")
+            fig_sim = px.bar(
+                df_sim.sort_values("Similarity"),
+                x="Similarity",
+                y="Country",
+                orientation="h",
+                title="Countries Most Similar to UK Gaming Skill Profile",
+                color="Similarity",
+                color_continuous_scale=[
+                    [0.0, "#111D2E"],
+                    [0.5, "#0D7A8E"],
+                    [1.0, "#00E5CC"],
+                ],
+                text="Similarity",
+            )
+            fig_sim.update_traces(
+                texttemplate="%{text:.4f}",
+                textposition="outside",
+                textfont=dict(size=11, color="#F0F4F8"),
+            )
+            fig_sim.update_layout(
+                coloraxis_showscale=False,
+                xaxis_range=[0.70, 1.02],
+                xaxis_title="Cosine Similarity (out of 1.0)",
+                yaxis_title="",
+            )
+            fig_sim.add_vline(
+                x=1.0,
+                line_color="rgba(255,255,255,0.15)",
+                line_dash="dash",
+                annotation_text="Perfect match = 1.0",
+                annotation_font=dict(color="#8A9BB0", size=10),
+            )
+            show(fig_sim, 420)
+            st.caption(
+                "Cosine similarity measures how similar each country's gaming skill demand profile is to UK "
+                "(1.0 = identical profile)."
+            )
 
 
 def gaming_global_frame(df: pd.DataFrame) -> pd.DataFrame:

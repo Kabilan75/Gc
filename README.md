@@ -18,7 +18,7 @@ streamlit run app.py
   - `data/steps/step_d_workshop_recommendations.csv`
   - `data/universal_skills.csv`
 - Chart images: stored in `assets/expr_charts/` and `assets/stage3_charts/`.
-- Global comparison (Tab 5):
+- Global comparison (sidebar **Global**):
   - If you have it, place `Updated_27_02_26_-_Kabilan.xlsx` (sheet: `Combined Data`) in `data/`, **or**
   - Upload the file in the app when prompted.
 
