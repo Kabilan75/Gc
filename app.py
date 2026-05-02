@@ -546,12 +546,9 @@ def _load_job_meta_from_workbook() -> pd.DataFrame:
     """
     Loads job-level metadata (role + apply link) from the global workbook when available.
     Returns a dataframe keyed by the Step A fingerprint columns.
-    Uses session-uploaded workbook when present (same source as Global tab).
-    Not cached — upload can change between reruns.
+    Same source as Global tab: disk (`_find`) or `GLOBAL_COMBINED_WORKBOOK_URL`.
     """
-    df_global = st.session_state.get("gc_global_workbook_df")
-    if df_global is None:
-        df_global, _, _ = load_global_workbook()
+    df_global, _, _ = load_global_workbook()
     if df_global is None or df_global.empty:
         return pd.DataFrame()
 
@@ -936,7 +933,7 @@ def uk_overview_core_metrics(
 ) -> tuple[int, int]:
     """Return (UK job listings count, distinct Step A skills).
 
-    - Job listings: prefer in-memory Combined Data (`df_global` from disk, URL, or upload), else
+    - Job listings: prefer in-memory Combined Data (`df_global` from disk or URL), else
       `Updated_...xlsx` on disk — UK + Gaming Company.
     - Skills: distinct tokens in Step A after `load_a()` cleaning.
     """
@@ -1525,40 +1522,6 @@ def render_global_tab(
 ) -> None:
     st.markdown("#### Global Comparison · `UK vs world`")
     st.caption("Unique job listings · binary skill presence (% of jobs mentioning skill)")
-    with st.expander(
-        "Optional: upload Combined Data (.xlsx) for this session",
-        expanded=False,
-    ):
-        st.caption(
-            "Use this if the file is not in the repo and you are not using **`GLOBAL_COMBINED_WORKBOOK_URL`**. "
-            "Sheet name must be **`Combined Data`**. Data stays in this browser session only."
-        )
-        up = st.file_uploader(
-            "Excel workbook",
-            type=["xlsx"],
-            key="gc_global_workbook_upload",
-            label_visibility="collapsed",
-        )
-        if up is not None:
-            try:
-                from src.city_to_country_tab5 import normalize_tab5_dataframe_country
-
-                raw = pd.read_excel(up, sheet_name="Combined Data", engine="openpyxl")
-                df_up = normalize_tab5_dataframe_country(raw)
-                if df_up.empty:
-                    st.warning("Workbook loaded but `Combined Data` is empty after normalization.")
-                else:
-                    st.session_state["gc_global_workbook_df"] = df_up
-                    st.session_state["gc_global_workbook_name"] = up.name
-                    st.success(f"Loaded **{up.name}** ({len(df_up):,} rows). Refreshing…")
-                    st.rerun()
-            except Exception as ex:
-                st.error(f"Could not read workbook: `{str(ex)[:380]}`")
-        if st.session_state.get("gc_global_workbook_df") is not None:
-            if st.button("Remove uploaded workbook from this session", key="gc_global_workbook_clear"):
-                st.session_state.pop("gc_global_workbook_df", None)
-                st.session_state.pop("gc_global_workbook_name", None)
-                st.rerun()
     use_live = False
     share_df = pd.DataFrame()
     top_skills: list[str] = []
@@ -1613,11 +1576,10 @@ def render_global_tab(
         st.info(
             "**Combined Data isn’t loaded yet.** This tab only uses your real workbook (no sample charts). "
             "**On disk:** add `Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx` under `data/` "
-            "(or project root). "
+            "(or project root) and redeploy. "
             "**On Streamlit Cloud:** set **`GLOBAL_COMBINED_WORKBOOK_URL`** in "
             "[app secrets](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app#secrets) "
-            "to a direct HTTPS link to the `.xlsx`. "
-            "**Or** upload once via the expander above."
+            "to a direct HTTPS link to the `.xlsx` (server fetches the file)."
         )
         if load_error and (df_global is None or df_global.empty):
             with st.expander("Technical detail", expanded=False):
@@ -2154,10 +2116,6 @@ df_b, live_b = load_b()
 df_c, live_c = load_c()
 df_d, live_d = load_d()
 df_global, global_source_name, global_load_error = load_global_workbook()
-if st.session_state.get("gc_global_workbook_df") is not None:
-    df_global = st.session_state["gc_global_workbook_df"]
-    global_source_name = st.session_state.get("gc_global_workbook_name", "Uploaded workbook")
-    global_load_error = None
 uk_overview_jobs, uk_overview_skills = uk_overview_core_metrics(df_a, df_global)
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────

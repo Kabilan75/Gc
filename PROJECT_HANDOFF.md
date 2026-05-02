@@ -4,7 +4,7 @@ Use this document to continue development without browsing the repo. Paths are r
 
 ## What it is
 
-A **Streamlit** dashboard for **UK Gaming Industry — Skill Demand Analysis**. Charts are **Plotly** only (dark theme); data comes from **CSV** and **Excel** files on disk (or uploaded for the global workbook).
+A **Streamlit** dashboard for **UK Gaming Industry — Skill Demand Analysis**. Charts are **Plotly** only (dark theme); data comes from **CSV** and **Excel** files on disk (and optional HTTPS URL for the global workbook).
 
 ## Stack (see `requirements.txt`)
 
@@ -59,9 +59,9 @@ Requires `data/Updated_27_02_26_-_Kabilan.xlsx` with sheet **`Combined Data`**.
 - **Navigation:** Sidebar `st.radio` — `NAV_OPTIONS` (must stay in sync if you rename sections):
   - `📊 UK & Regions` — UK Overview / Regional Analysis; metric definitions expander; regional hero tiles use the same “top skill /100k” rule; heatmap warns when using static fallback.
   - `🤖 AI Gaps` — pipeline, cluster stack, heatmaps, Step D table, per-region bars; suggested reading order; Step D validated against required columns; sparse-region caption for low Step C row counts.
-  - `🌍 Global` — country bars and skill views only from **Combined Data** (disk or **session upload**). No hardcoded reference charts; without data, the tab explains upload / missing file.
+  - `🌍 Global` — country bars and skill views only from **Combined Data** (disk or **`GLOBAL_COMBINED_WORKBOOK_URL`**). No hardcoded reference charts; without data, the tab explains missing file / secrets.
   - `📄 CV` — lexical/alias matching only; region picker links high-gap Step C / Step D skills not matched on the CV.
-- **Data loading:** `load_a()` … `load_d()` plus `_find()` for CSVs under `data/steps/` (or repo root). Global: `load_global_workbook()` returns `(df, name, error)`: **disk** (`Updated_...` then `Combined_Data_cleaned.xlsx`), else **`GLOBAL_COMBINED_WORKBOOK_URL`** (HTTPS fetch from env or secrets). **`gc_global_workbook_df`** (upload) overrides for that session.
+- **Data loading:** `load_a()` … `load_d()` plus `_find()` for CSVs under `data/steps/` (or repo root). Global: `load_global_workbook()` returns `(df, name, error)`: **disk** (`Updated_...` then `Combined_Data_cleaned.xlsx`), else **`GLOBAL_COMBINED_WORKBOOK_URL`** (HTTPS fetch from env or secrets).
 - **Step D contract:** Live workshop table requires columns `UK_Region`, `Skill`, `Demand_Count`, `Gap_Score` (optional `Workshop_Recommendation`). See `step_d_workshop_recommendations.csv`.
 - **Imports from `city_to_country_tab5`:** `normalize_tab5_dataframe_country` for the global workbook path.
 - **Styling:** Plotly `template="plotly_dark"` (and custom layout) for consistency.
@@ -71,7 +71,7 @@ Requires `data/Updated_27_02_26_-_Kabilan.xlsx` with sheet **`Combined Data`**.
 
 - **`load_global_workbook()`** uses `_find("Updated_27_02_26_-_Kabilan.xlsx", "Combined_Data_cleaned.xlsx")` — **raw workbook first** when both exist.
 - Sheet **`Combined Data`**; optional **`python -m src.preprocess_combined_for_global`** builds the cleaned file for offline dedupe.
-- **Streamlit Cloud:** if the repo has no Excel, users **upload** the workbook in the Global tab (`gc_global_workbook_*` session keys).
+- **Streamlit Cloud:** if the repo has no Excel, set **`GLOBAL_COMBINED_WORKBOOK_URL`** in app secrets to a direct HTTPS link to the `.xlsx`.
 
 ## `src/preprocess_combined_for_global.py`
 

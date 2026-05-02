@@ -20,8 +20,7 @@ streamlit run app.py
 - Chart images: stored in `assets/expr_charts/` and `assets/stage3_charts/`.
 - Global comparison (sidebar **Global**):
   - Put `Updated_27_02_26_-_Kabilan.xlsx` (sheet: `Combined Data`) in `data/` or project root (auto-discovered), **or**
-  - On Streamlit Cloud without committing the file: set **`GLOBAL_COMBINED_WORKBOOK_URL`** in app secrets (HTTPS URL to the `.xlsx`), **or**
-  - Upload once per browser session via the Global tab expander.
+  - On Streamlit Cloud without committing the file: set **`GLOBAL_COMBINED_WORKBOOK_URL`** in app secrets (HTTPS URL to the `.xlsx`).
 
 ## Deploy (Streamlit Community Cloud)
 
