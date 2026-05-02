@@ -547,7 +547,7 @@ def _load_job_meta_from_workbook() -> pd.DataFrame:
     Loads job-level metadata (role + apply link) from the global workbook when available.
     Returns a dataframe keyed by the Step A fingerprint columns.
     """
-    df_global, _ = load_global_workbook()
+    df_global, _, _ = load_global_workbook()
     if df_global is None or df_global.empty:
         return pd.DataFrame()
 
@@ -830,18 +830,24 @@ def load_d():
 
 
 @st.cache_data(show_spinner=False)
-def load_global_workbook() -> tuple[pd.DataFrame | None, str | None]:
-    p = _find("Combined_Data_cleaned.xlsx", "Updated_27_02_26_-_Kabilan.xlsx")
+def load_global_workbook() -> tuple[pd.DataFrame | None, str | None, str | None]:
+    # Prefer supervisor raw workbook when present (same Combined Data source as UK headline).
+    p = _find("Updated_27_02_26_-_Kabilan.xlsx", "Combined_Data_cleaned.xlsx")
     if not p:
-        return None, None
+        return (
+            None,
+            None,
+            "No global workbook found. Add `data/Updated_27_02_26_-_Kabilan.xlsx` or "
+            "`Combined_Data_cleaned.xlsx` (sheet `Combined Data`) under the project folder or `data/`.",
+        )
     try:
         from src.city_to_country_tab5 import normalize_tab5_dataframe_country
 
         df = pd.read_excel(p, sheet_name="Combined Data", engine="openpyxl")
         df = normalize_tab5_dataframe_country(df)
-        return df, p.name
-    except Exception:
-        return None, None
+        return df, p.name, None
+    except Exception as ex:
+        return None, None, f"{p.name}: {ex}"
 
 
 def _count_uk_gaming_job_rows_from_workbook(path: Path) -> int | None:
@@ -1443,9 +1449,16 @@ def prepare_global_data(df_global: pd.DataFrame | None) -> pd.DataFrame:
     return base.reset_index(drop=True)
 
 
-def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None = None) -> None:
+def render_global_tab(
+    df_global: pd.DataFrame | None,
+    *,
+    source_name: str | None = None,
+    load_error: str | None = None,
+) -> None:
     st.markdown("#### Global Comparison · `UK vs world`")
     st.caption("Unique job listings · binary skill presence (% of jobs mentioning skill)")
+    if load_error and (df_global is None or df_global.empty):
+        st.error(load_error[:900])
     st.markdown("---")
 
     STATIC_COUNTRIES = [
@@ -1547,17 +1560,24 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
                     binary_df, top_skills = build_binary_skill_matrix(base_analysed, top_n_skills=50)
                     share_df = compute_skill_shares(binary_df, top_skills)
 
-                    if not share_df.empty and "United Kingdom" in share_df.index:
-                        use_live = True
+                    # Country counts + chart use Combined Data even if share_df is incomplete.
+                    use_live = True
             except Exception as ex:
+                use_live = False
                 st.error(f"Error processing global workbook: {str(ex)[:220]}")
 
     if use_live:
         st.success(f"📡 **Live Data** — `{source_name}` · one row per job listing · binary skill shares.")
+        if share_df.empty or "United Kingdom" not in share_df.index:
+            st.warning(
+                "Country job counts and the chart below use your **`Combined Data`** workbook. "
+                "Some UK vs world **skill** sections may fall back to reference snapshots if `Skills` "
+                "could not be parsed into tokens or **United Kingdom** is missing from the skill matrix."
+            )
     else:
         st.warning(
-            "📋 **Reference Data** — Load `Combined_Data_cleaned.xlsx` or `Updated_27_02_26_-_Kabilan.xlsx` "
-            "(sheet: `Combined Data`) to enable live global comparisons. "
+            "📋 **Reference Data** — Add `Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx` "
+            "(sheet: `Combined Data`) under the project or `data/` to enable live global comparisons. "
             "Showing 81 countries in reference data. Live mode shows countries with ≥50 jobs "
             "for skill analysis but all countries for ranking. "
             "Note: static % values use raw token counts — live values use binary presence per job so numbers will differ."
@@ -1569,7 +1589,11 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
         c1.metric("UK Global Rank", f"#{uk_rank}" if uk_rank else "—", f"out of {n_total_countries} total countries")
         c2.metric("UK Gaming Jobs", f"{n_uk_jobs:,}", "unique job listings")
         c3.metric("Countries for analysis", f"{n_countries_analysed}", f"{n_total_countries} total countries found")
-        c4.metric("Skills tracked", "50", "top skills vocabulary")
+        c4.metric(
+            "Skills tracked",
+            str(len(top_skills)) if top_skills else "0",
+            "top skills vocabulary",
+        )
     else:
         c1.metric("UK Global Rank", "#4", "By gaming listings")
         c2.metric("Communication", "80/81", "Countries demand it")
@@ -1706,7 +1730,12 @@ def render_global_tab(df_global: pd.DataFrame | None, *, source_name: str | None
             else:
                 st.warning(f"Skill not found: `{skill_in}`. Try e.g. {', '.join(skills_available[:6])}.")
 
-    if use_live and not share_df.empty:
+    skill_tables_live = (
+        use_live
+        and not share_df.empty
+        and "United Kingdom" in share_df.index
+    )
+    if skill_tables_live:
         ahead, behind = compute_uk_vs_world(share_df, all_job_counts, top_n=7)
         rnk = build_rankings_table(share_df, all_job_counts, n_show=12)
         sim_pairs = cosine_similarity_to_uk(share_df, top_n=12)
@@ -2106,7 +2135,7 @@ df_a, live_a = load_a()
 df_b, live_b = load_b()
 df_c, live_c = load_c()
 df_d, live_d = load_d()
-df_global, global_source_name = load_global_workbook()
+df_global, global_source_name, global_load_error = load_global_workbook()
 uk_overview_jobs, uk_overview_skills = uk_overview_core_metrics(df_a)
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
@@ -2801,7 +2830,11 @@ elif tab == "🤖 AI Gaps":
 # TAB 4 — GLOBAL COMPARISON
 # ═════════════════════════════════════════════════════════════════════════════
 elif tab == "🌍 Global":
-    render_global_tab(df_global, source_name=global_source_name)
+    render_global_tab(
+        df_global,
+        source_name=global_source_name,
+        load_error=global_load_error,
+    )
 
 # ═════════════════════════════════════════════════════════════════════════════
 # TAB 5 — CV EVALUATOR
