@@ -1525,12 +1525,14 @@ def render_global_tab(
 ) -> None:
     st.markdown("#### Global Comparison · `UK vs world`")
     st.caption("Unique job listings · binary skill presence (% of jobs mentioning skill)")
-    _needs_upload = df_global is None or df_global.empty
     with st.expander(
-        "Upload Combined Data (.xlsx) — if no file is on the server (e.g. Streamlit Cloud)",
-        expanded=bool(_needs_upload and load_error),
+        "Optional: upload Combined Data (.xlsx) for this session",
+        expanded=False,
     ):
-        st.caption("Sheet name must be **`Combined Data`**. Data stays in this browser session only.")
+        st.caption(
+            "Use this if the file is not in the repo and you are not using **`GLOBAL_COMBINED_WORKBOOK_URL`**. "
+            "Sheet name must be **`Combined Data`**. Data stays in this browser session only."
+        )
         up = st.file_uploader(
             "Excel workbook",
             type=["xlsx"],
@@ -1557,10 +1559,6 @@ def render_global_tab(
                 st.session_state.pop("gc_global_workbook_df", None)
                 st.session_state.pop("gc_global_workbook_name", None)
                 st.rerun()
-    if load_error and (df_global is None or df_global.empty):
-        st.error(load_error[:900])
-    st.markdown("---")
-
     use_live = False
     share_df = pd.DataFrame()
     top_skills: list[str] = []
@@ -1613,11 +1611,17 @@ def render_global_tab(
 
     if not use_live:
         st.info(
-            "**No Combined Data loaded.** This tab only shows your real workbook — **no demo charts**. "
-            "Add `data/Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx`, set "
-            "**`GLOBAL_COMBINED_WORKBOOK_URL`** in [Streamlit secrets](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app#secrets) "
-            "to an HTTPS link to the `.xlsx`, or **upload** in the expander above."
+            "**Combined Data isn’t loaded yet.** This tab only uses your real workbook (no sample charts). "
+            "**On disk:** add `Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx` under `data/` "
+            "(or project root). "
+            "**On Streamlit Cloud:** set **`GLOBAL_COMBINED_WORKBOOK_URL`** in "
+            "[app secrets](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app#secrets) "
+            "to a direct HTTPS link to the `.xlsx`. "
+            "**Or** upload once via the expander above."
         )
+        if load_error and (df_global is None or df_global.empty):
+            with st.expander("Technical detail", expanded=False):
+                st.code(str(load_error)[:900], language=None)
         return
 
     st.success(f"📡 **Live Data** — `{source_name}` · one row per job listing · binary skill shares.")
