@@ -19,8 +19,9 @@ streamlit run app.py
   - `data/universal_skills.csv`
 - Chart images: stored in `assets/expr_charts/` and `assets/stage3_charts/`.
 - Global comparison (sidebar **Global**):
-  - If you have it, place `Updated_27_02_26_-_Kabilan.xlsx` (sheet: `Combined Data`) in `data/`, **or**
-  - Upload the file in the app when prompted.
+  - Put `Updated_27_02_26_-_Kabilan.xlsx` (sheet: `Combined Data`) in `data/` or project root (auto-discovered), **or**
+  - On Streamlit Cloud without committing the file: set **`GLOBAL_COMBINED_WORKBOOK_URL`** in app secrets (HTTPS URL to the `.xlsx`), **or**
+  - Upload once per browser session via the Global tab expander.
 
 ## Deploy (Streamlit Community Cloud)
 

@@ -61,7 +61,7 @@ Requires `data/Updated_27_02_26_-_Kabilan.xlsx` with sheet **`Combined Data`**.
   - `🤖 AI Gaps` — pipeline, cluster stack, heatmaps, Step D table, per-region bars; suggested reading order; Step D validated against required columns; sparse-region caption for low Step C row counts.
   - `🌍 Global` — country bars and skill views only from **Combined Data** (disk or **session upload**). No hardcoded reference charts; without data, the tab explains upload / missing file.
   - `📄 CV` — lexical/alias matching only; region picker links high-gap Step C / Step D skills not matched on the CV.
-- **Data loading:** `load_a()` … `load_d()` plus `_find()` for CSVs under `data/steps/` (or repo root). Global: `load_global_workbook()` returns `(df, name, error)` and resolves **`Updated_27_02_26_-_Kabilan.xlsx`** before **`Combined_Data_cleaned.xlsx`**. After load, **`gc_global_workbook_df`** in session state (user upload) replaces disk data for that session.
+- **Data loading:** `load_a()` … `load_d()` plus `_find()` for CSVs under `data/steps/` (or repo root). Global: `load_global_workbook()` returns `(df, name, error)`: **disk** (`Updated_...` then `Combined_Data_cleaned.xlsx`), else **`GLOBAL_COMBINED_WORKBOOK_URL`** (HTTPS fetch from env or secrets). **`gc_global_workbook_df`** (upload) overrides for that session.
 - **Step D contract:** Live workshop table requires columns `UK_Region`, `Skill`, `Demand_Count`, `Gap_Score` (optional `Workshop_Recommendation`). See `step_d_workshop_recommendations.csv`.
 - **Imports from `city_to_country_tab5`:** `normalize_tab5_dataframe_country` for the global workbook path.
 - **Styling:** Plotly `template="plotly_dark"` (and custom layout) for consistency.

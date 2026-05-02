@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib
 import io
+import os
 import re
 import shutil
 import warnings
@@ -832,25 +833,88 @@ def load_d():
     return _fallback_d(), False
 
 
-@st.cache_data(show_spinner=False)
-def load_global_workbook() -> tuple[pd.DataFrame | None, str | None, str | None]:
-    # Prefer supervisor raw workbook when present (same Combined Data source as UK headline).
-    p = _find("Updated_27_02_26_-_Kabilan.xlsx", "Combined_Data_cleaned.xlsx")
-    if not p:
-        return (
-            None,
-            None,
-            "No global workbook found. Add `data/Updated_27_02_26_-_Kabilan.xlsx` or "
-            "`Combined_Data_cleaned.xlsx` (sheet `Combined Data`) under the project folder or `data/`.",
-        )
-    try:
-        from src.city_to_country_tab5 import normalize_tab5_dataframe_country
+def _global_combined_workbook_url() -> str | None:
+    """HTTPS URL from env or Streamlit secrets — fetch Combined Data without committing the file."""
+    u = (os.environ.get("GLOBAL_COMBINED_WORKBOOK_URL") or "").strip()
+    if not u:
+        try:
+            if hasattr(st, "secrets") and "GLOBAL_COMBINED_WORKBOOK_URL" in st.secrets:
+                u = str(st.secrets["GLOBAL_COMBINED_WORKBOOK_URL"]).strip()
+        except Exception:
+            u = ""
+    return u or None
 
+
+@st.cache_data(show_spinner=False)
+def _read_global_workbook_from_path(path_str: str) -> tuple[pd.DataFrame | None, str | None, str | None]:
+    from src.city_to_country_tab5 import normalize_tab5_dataframe_country
+
+    p = Path(path_str)
+    try:
         df = pd.read_excel(p, sheet_name="Combined Data", engine="openpyxl")
         df = normalize_tab5_dataframe_country(df)
         return df, p.name, None
     except Exception as ex:
         return None, None, f"{p.name}: {ex}"
+
+
+@st.cache_data(show_spinner=True, ttl=86_400)
+def _read_global_workbook_from_url(url: str) -> tuple[pd.DataFrame | None, str | None, str | None]:
+    import urllib.request
+    from urllib.parse import urlparse
+
+    from src.city_to_country_tab5 import normalize_tab5_dataframe_country
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; GC-dashboard/1.0)"},
+        )
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            raw = resp.read()
+    except Exception as ex:
+        return None, None, f"URL fetch failed: {ex}"
+    try:
+        bio = io.BytesIO(raw)
+        df = pd.read_excel(bio, sheet_name="Combined Data", engine="openpyxl")
+        df = normalize_tab5_dataframe_country(df)
+        host = urlparse(url).netloc or "remote URL"
+        return df, f"Combined Data ({host})", None
+    except Exception as ex:
+        return None, None, f"Could not parse workbook from URL: {ex}"
+
+
+def load_global_workbook() -> tuple[pd.DataFrame | None, str | None, str | None]:
+    """Load Combined Data from disk, else from GLOBAL_COMBINED_WORKBOOK_URL (secrets or env)."""
+    p = _find("Updated_27_02_26_-_Kabilan.xlsx", "Combined_Data_cleaned.xlsx")
+    if p:
+        return _read_global_workbook_from_path(str(p.resolve()))
+    url = _global_combined_workbook_url()
+    if url:
+        return _read_global_workbook_from_url(url)
+    return (
+        None,
+        None,
+        "No global workbook found. Add `data/Updated_27_02_26_-_Kabilan.xlsx` or "
+        "`Combined_Data_cleaned.xlsx` (sheet `Combined Data`) under the project folder or `data/`, "
+        "or set **`GLOBAL_COMBINED_WORKBOOK_URL`** in Streamlit secrets / environment to an HTTPS URL "
+        "that serves the `.xlsx` file.",
+    )
+
+
+def _count_uk_gaming_rows_in_combined_df(df: pd.DataFrame | None) -> int | None:
+    """UK + Gaming Company row count in an in-memory Combined Data frame."""
+    if df is None or df.empty:
+        return None
+    try:
+        d = df
+        if "Company Category" in d.columns:
+            d = d[d["Company Category"].astype(str).str.strip() == "Gaming Company"]
+        if "Country" in d.columns:
+            d = d[d["Country"].astype(str).str.strip() == "United Kingdom"]
+        return int(len(d))
+    except Exception:
+        return None
 
 
 def _count_uk_gaming_job_rows_from_workbook(path: Path) -> int | None:
@@ -861,22 +925,19 @@ def _count_uk_gaming_job_rows_from_workbook(path: Path) -> int | None:
     which massively under-counts unique listings.
     """
     try:
-        df = pd.read_excel(path, sheet_name="Combined Data", engine="openpyxl")
+        dfp = pd.read_excel(path, sheet_name="Combined Data", engine="openpyxl")
     except Exception:
         return None
-
-    if "Company Category" in df.columns:
-        df = df[df["Company Category"].astype(str).str.strip() == "Gaming Company"]
-    if "Country" in df.columns:
-        df = df[df["Country"].astype(str).str.strip() == "United Kingdom"]
-    return int(len(df))
+    return _count_uk_gaming_rows_in_combined_df(dfp)
 
 
-def uk_overview_core_metrics(df: pd.DataFrame) -> tuple[int, int]:
+def uk_overview_core_metrics(
+    df: pd.DataFrame, df_global: pd.DataFrame | None = None
+) -> tuple[int, int]:
     """Return (UK job listings count, distinct Step A skills).
 
-    - Job listings: prefer counting rows in `data/Updated_27_02_26_-_Kabilan.xlsx`
-      (Combined Data) filtered to UK + Gaming Company — consistent with the UK sample.
+    - Job listings: prefer in-memory Combined Data (`df_global` from disk, URL, or upload), else
+      `Updated_...xlsx` on disk — UK + Gaming Company.
     - Skills: distinct tokens in Step A after `load_a()` cleaning.
     """
     # Skills from Step A
@@ -887,15 +948,19 @@ def uk_overview_core_metrics(df: pd.DataFrame) -> tuple[int, int]:
         sk = sk[sk.str.len() > 0]
         skills = int(sk.nunique())
 
-    # Jobs from workbook (preferred)
+    # Jobs from workbook (preferred: same frame as Global tab)
     jobs = UK_OVERVIEW_TOTAL_JOB_ADS
-    p_data_updated = Path("data") / "Updated_27_02_26_-_Kabilan.xlsx"
-    p_root_updated = Path("Updated_27_02_26_-_Kabilan.xlsx")
-    for p in (p_data_updated, p_root_updated):
-        n = _count_uk_gaming_job_rows_from_workbook(p)
-        if n is not None:
-            jobs = n
-            break
+    n_g = _count_uk_gaming_rows_in_combined_df(df_global)
+    if n_g is not None:
+        jobs = n_g
+    else:
+        p_data_updated = Path("data") / "Updated_27_02_26_-_Kabilan.xlsx"
+        p_root_updated = Path("Updated_27_02_26_-_Kabilan.xlsx")
+        for p in (p_data_updated, p_root_updated):
+            n = _count_uk_gaming_job_rows_from_workbook(p)
+            if n is not None:
+                jobs = n
+                break
 
     return jobs, skills
 
@@ -1549,8 +1614,9 @@ def render_global_tab(
     if not use_live:
         st.info(
             "**No Combined Data loaded.** This tab only shows your real workbook — **no demo charts**. "
-            "Add `data/Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx`, or **upload** an `.xlsx` "
-            "with sheet **`Combined Data`** (expander above)."
+            "Add `data/Updated_27_02_26_-_Kabilan.xlsx` or `Combined_Data_cleaned.xlsx`, set "
+            "**`GLOBAL_COMBINED_WORKBOOK_URL`** in [Streamlit secrets](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app#secrets) "
+            "to an HTTPS link to the `.xlsx`, or **upload** in the expander above."
         )
         return
 
@@ -2088,7 +2154,7 @@ if st.session_state.get("gc_global_workbook_df") is not None:
     df_global = st.session_state["gc_global_workbook_df"]
     global_source_name = st.session_state.get("gc_global_workbook_name", "Uploaded workbook")
     global_load_error = None
-uk_overview_jobs, uk_overview_skills = uk_overview_core_metrics(df_a)
+uk_overview_jobs, uk_overview_skills = uk_overview_core_metrics(df_a, df_global)
 
 # ── Sidebar navigation (no footer attribution block) ─────────────────────────
 NAV_OPTIONS = [

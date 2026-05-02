@@ -36,7 +36,7 @@ data/steps/step_d_workshop_recommendations.csv ← ranked workshop recs per regi
 ```
 All four are loaded with `@st.cache_data` via `load_a/b/c/d()`. If any CSV is missing, the function falls back to hardcoded `_fallback_a/b/c/d()` DataFrames and labels the data as "demo sample" in the UI.
 
-**Global tab data:** `load_global_workbook()` resolves **`Updated_27_02_26_-_Kabilan.xlsx` first**, then `Combined_Data_cleaned.xlsx` (via `_find` order). Sheet `"Combined Data"`. Users can **upload** the workbook in-app (`gc_global_workbook_df` session state) when the file is not on the server (e.g. Streamlit Cloud). There is **no** static/reference placeholder UI when data is missing.
+**Global tab data:** `load_global_workbook()` tries disk (`Updated_...` then `Combined_Data_cleaned.xlsx`), then optional **`GLOBAL_COMBINED_WORKBOOK_URL`** in env or Streamlit secrets (HTTPS fetch, cached). Sheet `"Combined Data"`. Session **upload** overrides in-memory. No static placeholder UI when data is missing.
 
 **Tab routing:** Streamlit radio buttons in the sidebar select among the four tabs. Each tab is rendered in its own `if tab == "...":` block inside `app.py`.
 
