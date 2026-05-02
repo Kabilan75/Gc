@@ -843,13 +843,23 @@ def _global_combined_workbook_url() -> str | None:
 
 
 @st.cache_data(show_spinner=False)
-def _read_global_workbook_from_path(path_str: str) -> tuple[pd.DataFrame | None, str | None, str | None]:
+def _cached_combined_dataframe_from_path(path_str: str, file_mtime: float) -> pd.DataFrame:
+    """Parse Combined Data from disk. Raises on failure so errors are not cached under st.cache_data."""
     from src.city_to_country_tab5 import normalize_tab5_dataframe_country
 
     p = Path(path_str)
+    df = pd.read_excel(p, sheet_name="Combined Data", engine="openpyxl")
+    return normalize_tab5_dataframe_country(df)
+
+
+def _read_global_workbook_from_path(path_str: str) -> tuple[pd.DataFrame | None, str | None, str | None]:
+    p = Path(path_str)
     try:
-        df = pd.read_excel(p, sheet_name="Combined Data", engine="openpyxl")
-        df = normalize_tab5_dataframe_country(df)
+        mtime = float(p.stat().st_mtime)
+    except OSError:
+        mtime = 0.0
+    try:
+        df = _cached_combined_dataframe_from_path(str(p.resolve()), mtime)
         return df, p.name, None
     except Exception as ex:
         return None, None, f"{p.name}: {ex}"
