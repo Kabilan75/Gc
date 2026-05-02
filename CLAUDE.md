@@ -36,7 +36,7 @@ data/steps/step_d_workshop_recommendations.csv ← ranked workshop recs per regi
 ```
 All four are loaded with `@st.cache_data` via `load_a/b/c/d()`. If any CSV is missing, the function falls back to hardcoded `_fallback_a/b/c/d()` DataFrames and labels the data as "demo sample" in the UI.
 
-**Global tab data:** `load_global_workbook()` tries disk (`Updated_...` then `Combined_Data_cleaned.xlsx`), then optional **`GLOBAL_COMBINED_WORKBOOK_URL`** in env or Streamlit secrets (HTTPS fetch, cached). Sheet `"Combined Data"`. Session **upload** overrides in-memory. No static placeholder UI when data is missing.
+**Global tab data:** `load_global_workbook()` tries disk (`Updated_...` then `Combined_Data_cleaned.xlsx`), then optional **`GLOBAL_COMBINED_WORKBOOK_URL`** in env or Streamlit secrets (HTTPS fetch, cached). Sheet `"Combined Data"`. No static placeholder UI when data is missing.
 
 **Tab routing:** Streamlit radio buttons in the sidebar select among the four tabs. Each tab is rendered in its own `if tab == "...":` block inside `app.py`.
 
@@ -56,5 +56,5 @@ All four are loaded with `@st.cache_data` via `load_a/b/c/d()`. If any CSV is mi
 
 - Step B filename has a space and parentheses: `step_b_clustered_skills (2).csv`. `load_b()` handles this but don't rename the file without updating the loader. The file lives at `data/steps/step_b_clustered_skills (2).csv`.
 - Wales and N. Ireland rows in Step C are sparse (<25 rows); the app shows a warning when these regions are selected.
-- `Combined_Data_cleaned.xlsx` is often gitignored; if only the raw workbook is present, that file is used. If neither file exists and there is no upload, the Global tab shows messaging instead of fake charts.
+- `Combined_Data_cleaned.xlsx` is often gitignored; if only the raw workbook is present, that file is used. If neither file exists and `GLOBAL_COMBINED_WORKBOOK_URL` is not set, the Global tab shows messaging instead of fake charts.
 - The `"game-texts"` skill is filtered out of Step A at load time — this is intentional.

@@ -71,7 +71,7 @@ Step 3: Render chosen tab
 Step 4: User sees results
   - Charts update in real-time
   - If Step A–D CSVs are missing → built-in demo sample for those tabs
-  - If the global workbook is missing (e.g. on Streamlit Cloud) → Global tab shows an upload prompt, not placeholder country charts
+  - If the global workbook is missing (e.g. on Streamlit Cloud) → Global tab shows setup guidance, not placeholder country charts
   ↓
 END: User closes app
 ```
@@ -142,9 +142,9 @@ The file is organized in sections (marked with `# ── Section Name ──`):
 | 544-595 | Data Enrichment | Add job roles and apply links to data |
 | 641-860 | Loaders & Helpers | Load CSVs, apply fallbacks, normalize data |
 | 865-1348 | Data Processing | Calculate metrics, gaps, similarities, clusters |
-| 1455-1805 | `render_global_tab` | Global comparison UI (workbook or upload; no static country charts) |
+| 1455-1805 | `render_global_tab` | Global comparison UI (disk or URL; no static country charts) |
 | 2050-2078 | Chart helpers | `_dark`, `show` — Plotly dark theme |
-| 2081-2112 | Data load & nav | `load_a`…`load_d`, `load_global_workbook`, session upload override, sidebar |
+| 2081-2112 | Data load & nav | `load_a`…`load_d`, `load_global_workbook`, sidebar |
 | 2133-2421 | Tab 1: UK & Regions | UK Overview + Regional Analysis |
 | 2427-2779 | Tab 2: AI Gaps | Gaps, clusters, workshops |
 | 2784-2789 | Tab 3: Global | Calls `render_global_tab(...)` |
@@ -201,11 +201,6 @@ df_b, live_b = load_b()
 df_c, live_c = load_c()
 df_d, live_d = load_d()
 df_global, global_source_name, global_load_error = load_global_workbook()
-# Optional: user-uploaded Combined Data for this session (e.g. Streamlit Cloud)
-if st.session_state.get("gc_global_workbook_df") is not None:
-    df_global = st.session_state["gc_global_workbook_df"]
-    global_source_name = st.session_state.get("gc_global_workbook_name", "Uploaded workbook")
-    global_load_error = None
 ```
 
 **Each Step A–D loader (`load_a`, `load_b`, etc.):**
@@ -213,9 +208,9 @@ if st.session_state.get("gc_global_workbook_df") is not None:
 2. If found → load with pandas and `@st.cache_data`
 3. If NOT found → hardcoded `_fallback_a()` / `_fallback_b()` etc. and `live_* = False`
 
-**Global workbook:** `load_global_workbook()` returns `(DataFrame | None, filename | None, error_message | None)`. It does **not** inject demo country data. The **Global** tab either processes a disk file, an **uploaded** Excel in session state, or shows guidance only (see `render_global_tab`).
+**Global workbook:** `load_global_workbook()` returns `(DataFrame | None, filename | None, error_message | None)`. It does **not** inject demo country data. The **Global** tab processes a disk file, optional **`GLOBAL_COMBINED_WORKBOOK_URL`** fetch, or shows guidance only (see `render_global_tab`).
 
-**This means:** UK / AI Gaps / CV can still run with Step A–D fallbacks. **Global** needs real Combined Data (on disk or upload) to show live country and skill views.
+**This means:** UK / AI Gaps / CV can still run with Step A–D fallbacks. **Global** needs real Combined Data (on disk or URL) to show live country and skill views.
 
 ---
 
@@ -316,8 +311,7 @@ region = st.selectbox("Pick a region:", ["England", "Scotland", ...])
 
 **The data:**
 - **Disk:** `load_global_workbook()` uses `_find()` with **`Updated_27_02_26_-_Kabilan.xlsx` first**, then `Combined_Data_cleaned.xlsx` (first file found wins). Sheet: **`Combined Data`**, then `normalize_tab5_dataframe_country`.
-- **Upload:** User can upload the same workbook in-session (`gc_global_workbook_upload`); it overrides disk load for that session.
-- **If there is no usable workbook and no successful processing:** the tab shows **info / error text and upload** — it does **not** show hardcoded “reference” country rankings or placeholder KPIs.
+- **If there is no usable workbook and no successful processing:** the tab shows **info** — it does **not** show hardcoded “reference” country rankings or placeholder KPIs.
 
 **Charts (when `use_live` path succeeds):**
 
@@ -789,8 +783,8 @@ matching_jobs = df_jobs[df_jobs['Skills'].str.contains('|'.join(selected_skills)
    → Displays cluster composition, gap analysis, workshops
 
 6. User clicks "Global"
-   → Renders `render_global_tab` (or shows upload prompt if no data)
-   → Workbook from disk and/or user upload; session state can override
+   → Renders `render_global_tab` (or shows guidance if no data)
+   → Workbook from disk or `GLOBAL_COMBINED_WORKBOOK_URL`
    → Normalizes countries using `city_to_country_tab5`
    → When possible: skill shares, rankings, similarity from real rows only
 
