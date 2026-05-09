@@ -7,3 +7,5 @@ xlrd>=2.0.1
 # CV Evaluator — PDF text extraction (optional OCR: pymupdf, pytesseract, pillow + Tesseract binary)
 pdfplumber>=0.10.0
 PyPDF2>=3.0.0
+# Optional: generate docs/PROJECT_BRIEF.pdf — python scripts/generate_project_brief_pdf.py
+reportlab>=4.0.0

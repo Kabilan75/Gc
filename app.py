@@ -1057,6 +1057,16 @@ def _prior_from_rec(text: object) -> str:
     return "STD"
 
 
+def _low_ws_recommendation(region_disp: str, skill_disp: str, demand: int, gap: float) -> str:
+    """Plain-language line matching Step D workshop tone (lower urgency)."""
+    return (
+        "🔵 LOWER WORKSHOP PRIORITY — In "
+        f"{region_disp}, allocate workshops to higher-gap skills before focusing on "
+        f"{skill_disp}. Employer demand: {demand} postings; gap score: {gap:.2f}. "
+        "(Low gap means supply is nearer demand in the Step C model — not low importance.)"
+    )
+
+
 def gap_region_chart_df(df_c: pd.DataFrame, region: str, n: int = 12) -> pd.DataFrame:
     """Top-n skills in one UK region by gap score (Step C)."""
     out_cols = ["Skill", "Demand", "Gap"]
@@ -1077,6 +1087,71 @@ def gap_region_chart_df(df_c: pd.DataFrame, region: str, n: int = 12) -> pd.Data
             "Gap": sub["Gap_Score"].astype(float),
         }
     )
+
+
+def lowest_gap_skills_table(
+    df_c: pd.DataFrame,
+    *,
+    per_region: int = 5,
+    min_demand: int = 1,
+) -> pd.DataFrame:
+    """Per UK nation: skills with the lowest Gap_Score in Step C (least workshop urgency vs peers)."""
+    need = {"UK Region", "Skills", "Demand", "Gap_Score"}
+    if df_c is None or df_c.empty or not need.issubset(df_c.columns):
+        return pd.DataFrame()
+    regions = ["England", "Scotland", "Wales", "Northern Ireland"]
+    out_rows: list[dict[str, object]] = []
+    df_work = df_c.copy()
+    df_work["UK Region"] = df_work["UK Region"].astype(str).str.strip()
+    if "Cluster_Name" not in df_work.columns:
+        df_work["Cluster_Name"] = "—"
+    for reg in regions:
+        sub = df_work[df_work["UK Region"] == reg].copy()
+        if sub.empty:
+            continue
+        sub["Demand"] = pd.to_numeric(sub["Demand"], errors="coerce").fillna(0)
+        sub["Gap_Score"] = pd.to_numeric(sub["Gap_Score"], errors="coerce")
+        sub = sub.dropna(subset=["Gap_Score"])
+        sub = sub.loc[sub["Demand"] >= min_demand]
+        if sub.empty:
+            continue
+        sub = sub.sort_values(["Gap_Score", "Skills"], ascending=[True, True]).head(per_region)
+        for _, r in sub.iterrows():
+            sup_v = 0.0
+            if "Supply" in sub.columns:
+                s_raw = pd.to_numeric(r.get("Supply"), errors="coerce")
+                if pd.notna(s_raw):
+                    sup_v = round(float(s_raw), 4)
+            cn_lab = str(r["Cluster_Name"]).strip() or "—"
+            skill_disp = cn(str(r["Skills"]))
+            gap_v = round(float(r["Gap_Score"]), 4)
+            reg_disp = _reg_display(reg)
+            out_rows.append(
+                {
+                    "UK Region": reg_disp,
+                    "Skills": skill_disp,
+                    "Cluster_Name": cn_lab,
+                    "Demand": int(r["Demand"]),
+                    "Supply": sup_v,
+                    "Gap_Score": gap_v,
+                    "Recommendation": _low_ws_recommendation(
+                        reg_disp, skill_disp, int(r["Demand"]), gap_v
+                    ),
+                }
+            )
+    if not out_rows:
+        return pd.DataFrame()
+    return pd.DataFrame(out_rows)[
+        [
+            "UK Region",
+            "Skills",
+            "Cluster_Name",
+            "Demand",
+            "Supply",
+            "Gap_Score",
+            "Recommendation",
+        ]
+    ]
 
 
 def gap_cluster_heatmap(df_c: pd.DataFrame) -> tuple[list, list[str], list[str]]:
@@ -2477,7 +2552,7 @@ elif tab == "🤖 AI Gaps":
     with st.expander("Suggested reading order", expanded=False):
         st.markdown(
             "1. Cluster stack and region × cluster heatmap — where pressure sits.  \n"
-            "2. Workshop recommendation table — concrete priorities.  \n"
+            "2. Workshop recommendations (Step D) + **lower workshop priority** recommendations (Step C).  \n"
             "3. Pick a **UK region** below — skill-level demand vs gap bars."
         )
 
@@ -2527,6 +2602,11 @@ elif tab == "🤖 AI Gaps":
                 )
         fig_cl.update_layout(
             barmode="stack",
+            title=dict(
+                text="Skill cluster composition by UK region",
+                x=0.5,
+                xanchor="center",
+            ),
             legend=dict(
                 orientation="h",
                 yanchor="top",
@@ -2538,7 +2618,7 @@ elif tab == "🤖 AI Gaps":
             xaxis_title="Region",
             yaxis_title="Per 100k",
         )
-        show(fig_cl, 420, margin_patch=dict(t=12, b=120), axis_tick_color="#CBD5E1")
+        show(fig_cl, 420, margin_patch=dict(t=48, b=120), axis_tick_color="#CBD5E1")
         st.caption("Game Dev · Soft Skills · Proj Mgmt · Creative · Biz Tools · Cloud")
 
     with right:
@@ -2736,6 +2816,54 @@ elif tab == "🤖 AI Gaps":
             "Communication Supply 0.1759 is near zero "
             "confirming maximum urgency"
         )
+
+    st.markdown("---")
+    st.subheader("Recommended: lower workshop priority (Step C)")
+    ctl_l, ctl_r = st.columns(2)
+    with ctl_l:
+        low_n = st.number_input(
+            "Skills per nation (lowest gap)",
+            min_value=1,
+            max_value=30,
+            value=5,
+            step=1,
+            key="low_ws_per_region",
+            help="How many lowest-gap skills to list for each UK nation.",
+        )
+    with ctl_r:
+        low_min_d = st.number_input(
+            "Minimum demand (job ads)",
+            min_value=1,
+            max_value=5000,
+            value=1,
+            step=1,
+            key="low_ws_min_demand",
+            help="Exclude skills with fewer than this many demand counts in Step C.",
+        )
+    st.caption(
+        f"Step C — **{int(low_n)} lowest** gap scores per UK nation among skills with **demand ≥ {int(low_min_d)}** · "
+        "complements Step D (highest urgency). Lower gap means supply is closer to demand in this model; "
+        "it does **not** mean the skill is unimportant."
+    )
+    low_ws_df = lowest_gap_skills_table(
+        df_c, per_region=int(low_n), min_demand=int(low_min_d)
+    )
+    if len(low_ws_df):
+        st.dataframe(
+            low_ws_df,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Recommendation": st.column_config.TextColumn(
+                    "Recommendation",
+                    width="large",
+                ),
+            },
+        )
+    elif live_c and len(df_c) and {"UK Region", "Skills", "Demand", "Gap_Score"}.issubset(df_c.columns):
+        st.info("No lower-urgency rows — check **UK Region** values in Step C match England / Scotland / Wales / Northern Ireland.")
+    else:
+        st.info("Load **step_c_gap_scores.csv** with **UK Region**, **Skills**, **Demand**, and **Gap_Score** to show this table.")
 
     c_row_counts = step_c_row_counts_by_region(df_c) if len(df_c) and "UK Region" in df_c.columns else {}
     thin = [
