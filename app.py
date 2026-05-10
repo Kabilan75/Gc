@@ -262,6 +262,9 @@ WORKSHOP_HTML = [
     ("N.Ireland", "Communication", 7, "5.00", "STD"),
 ]
 
+# Lower workshop priority table: max rows after per-nation selection (global lowest gaps).
+LOW_WS_TABLE_MAX_ROWS = 20
+
 # ── CV Evaluator — role buckets + aliases (skills gated by Step A vocabulary) ──
 CV_JOB_CATS: dict[str, list[str]] = {
     "Engineering & Dev": [
@@ -1106,16 +1109,35 @@ def lowest_gap_skills_table(
     if "Cluster_Name" not in df_work.columns:
         df_work["Cluster_Name"] = "—"
     for reg in regions:
-        sub = df_work[df_work["UK Region"] == reg].copy()
+        sub_all = df_work[df_work["UK Region"] == reg].copy()
+        sub = sub_all.copy()
         if sub.empty:
             continue
         sub["Demand"] = pd.to_numeric(sub["Demand"], errors="coerce").fillna(0)
         sub["Gap_Score"] = pd.to_numeric(sub["Gap_Score"], errors="coerce")
         sub = sub.dropna(subset=["Gap_Score"])
         sub = sub.loc[sub["Demand"] >= min_demand]
-        if sub.empty:
+
+        # Ensure we can always return exactly `per_region` rows per nation when data exists:
+        # if demand-filtered rows are too few (common for Wales / N. Ireland), top up using
+        # the lowest gaps from the full region set (demand >= 1) without duplicating skills.
+        pick = sub.sort_values(["Gap_Score", "Skills"], ascending=[True, True]).copy()
+        if len(pick) < per_region:
+            sub_all["Demand"] = pd.to_numeric(sub_all["Demand"], errors="coerce").fillna(0)
+            sub_all["Gap_Score"] = pd.to_numeric(sub_all["Gap_Score"], errors="coerce")
+            sub_all = sub_all.dropna(subset=["Gap_Score"])
+            sub_all = sub_all.loc[sub_all["Demand"] >= 1]
+            if len(sub_all):
+                already = set(pick["Skills"].astype(str)) if len(pick) else set()
+                more = sub_all.loc[~sub_all["Skills"].astype(str).isin(already)]
+                more = more.sort_values(["Gap_Score", "Skills"], ascending=[True, True])
+                need_more = max(0, per_region - len(pick))
+                if need_more:
+                    pick = pd.concat([pick, more.head(need_more)], ignore_index=True)
+
+        if pick.empty:
             continue
-        sub = sub.sort_values(["Gap_Score", "Skills"], ascending=[True, True]).head(per_region)
+        sub = pick.head(per_region)
         for _, r in sub.iterrows():
             sup_v = 0.0
             if "Supply" in sub.columns:
@@ -1783,29 +1805,42 @@ def render_global_tab(
                 fig_bub = None
                 if match_skill and sk_data is not None and not sk_data.empty:
                     top10_bubble = sk_data.head(10).copy()
-                    top10_bubble["Is_UK"] = top10_bubble["Country"].apply(
-                        lambda x: "United Kingdom" if x == "United Kingdom" else "Other"
-                    )
+                    pie_colors = [
+                        TEAL if str(c) == "United Kingdom" else PURPLE
+                        for c in top10_bubble["Country"]
+                    ]
+                    cd_share = top10_bubble["Share %"].to_numpy().reshape(-1, 1)
 
-                    fig_bub = px.scatter(
+                    fig_bub = px.pie(
                         top10_bubble,
-                        x="Country",
-                        y="Share %",
-                        size="Share %",
-                        color="Is_UK",
-                        color_discrete_map={
-                            "United Kingdom": "#00E5CC",
-                            "Other": "#A78BFA",
-                        },
-                        title=f"Skill Share Bubble — {match_skill}",
-                        hover_data={"Share %": ":.2f"},
-                        size_max=50,
+                        names="Country",
+                        values="Share %",
+                        title=(
+                            f"Skill Share (pie chart) — {match_skill} · top 10 countries"
+                        ),
+                    )
+                    fig_bub.update_traces(
+                        marker=dict(colors=pie_colors),
+                        customdata=cd_share,
+                        hovertemplate=(
+                            "<b>%{label}</b><br>% of jobs in country: "
+                            "%{customdata[0]:.1f}%<extra></extra>"
+                        ),
+                        texttemplate="%{label}<br>%{customdata[0]:.1f}%",
+                        textposition="outside",
+                        textfont=dict(size=11),
                     )
                     fig_bub.update_layout(
-                        showlegend=False,
-                        xaxis_tickangle=45,
-                        xaxis_title="",
-                        yaxis_title="Share % of Jobs",
+                        showlegend=True,
+                        legend=dict(
+                            title="",
+                            orientation="v",
+                            yanchor="middle",
+                            y=0.5,
+                            xanchor="left",
+                            x=1.02,
+                            font=dict(size=11),
+                        ),
                     )
 
                 if fig_bub is not None:
@@ -1813,7 +1848,12 @@ def render_global_tab(
                     with c_l:
                         show(fig_sk, 460)
                     with c_r:
-                        show(fig_bub, 460)
+                        st.caption(
+                            "Slice size compares countries on this skill (relative weights among "
+                            "these 10). It is not a breakdown of global job volume. Values shown "
+                            "are % of each country’s jobs mentioning the skill."
+                        )
+                        show(fig_bub, 460, margin_patch=dict(r=100))
                 else:
                     show(fig_sk, 460)
             else:
@@ -2821,15 +2861,8 @@ elif tab == "🤖 AI Gaps":
     st.subheader("Recommended: lower workshop priority (Step C)")
     ctl_l, ctl_r = st.columns(2)
     with ctl_l:
-        low_n = st.number_input(
-            "Skills per nation (lowest gap)",
-            min_value=1,
-            max_value=30,
-            value=5,
-            step=1,
-            key="low_ws_per_region",
-            help="How many lowest-gap skills to list for each UK nation.",
-        )
+        low_n = 5
+        st.metric("Skills per nation (lowest gap)", str(low_n))
     with ctl_r:
         low_min_d = st.number_input(
             "Minimum demand (job ads)",
@@ -2842,6 +2875,7 @@ elif tab == "🤖 AI Gaps":
         )
     st.caption(
         f"Step C — **{int(low_n)} lowest** gap scores per UK nation among skills with **demand ≥ {int(low_min_d)}** · "
+        "always shows **20 rows** (5 × 4 UK nations) when data exists · "
         "complements Step D (highest urgency). Lower gap means supply is closer to demand in this model; "
         "it does **not** mean the skill is unimportant."
     )
