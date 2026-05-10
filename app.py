@@ -1801,61 +1801,7 @@ def render_global_tab(
                 )
                 fig_sk.update_traces(texttemplate="%{x:.1f}%", textposition="outside")
                 fig_sk.update_layout(legend_title="", yaxis_categoryorder="total ascending")
-                match_skill = match
-                fig_bub = None
-                if match_skill and sk_data is not None and not sk_data.empty:
-                    top10_bubble = sk_data.head(10).copy()
-                    pie_colors = [
-                        TEAL if str(c) == "United Kingdom" else PURPLE
-                        for c in top10_bubble["Country"]
-                    ]
-                    cd_share = top10_bubble["Share %"].to_numpy().reshape(-1, 1)
-
-                    fig_bub = px.pie(
-                        top10_bubble,
-                        names="Country",
-                        values="Share %",
-                        title=(
-                            f"Skill Share (pie chart) — {match_skill} · top 10 countries"
-                        ),
-                    )
-                    fig_bub.update_traces(
-                        marker=dict(colors=pie_colors),
-                        customdata=cd_share,
-                        hovertemplate=(
-                            "<b>%{label}</b><br>% of jobs in country: "
-                            "%{customdata[0]:.1f}%<extra></extra>"
-                        ),
-                        texttemplate="%{label}<br>%{customdata[0]:.1f}%",
-                        textposition="outside",
-                        textfont=dict(size=11),
-                    )
-                    fig_bub.update_layout(
-                        showlegend=True,
-                        legend=dict(
-                            title="",
-                            orientation="v",
-                            yanchor="middle",
-                            y=0.5,
-                            xanchor="left",
-                            x=1.02,
-                            font=dict(size=11),
-                        ),
-                    )
-
-                if fig_bub is not None:
-                    c_l, c_r = st.columns(2)
-                    with c_l:
-                        show(fig_sk, 460)
-                    with c_r:
-                        st.caption(
-                            "Slice size compares countries on this skill (relative weights among "
-                            "these 10). It is not a breakdown of global job volume. Values shown "
-                            "are % of each country’s jobs mentioning the skill."
-                        )
-                        show(fig_bub, 460, margin_patch=dict(r=100))
-                else:
-                    show(fig_sk, 460)
+                show(fig_sk, 460)
             else:
                 st.warning(f"Skill not found: `{skill_in}`. Try e.g. {', '.join(skills_available[:6])}.")
 
