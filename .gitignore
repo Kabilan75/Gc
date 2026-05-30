@@ -7,6 +7,7 @@ __pycache__/
 data/Combined_Data_cleaned.xlsx
 
 # Personal notes (keep locally; not published to GitHub)
+README.md
 CODEBASE_GUIDE.md
 PROJECT_HANDOFF.md
 CLAUDE.md
