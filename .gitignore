@@ -5,3 +5,10 @@ __pycache__/
 
 # Generated from data/Updated_27_02_26_-_Kabilan.xlsx — run: python -m src.preprocess_combined_for_global
 data/Combined_Data_cleaned.xlsx
+
+# Personal notes (keep locally; not published to GitHub)
+CODEBASE_GUIDE.md
+PROJECT_HANDOFF.md
+CLAUDE.md
+docs/PROJECT_BRIEF.md
+docs/PROJECT_BRIEF.pdf
